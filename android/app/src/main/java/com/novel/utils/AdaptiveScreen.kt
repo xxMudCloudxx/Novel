@@ -19,7 +19,7 @@ fun AdaptiveScreen(
     content: @Composable () -> Unit
 ) {
     // 设计图的宽高
-    val designWidth = 393.dp
+    val designWidth = 375.dp
     val designHeight = 852.dp
 
     BoxWithConstraints(modifier = modifier,
