@@ -11,6 +11,13 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		9B5FA7CD2BA14B318213B922 /* pingfang_bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06171A11DB5745ED9ED16BBD /* pingfang_bold.ttf */; };
+		7B4605005A48466DBB2D8AF5 /* pingfang_extra_light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8E64C5645A114F1883315CF4 /* pingfang_extra_light.ttf */; };
+		D13816F1170F46058503F496 /* pingfang_heavy.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 59CE693B626D4201B73CD8A1 /* pingfang_heavy.ttf */; };
+		489EC176A06A498F979A8103 /* pingfang_light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E55601CDF0424941AB49C12A /* pingfang_light.ttf */; };
+		390FCDD5B65C4F4B8684FC2D /* pingfang_medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1B05382987EC481C92C7B745 /* pingfang_medium.ttf */; };
+		C6DE78D479F5460D809BADEC /* pingfang_regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D01B42529F94170825A8B59 /* pingfang_regular.ttf */; };
+		DF1533DF05FD4511B228A851 /* pingfang_semibold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 404FF764E2544C6F9949800A /* pingfang_semibold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +42,13 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Novel/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Novel/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		06171A11DB5745ED9ED16BBD /* pingfang_bold.ttf */ = {isa = PBXFileReference; name = "pingfang_bold.ttf"; path = "../assets/fonts/pingfang_bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		8E64C5645A114F1883315CF4 /* pingfang_extra_light.ttf */ = {isa = PBXFileReference; name = "pingfang_extra_light.ttf"; path = "../assets/fonts/pingfang_extra_light.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		59CE693B626D4201B73CD8A1 /* pingfang_heavy.ttf */ = {isa = PBXFileReference; name = "pingfang_heavy.ttf"; path = "../assets/fonts/pingfang_heavy.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		E55601CDF0424941AB49C12A /* pingfang_light.ttf */ = {isa = PBXFileReference; name = "pingfang_light.ttf"; path = "../assets/fonts/pingfang_light.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		1B05382987EC481C92C7B745 /* pingfang_medium.ttf */ = {isa = PBXFileReference; name = "pingfang_medium.ttf"; path = "../assets/fonts/pingfang_medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		1D01B42529F94170825A8B59 /* pingfang_regular.ttf */ = {isa = PBXFileReference; name = "pingfang_regular.ttf"; path = "../assets/fonts/pingfang_regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		404FF764E2544C6F9949800A /* pingfang_semibold.ttf */ = {isa = PBXFileReference; name = "pingfang_semibold.ttf"; path = "../assets/fonts/pingfang_semibold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,6 +107,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				43E37A54E94E4F8EA9E67169 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -115,6 +130,21 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		43E37A54E94E4F8EA9E67169 /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				06171A11DB5745ED9ED16BBD /* pingfang_bold.ttf */,
+				8E64C5645A114F1883315CF4 /* pingfang_extra_light.ttf */,
+				59CE693B626D4201B73CD8A1 /* pingfang_heavy.ttf */,
+				E55601CDF0424941AB49C12A /* pingfang_light.ttf */,
+				1B05382987EC481C92C7B745 /* pingfang_medium.ttf */,
+				1D01B42529F94170825A8B59 /* pingfang_regular.ttf */,
+				404FF764E2544C6F9949800A /* pingfang_semibold.ttf */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -185,6 +215,13 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				9B5FA7CD2BA14B318213B922 /* pingfang_bold.ttf in Resources */,
+				7B4605005A48466DBB2D8AF5 /* pingfang_extra_light.ttf in Resources */,
+				D13816F1170F46058503F496 /* pingfang_heavy.ttf in Resources */,
+				489EC176A06A498F979A8103 /* pingfang_light.ttf in Resources */,
+				390FCDD5B65C4F4B8684FC2D /* pingfang_medium.ttf in Resources */,
+				C6DE78D479F5460D809BADEC /* pingfang_regular.ttf in Resources */,
+				DF1533DF05FD4511B228A851 /* pingfang_semibold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

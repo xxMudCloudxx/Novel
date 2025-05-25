@@ -11,7 +11,10 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import dagger.hilt.android.HiltAndroidApp
+import jakarta.inject.Inject
 
+@HiltAndroidApp
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost =
