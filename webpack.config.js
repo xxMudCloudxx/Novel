@@ -4,14 +4,14 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   mode: 'development',  // 或 'production'
-  entry: path.resolve(__dirname, 'index.web.js'),
+  entry: path.resolve(__dirname, 'index.web.ts'),
   output: {
     path: path.resolve(__dirname, 'web-build'),
     filename: 'bundle.js',
   },
   resolve: {
     // 支持 .web.js 优先，然后常规后缀
-    extensions: ['.web.js', '.js', '.ts', '.tsx', '.json'],
+    extensions: ['.web.ts', '.js', '.ts', '.tsx', '.json'],
     alias: {
       // 把 react-native 全部指向 react-native-web
       'react-native$': 'react-native-web',
