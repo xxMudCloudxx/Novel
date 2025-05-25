@@ -15,8 +15,12 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class ComposeMainActivity : ComponentActivity() {
+    private val rim by lazy {
+        (application as MainApplication).reactNativeHost.reactInstanceManager
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        rim.createReactContextInBackground()
         setContent {
             NovelTheme{
                 Surface(
@@ -31,5 +35,20 @@ class ComposeMainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        rim.onHostResume(this)                         // 传递 Activity
+    }
+
+    override fun onPause() {
+        super.onPause()
+        rim.onHostPause(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        rim.onHostDestroy(this)
     }
 }

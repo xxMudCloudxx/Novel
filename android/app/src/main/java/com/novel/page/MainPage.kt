@@ -21,17 +21,23 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.viewinterop.AndroidView
+import com.facebook.react.ReactInstanceManager
+import com.facebook.react.ReactRootView
+import com.novel.MainApplication
 import com.novel.page.component.NovelText
 import com.novel.page.home.HomePage
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import kotlinx.coroutines.launch
-
 @Composable
 fun MainPage() {
     // 页面内容列表——注意中间第三项是 ChatScreen
@@ -50,6 +56,7 @@ fun MainPage() {
             // Directly call composables and pass parameters as needed
             when (pageIndex) {
                 0 -> HomePage()
+                4 -> ReactNativePage()
                 else -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center

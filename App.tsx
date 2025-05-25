@@ -6,18 +6,17 @@ import { typography } from './src/utils/theme/typography';
 type Props = { nativeMessage?: string };
 
 export default function App({ nativeMessage }: Props): React.JSX.Element {
-  // 拿到当前主题下的所有颜色
   const colors = useNovelColors();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.novelBackground }]}>
       {/* 标题 */}
-      <Text style={[typography.titleLarge, { color: colors.novelText, marginBottom: 16 }]}>
+      <Text style={styles.title}>
         React Native 页面
       </Text>
 
       {/* 显示 Token */}
-      <Text style={[typography.bodyMedium, { color: colors.novelTextGray }]}>
+      <Text style={styles.body}>
         Token 是：{nativeMessage}
       </Text>
     </SafeAreaView>
@@ -30,5 +29,14 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  title: {
+    ...typography.titleLarge,
+    color: '#yourColorHere', // This will be overridden by dynamic color below
+    marginBottom: 16,
+  },
+  body: {
+    ...typography.bodyMedium,
+    color: '#yourGrayColorHere', // This will be overridden by dynamic color below
   },
 });
