@@ -19,6 +19,11 @@ module.exports = {
   },
   module: {
     rules: [
+        {
+            test: /\.svg$/,
+            issuer: /\.[jt]sx?$/,           // 仅当从 JS/TS 导入时生效
+            use: ['@svgr/webpack'],         // 把 SVG 转成 React 组件
+          },
       {
         test: /\.[jt]sx?$/,
         exclude: /node_modules/,
@@ -40,7 +45,7 @@ module.exports = {
         },
       },
       {
-        test: /\.(png|jpe?g|gif|svg)$/,
+        test: /\.(png|jpe?g|gif)$/,
         type: 'asset/resource',
       },
       {
