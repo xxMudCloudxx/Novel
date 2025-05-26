@@ -11,6 +11,9 @@ import androidx.navigation.compose.rememberNavController
 import com.novel.page.MainPage
 import com.novel.page.login.LoginPage
 
+/**
+ * 导航设置
+ */
 @Composable
 fun NavigationSetup() {
     // 创建 NavController

@@ -26,6 +26,9 @@ import com.novel.BuildConfig
 import com.novel.MainApplication
 import kotlinx.coroutines.delay
 
+/**
+ * ReactNative 页面
+ */
 @SuppressLint("VisibleForTests")
 @Composable
 fun ReactNativePage() {

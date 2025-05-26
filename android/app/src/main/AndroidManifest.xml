@@ -1,6 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 8.0 及以上推荐使用 READ_PHONE_NUMBERS -->
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS"/>
+    <!-- 兼容性：READ_PHONE_STATE 可用于更低 API 级别 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+
+    <uses-permission android:name="READ_PRIVILEGED_PHONE_STATE" />
 
     <application
       android:name=".MainApplication"

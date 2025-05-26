@@ -14,6 +14,9 @@ import com.novel.page.component.NovelText
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 
+/**
+ * 登录页面的AppBar
+ */
 @Composable
 fun LoginAppBar(){
     Row(

@@ -16,6 +16,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import com.novel.ui.theme.PingFangFamily
 
+/**
+ *  NovelText
+ */
 @Composable
 fun NovelText(
     text: String,

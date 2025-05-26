@@ -7,6 +7,9 @@ import android.os.Handler
 import android.os.Looper
 import com.novel.utils.NavViewModel
 
+/**
+ * 导航工具类
+ */
 class NavigationUtilModule(ctx: ReactApplicationContext) : ReactContextBaseJavaModule(ctx) {
 
     override fun getName(): String = "NavigationUtil"
