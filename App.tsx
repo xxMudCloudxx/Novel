@@ -1,8 +1,12 @@
 import React from 'react';
-import { SafeAreaView, Text, StyleSheet, View } from 'react-native';
+import { SafeAreaView, Text, StyleSheet, View, Button, NativeModules } from 'react-native';
 import { useNovelColors } from './src/utils/theme/colors';
 import { typography } from './src/utils/theme/typography';
 import Moon from './assets/image/moon_mode.svg';
+
+const { NavigationUtil } = NativeModules as {
+  NavigationUtil: { goToLogin: () => void }
+};
 
 type Props = { nativeMessage?: string };
 
@@ -20,6 +24,13 @@ export default function App({ nativeMessage }: Props): React.JSX.Element {
         <Moon width={20} height={20} />
       </View>
 
+      <Button
+        title="跳转到登录页"
+        onPress={() => {
+          NavigationUtil.goToLogin();
+        }}
+      />
+
       {/* 显示 Token */}
       <Text style={styles.body}>
         Token 是：{nativeMessage}
@@ -34,6 +45,11 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  button: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
   },
   title: {
     ...typography.titleLarge,

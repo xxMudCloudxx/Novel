@@ -47,7 +47,7 @@ fun MainPage() {
         R.drawable.bookshelf,
         R.drawable.my
     )
-    val pageCount = labels.size // Define page count based on labels
+    val pageCount = labels.size
 
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { pageCount })
     val scope = rememberCoroutineScope()
@@ -56,16 +56,15 @@ fun MainPage() {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f),
-            userScrollEnabled = false // As per user's previous setup, scrolling is disabled
+            userScrollEnabled = false
         ) { pageIndex ->
-            // Directly call composables and pass parameters as needed
             when (pageIndex) {
                 0 -> HomePage()
                 4 -> ReactNativePage()
                 else -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
-                ) { NovelText("Page Not Found") } // Fallback for safety
+                ) { NovelText("Page Not Found") }
             }
         }
 
@@ -77,7 +76,9 @@ fun MainPage() {
             contentPadding = PaddingValues(0.wdp)
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 30.wdp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 30.wdp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -104,15 +105,16 @@ fun NavButton(
     id: Int
 ) {
     val color = if (isSelect) NovelColors.NovelText else NovelColors.NovelTextGray
-    // 返回按钮
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxHeight().clickable(
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() },
-            onClick = onClick
-        ),
+        modifier = Modifier
+            .fillMaxHeight()
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick
+            ),
     ) {
         Image(
             painter = painterResource(id = id),

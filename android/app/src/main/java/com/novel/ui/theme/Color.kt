@@ -6,10 +6,10 @@ import androidx.compose.ui.graphics.Color
 
 object NovelColors {
     val NovelMain: Color
-        @Composable get() = Color(0xFF1EA59E)
+        @Composable get() = Color(0xFFFF995D)
 
     val NovelMainLight: Color
-        @Composable get() = Color(0xFF28CCC3)
+        @Composable get() = Color(0xFFF86827)
 
     val NovelDivider: Color
         @Composable get() = dynamicColor(light = Color(0xFFF7F7F8), dark = Color(0xFF1C1C1E))
