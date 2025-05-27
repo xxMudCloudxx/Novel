@@ -16,18 +16,22 @@ import com.novel.utils.wdp
 
 /**
  * 登录按钮
- * @param onOneClick 本机一键登录点击事件
- * @param onOther 其他手机号登录点击事件
+ * @param firstText 登录按钮文字
+ * @param secondText 注册按钮文字
+ * @param onFirstClick 登录按钮点击事件
+ * @param onSecondClick 注册按钮点击事件
  */
 @Composable
 fun ActionButtons(
-    onOneClick: () -> Unit,
-    onOther: () -> Unit
+    firstText: String = "登录",
+    secondText: String = "暂无账号，进行注册",
+    onFirstClick: () -> Unit,
+    onSecondClick: () -> Unit
 ) {
     NovelMainButton(
         content = {
             NovelText(
-                "本机号码一键登录",
+                firstText,
                 fontSize = 16.ssp,
                 fontWeight = FontWeight.Bold,
                 color = NovelColors.NovelSecondaryBackground
@@ -37,12 +41,12 @@ fun ActionButtons(
             .padding(vertical = 16.wdp)
             .width(330.wdp)
             .height(48.wdp),
-        onClick = onOneClick
+        onClick = onFirstClick
     )
     NovelWeakenButton(
         content = {
             NovelText(
-                "其他手机号码登录",
+                secondText,
                 fontSize = 16.ssp,
                 fontWeight = FontWeight.Bold,
                 color = NovelColors.NovelText
@@ -51,6 +55,6 @@ fun ActionButtons(
         modifier = Modifier
             .width(330.wdp)
             .height(48.wdp),
-        onClick = onOther
+        onClick = onSecondClick
     )
 }

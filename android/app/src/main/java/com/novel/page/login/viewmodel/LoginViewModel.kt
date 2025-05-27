@@ -1,9 +1,9 @@
 package com.novel.page.login.viewmodel
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Base64
 import android.util.Log
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.utils.PhoneInfoUtil
@@ -63,7 +63,7 @@ class LoginViewModel @Inject constructor(
     private val tokenProvider: TokenProvider,
     private val userDefaults: NovelUserDefaults,
     private val imageVerifyService: ImageVerifyCodeService,
-    private val context: Context,
+    @SuppressLint("StaticFieldLeak") private val context: Context,
     phoneInfoUtil: PhoneInfoUtil
 ) : ViewModel() {
 

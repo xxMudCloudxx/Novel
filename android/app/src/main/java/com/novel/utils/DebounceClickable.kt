@@ -1,6 +1,5 @@
 package com.novel.utils
 
-import android.annotation.SuppressLint
 import android.os.SystemClock
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable

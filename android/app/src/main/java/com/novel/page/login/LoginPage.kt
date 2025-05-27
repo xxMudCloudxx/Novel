@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.novel.page.component.NovelDivider
@@ -51,6 +50,7 @@ import kotlinx.coroutines.flow.collectLatest
 fun LoginPage() {
     val vm: LoginViewModel = hiltViewModel()
     val uiState by vm.uiState.collectAsState()
+    var isRegisterMode by remember { mutableStateOf(false) }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordConfirm by remember { mutableStateOf("") }
@@ -79,11 +79,11 @@ fun LoginPage() {
             .background(color = NovelColors.NovelBackground),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        LoginAppBar();
+        LoginAppBar()
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(vertical = 60.wdp)
+                .padding(top = 60.wdp)
                 .background(color = NovelColors.NovelBackground),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -121,55 +121,66 @@ fun LoginPage() {
                 isPassword = true
             )
 
-            Spacer(modifier = Modifier.padding(top = 19.wdp))
+            if(isRegisterMode){
+                Spacer(modifier = Modifier.padding(top = 19.wdp))
 
-            NovelTextField(
-                value = passwordConfirm, // 绑定到状态
-                onValueChange = { passwordConfirm = it }, // 状态更新
-                modifier = Modifier
-                    .height(45.wdp)
-                    .width(329.wdp),
-                placeText = "再次输入密码",
-                isPassword = true
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier
-                    .padding(top = 19.wdp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 22.5.wdp)
-            ) {
                 NovelTextField(
-                    value = uiState.verifyCode,
-                    onValueChange = { vm.onAction(LoginAction.InputVerifyCode(it)) },
+                    value = passwordConfirm, // 绑定到状态
+                    onValueChange = { passwordConfirm = it }, // 状态更新
                     modifier = Modifier
                         .height(45.wdp)
-                        .width(180.wdp),
-                    placeText = "输入验证码",
-                    isPassword = false
+                        .width(329.wdp),
+                    placeText = "再次输入密码",
+                    isPassword = true
                 )
-                Spacer(Modifier.width(8.wdp))
-                Log.d(
-                    "LoginPage",
-                    "Rendering NovelImageView with verifyImage: ${uiState.verifyImage}"
-                )
-                NovelImageView(
-                    imageUrl = uiState.verifyImage,
-                    isLoading = uiState.isCaptchaLoading,
-                    error = uiState.captchaError,
-                    widthDp = 100,
-                    heightDp = 45,
-                    modifier = Modifier.clickable { vm.onAction(LoginAction.RefreshCaptcha) },
-                    onRetry = { vm.onAction(LoginAction.RefreshCaptcha) }
-                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .padding(top = 19.wdp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 22.5.wdp)
+                ) {
+                    NovelTextField(
+                        value = uiState.verifyCode,
+                        onValueChange = { vm.onAction(LoginAction.InputVerifyCode(it)) },
+                        modifier = Modifier
+                            .height(45.wdp)
+                            .width(180.wdp),
+                        placeText = "输入验证码",
+                        isPassword = false
+                    )
+                    Spacer(Modifier.width(8.wdp))
+                    Log.d(
+                        "LoginPage",
+                        "Rendering NovelImageView with verifyImage: ${uiState.verifyImage}"
+                    )
+                    NovelImageView(
+                        imageUrl = uiState.verifyImage,
+                        isLoading = uiState.isCaptchaLoading,
+                        error = uiState.captchaError,
+                        widthDp = 100,
+                        heightDp = 45,
+                        modifier = Modifier.clickable { vm.onAction(LoginAction.RefreshCaptcha) },
+                        onRetry = { vm.onAction(LoginAction.RefreshCaptcha) }
+                    )
+                }
             }
 
             //  登录按钮
             ActionButtons(
-                onOneClick = { vm.onAction(LoginAction.DoLogin(username, password)) },
-                onOther = {}
+                firstText = if (isRegisterMode) "注册" else "登录",
+                secondText = if (isRegisterMode) "返回登录" else "暂无账号，进行注册",
+                onFirstClick = {
+                    if (isRegisterMode) {
+                    } else {
+                        vm.onAction(LoginAction.DoLogin(username, password))
+                    }
+                },
+                onSecondClick = {
+                    isRegisterMode = !isRegisterMode
+                }
             )
 
             //  协议
