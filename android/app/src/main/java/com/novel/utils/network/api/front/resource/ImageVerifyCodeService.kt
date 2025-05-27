@@ -36,7 +36,7 @@ class ImageVerifyCodeService @Inject constructor() {
     ) {
         ApiService.get(
             baseUrl = BASE_URL_RESOURCE,
-            endpoint = "img_verify_code",
+            endpoint = "/img_verify_code",
             params = null,
             headers = mapOf("Accept" to "*/*")
         ) { response, error ->

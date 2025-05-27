@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.novel.R
 import com.novel.page.component.NovelText
 import com.novel.page.home.HomePage
+import com.novel.page.login.LoginPage
 import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.NovelTheme
 import com.novel.utils.ssp
@@ -60,6 +61,7 @@ fun MainPage() {
         ) { pageIndex ->
             when (pageIndex) {
                 0 -> HomePage()
+                2 -> LoginPage()
                 4 -> ReactNativePage()
                 else -> Box(
                     modifier = Modifier.fillMaxSize(),

@@ -10,10 +10,10 @@ import androidx.room.Query
 @Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey
-    val userId: String,
-    val username: String,
-    val nickname: String?,
-    val avatar: String?,
+    val uid: String,
+    val nickName: String,
+    val userPhoto: String,
+    val userSex: Int
 )
 
 @Dao

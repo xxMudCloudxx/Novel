@@ -3,6 +3,7 @@ package com.novel.utils.Store.UserDefaults
 import android.content.SharedPreferences
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.content.edit
 
 /**
  * 对应 Swift 里的 NovelUserDefaults.Key
@@ -11,7 +12,7 @@ enum class NovelUserDefaultsKey(val key: String) {
     IS_LOGGED_IN("isLoggedIn"),
     NEWS_TYPE("newsType"),
     TOKEN_EXPIRES_AT("tokenExpiresAt"),
-    USER_ID("userId"),
+    USER_ID("uid"),
 }
 
 /**
@@ -40,18 +41,19 @@ class SharedPrefsUserDefaults @Inject constructor(
 ) : NovelUserDefaults {
 
     override fun <T> set(value: T, forKey: NovelUserDefaultsKey) {
-        prefs.edit().apply {
+        prefs.edit {
             when (value) {
-                is String  -> putString(forKey.key, value)
-                is Int     -> putInt(forKey.key, value)
+                is String -> putString(forKey.key, value)
+                is Int -> putInt(forKey.key, value)
                 is Boolean -> putBoolean(forKey.key, value)
-                is Float   -> putFloat(forKey.key, value)
-                is Long    -> putLong(forKey.key, value)
-                is Set<*>  -> @Suppress("UNCHECKED_CAST")
+                is Float -> putFloat(forKey.key, value)
+                is Long -> putLong(forKey.key, value)
+                is Set<*> -> @Suppress("UNCHECKED_CAST")
                 putStringSet(forKey.key, value as Set<String>)
-                else       -> throw IllegalArgumentException("不支持的类型：${value}")
+
+                else -> throw IllegalArgumentException("不支持的类型：${value}")
             }
-        }.apply() // 异步提交
+        } // 异步提交
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -61,26 +63,26 @@ class SharedPrefsUserDefaults @Inject constructor(
     }
 
     override fun remove(key: NovelUserDefaultsKey) {
-        prefs.edit().remove(key.key).apply()
+        prefs.edit { remove(key.key) }
     }
 
     override fun contains(key: NovelUserDefaultsKey): Boolean =
         prefs.contains(key.key)
 
     override fun clearAll() {
-        val editor = prefs.edit()
-        NovelUserDefaultsKey.entries.forEach { editor.remove(it.key) }
-        editor.apply()
+        prefs.edit {
+            NovelUserDefaultsKey.entries.forEach { remove(it.key) }
+        }
     }
 
     override fun setString(key: String, value: String) {
-        prefs.edit().putString(key, value).apply()
+        prefs.edit { putString(key, value) }
     }
 
     override fun getString(key: String): String? =
         prefs.getString(key, null)
 
     override fun remove(key: String) {
-        prefs.edit().remove(key).apply()
+        prefs.edit { remove(key) }
     }
 }

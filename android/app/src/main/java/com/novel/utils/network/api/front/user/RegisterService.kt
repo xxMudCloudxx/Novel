@@ -41,7 +41,7 @@ class RegisterService {
 
         ApiService.post(
             baseUrl = BASE_URL_USER,
-            endpoint = "register",
+            endpoint = "/register",
             params = requestBody, // 自动序列化对象
             headers = mapOf(
                 "Content-Type" to "application/json",

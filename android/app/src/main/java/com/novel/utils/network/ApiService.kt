@@ -8,6 +8,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import retrofit2.Call
@@ -68,15 +69,20 @@ object RetrofitClient {
         authInterceptor: AuthInterceptor,
         tokenProvider: TokenProvider
     ) {
-        RetrofitClient.authInterceptor = authInterceptor
-        RetrofitClient.tokenProvider = tokenProvider
+        this.authInterceptor = authInterceptor
+        this.tokenProvider = tokenProvider
     }
 
-    fun getRetrofit(baseUrl: String, endpoint: String): Retrofit =
+    fun getRetrofit(baseUrl: String): Retrofit =
         retrofitInstances.getOrPut(baseUrl) {
+            // --- 1. HttpLoggingInterceptor ---
+            val logging = HttpLoggingInterceptor { msg ->
+                Log.d("OkHttp", msg)
+            }.apply { level = HttpLoggingInterceptor.Level.BODY }
             // --- 1. 组装 OkHttpClient ---
             val builder = OkHttpClient.Builder()
-                .addInterceptor(authInterceptor)          // 自动加 Token
+                .addInterceptor(authInterceptor)
+                .addInterceptor(logging)  // 自动加 Token
 
             // --- 2. 生成 Retrofit ---
             Retrofit.Builder()
@@ -86,21 +92,21 @@ object RetrofitClient {
                 .build()
         }
 
-    fun getService(baseUrl: String, endpoint: String): ApiServiceInterface =
-        getRetrofit(baseUrl, endpoint).create(ApiServiceInterface::class.java)
+    fun getService(baseUrl: String): ApiServiceInterface =
+        getRetrofit(baseUrl).create(ApiServiceInterface::class.java)
 }
 
 
 // 网络请求服务类，用于处理不同 HTTP 方法的请求
 object ApiService {
     // 各个接口的基础 URL
-    const val BASE_URL_USER = "http://127.0.0.1:8888/api/front/user/"
-    const val BASE_URL_RESOURCE = "http://127.0.0.1:8888/api/front/resource/"
+    const val BASE_URL_USER = "http://47.110.147.60:8080/api/front/user/"
+    const val BASE_URL_RESOURCE = "http://47.110.147.60:8080/api/front/resource"
     private const val TAG = "ApiServiceS"
 
     // 获取指定 baseUrl 的服务实例
-    private fun getService(baseUrl: String, endpoint: String) =
-        RetrofitClient.getService(baseUrl, endpoint)
+    private fun getService(baseUrl: String) =
+        RetrofitClient.getService(baseUrl)
 
     // GET 请求方法
     fun get(
@@ -110,7 +116,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        getService(baseUrl, endpoint).get(endpoint, params, headers)
+        getService(baseUrl).get(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }
 
@@ -123,7 +129,7 @@ object ApiService {
         callback: (String?, Throwable?) -> Unit
     ) {
         Log.d("NetworkLog", "Sending POST to: ${baseUrl + endpoint}")
-        getService(baseUrl, endpoint).post(endpoint, createJsonBody(params), headers)
+        getService(baseUrl).post(endpoint, createJsonBody(params), headers)
             .enqueue(createCallback(callback))
     }
 
@@ -145,7 +151,7 @@ object ApiService {
         val url = baseUrl + endpoint
         Log.d(TAG, "创建 SSE 请求 ➜ URL: $url, params: $params, headers: $headers")
 
-        val client = (RetrofitClient.getRetrofit(baseUrl, endpoint).callFactory() as? OkHttpClient)
+        val client = (RetrofitClient.getRetrofit(baseUrl).callFactory() as? OkHttpClient)
             ?: OkHttpClient()
         val body = createJsonBody(params)
         val requestBuilder = Request.Builder()
@@ -171,7 +177,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        getService(baseUrl, endpoint).delete(endpoint, headers).enqueue(createCallback(callback))
+        getService(baseUrl).delete(endpoint, headers).enqueue(createCallback(callback))
     }
 
     // PATCH 请求方法
@@ -182,7 +188,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        getService(baseUrl, endpoint).patch(endpoint, params, headers)
+        getService(baseUrl).patch(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }
 
@@ -194,7 +200,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        getService(baseUrl, endpoint).put(endpoint, body, headers).enqueue(createCallback(callback))
+        getService(baseUrl).put(endpoint, body, headers).enqueue(createCallback(callback))
     }
 
     // 创建回调函数，处理请求的响应和失败情况
@@ -208,19 +214,24 @@ object ApiService {
                 Log.d("NetworkLog", "Response body: $response")
                 try {
                     if (response.isSuccessful) {
+                        val body = response.body()?.string()
+                        Log.d("NetworkLog", "Response body: $body")
                         callback(response.body()?.string(), null)  // 请求成功，返回响应体
                     } else {
+                        Log.e("NetworkLog", "HTTP error: ${response.code()} / ${response.errorBody()?.string()}")
                         callback(
                             null,
                             IOException("HTTP error: ${response.code()}")
                         )  // 请求失败，返回错误信息
                     }
                 } catch (e: Exception) {
+                    Log.e("NetworkLog", "Response parse exception", e)
                     callback(null, e)  // 处理异常情况
                 }
             }
 
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                Log.e("NetworkLog", "onFailure: 请求失败", t)  // <<< 增加
                 callback(null, t)  // 请求失败，返回异常
             }
         }

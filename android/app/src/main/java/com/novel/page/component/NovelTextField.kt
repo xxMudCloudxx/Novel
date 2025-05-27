@@ -2,8 +2,15 @@ package com.novel.page.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,23 +25,38 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import com.novel.ui.theme.NovelColors
+import com.novel.ui.theme.PingFangFamily
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 
+/**
+ * 带占位符的输入框
+ * @param value 输入框的值
+ * @param onValueChange 输入框的值改变的回调
+ * @param modifier 修饰符
+ * @param round 圆角
+ * @param placeText 占位符文字
+ * @param isPassword 是否是密码输入框
+ */
 @Composable
 fun NovelTextField(
     value: String, // 改为 value（与状态绑定）
     onValueChange: (String) -> Unit = {}, // 新增回调
     modifier: Modifier,
     round: Dp = 26.wdp,
-    placeText: String = ""
+    placeText: String = "",
+    isPassword: Boolean = false
 ) {
     val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
     var hasFocus by remember { mutableStateOf(false) }
+    // 密码可见状态
+    var passwordVisible by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .background(
@@ -62,13 +84,41 @@ fun NovelTextField(
                 fontWeight = FontWeight.W500,
                 fontSize = 16.ssp,
                 color = NovelColors.NovelTextGray,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                fontFamily = PingFangFamily,
             ),
-            modifier = Modifier.focusRequester(focusRequester)
+            visualTransformation = if (isPassword) { // 核心修改点
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            },
+            modifier = Modifier
+                .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
                     // 监听焦点变化
                     hasFocus = focusState.isFocused
                 }
         )
+
+        // 密码框才展示可见切换按钮
+        if (isPassword) {
+            IconButton(
+                onClick = { passwordVisible = !passwordVisible },
+                modifier = Modifier.padding(end = 16.wdp)
+                    .align(Alignment.CenterEnd)
+                    .size(24.wdp)
+            ) {
+                Icon(
+                    imageVector = if (passwordVisible)
+                        Icons.Default.FavoriteBorder
+                    else
+                        Icons.Default.Favorite,
+                    contentDescription = if (passwordVisible)
+                        "隐藏密码"
+                    else
+                        "显示密码"
+                )
+            }
+        }
     }
 }

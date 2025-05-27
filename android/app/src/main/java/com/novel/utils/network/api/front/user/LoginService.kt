@@ -1,5 +1,6 @@
 package com.novel.utils.network.api.front.user
 
+import android.util.Log
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_USER
 import com.google.gson.Gson
@@ -27,7 +28,7 @@ class LoginService @Inject constructor() {
     )
 
     data class LoginResponseData(
-        @SerializedName("uid") val uid: String,
+        @SerializedName("uid") val uid: Int,
         @SerializedName("nickName") val nickName: String,
         @SerializedName("token") val token: String,
     )
@@ -43,6 +44,7 @@ class LoginService @Inject constructor() {
             "username" to request.username,
             "password" to request.password
         )
+        Log.d("LoginService", "开始 login()，参数：$request")
 
         ApiService.post(
             baseUrl = BASE_URL_USER,
@@ -53,6 +55,7 @@ class LoginService @Inject constructor() {
                 "Accept" to "*/*"
             )
         ) { response, error ->
+            Log.d("LoginService", "post 回调，response=$response, error=$error")  // <<< 新增
             handleResponse(response, error, callback)
         }
     }
