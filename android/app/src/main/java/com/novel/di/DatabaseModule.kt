@@ -2,6 +2,8 @@ package com.novel.di
 
 import android.content.Context
 import androidx.room.Room
+import com.novel.utils.dao.NovelDatabase
+import com.novel.utils.dao.UserDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,11 +17,11 @@ import javax.inject.Singleton
 object DatabaseModule {
 
     @Provides @Singleton
-    fun provideDatabase(@ApplicationContext ctx: Context): KxqDatabase =
-        Room.databaseBuilder(ctx, KxqDatabase::class.java, "kxq.db")
-            .fallbackToDestructiveMigration() // 版本迭代后请用正式 Migration
+    fun provideDatabase(@ApplicationContext ctx: Context): NovelDatabase =
+        Room.databaseBuilder(ctx, NovelDatabase::class.java, "kxq.db")
+            .fallbackToDestructiveMigration(false)
             .build()
 
     @Provides
-    fun provideUserDao(db: KxqDatabase): UserDao = db.userDao()
+    fun provideUserDao(db: NovelDatabase): UserDao = db.userDao()
 }
