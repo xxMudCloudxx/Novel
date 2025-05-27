@@ -61,7 +61,7 @@ object RetrofitClient {
     private val retrofitInstances = mutableMapOf<String, Retrofit>()
 
     private lateinit var authInterceptor: AuthInterceptor
-    lateinit var tokenProvider: TokenProvider
+    private lateinit var tokenProvider: TokenProvider
 
     // 初始化方法，在 Application 中调用
     fun init(
@@ -95,6 +95,7 @@ object RetrofitClient {
 object ApiService {
     // 各个接口的基础 URL
     const val BASE_URL_USER = "http://127.0.0.1:8888/api/front/user/"
+    const val BASE_URL_RESOURCE = "http://127.0.0.1:8888/api/front/resource/"
     private const val TAG = "ApiServiceS"
 
     // 获取指定 baseUrl 的服务实例
