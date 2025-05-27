@@ -21,7 +21,7 @@ class ImageVerifyCodeService @Inject constructor() {
     )
 
     data class VerifyCodeData(
-        @SerializedName("sessionID") val sessionID: String,
+        @SerializedName("sessionId") val sessionId: String,
         @SerializedName("img") val imgBase64: String
     )
     // endregion
@@ -36,8 +36,8 @@ class ImageVerifyCodeService @Inject constructor() {
     ) {
         ApiService.get(
             baseUrl = BASE_URL_RESOURCE,
-            endpoint = "/img_verify_code",
-            params = null,
+            endpoint = "img_verify_code",
+            params = mapOf(),
             headers = mapOf("Accept" to "*/*")
         ) { response, error ->
             handleResponse(response, error, callback)

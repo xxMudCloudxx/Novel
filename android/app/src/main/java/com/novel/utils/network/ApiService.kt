@@ -8,7 +8,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import retrofit2.Call
@@ -75,14 +74,9 @@ object RetrofitClient {
 
     fun getRetrofit(baseUrl: String): Retrofit =
         retrofitInstances.getOrPut(baseUrl) {
-            // --- 1. HttpLoggingInterceptor ---
-            val logging = HttpLoggingInterceptor { msg ->
-                Log.d("OkHttp", msg)
-            }.apply { level = HttpLoggingInterceptor.Level.BODY }
             // --- 1. 组装 OkHttpClient ---
             val builder = OkHttpClient.Builder()
-                .addInterceptor(authInterceptor)
-                .addInterceptor(logging)  // 自动加 Token
+                .addInterceptor(authInterceptor) //自动加token
 
             // --- 2. 生成 Retrofit ---
             Retrofit.Builder()
@@ -101,7 +95,7 @@ object RetrofitClient {
 object ApiService {
     // 各个接口的基础 URL
     const val BASE_URL_USER = "http://47.110.147.60:8080/api/front/user/"
-    const val BASE_URL_RESOURCE = "http://47.110.147.60:8080/api/front/resource"
+    const val BASE_URL_RESOURCE = "http://47.110.147.60:8080/api/front/resource/"
     private const val TAG = "ApiServiceS"
 
     // 获取指定 baseUrl 的服务实例
@@ -216,7 +210,7 @@ object ApiService {
                     if (response.isSuccessful) {
                         val body = response.body()?.string()
                         Log.d("NetworkLog", "Response body: $body")
-                        callback(response.body()?.string(), null)  // 请求成功，返回响应体
+                        callback(body, null)  // 请求成功，返回响应体
                     } else {
                         Log.e("NetworkLog", "HTTP error: ${response.code()} / ${response.errorBody()?.string()}")
                         callback(
@@ -237,12 +231,12 @@ object ApiService {
         }
 
     // 创建 JSON 格式的请求体
-    fun createJsonRequestBody(json: String): RequestBody {
+    private fun createJsonRequestBody(json: String): RequestBody {
         return json.toRequestBody("application/json".toMediaTypeOrNull())  // 将 JSON 字符串转为 RequestBody
     }
 
     // 直接使用 JSON 格式的请求体，而不是使用 FormBody
-    fun createJsonBody(params: Map<String, String>): RequestBody {
+    private fun createJsonBody(params: Map<String, String>): RequestBody {
         val json = params.entries.joinToString(",") { "\"${it.key}\":\"${it.value}\"" }
         val jsonBody = "{ $json }"
         return createJsonRequestBody(jsonBody)  // 创建 JSON 请求体

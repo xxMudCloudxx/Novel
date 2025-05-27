@@ -36,4 +36,8 @@ object NovelUserDefaultsModule {
     @Provides
     @Singleton
     fun provideTokenProvider(keyChain: NovelKeyChain): TokenProvider = TokenProvider(keyChain)
+
+    @Provides
+    @Singleton
+    fun provideContext(@ApplicationContext context: Context): Context = context
 }
