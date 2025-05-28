@@ -31,6 +31,9 @@ object NovelColors {
 
     val NovelChipBackground: Color
         @Composable get() = dynamicColor(light = Color(0xFFEBEDF0), dark = Color(0xFF23242B))
+
+    val NovelError:Color
+        @Composable get() = dynamicColor(light = Color(0xFFFF995D), dark = Color(0xFFFF0000))
 }
 
 @Composable

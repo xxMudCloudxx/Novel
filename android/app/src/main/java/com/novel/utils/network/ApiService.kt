@@ -94,6 +94,7 @@ object RetrofitClient {
 // 网络请求服务类，用于处理不同 HTTP 方法的请求
 object ApiService {
     // 各个接口的基础 URL
+    const val BASE_URL_FRONT = "http://47.110.147.60:8080/api/front/"
     const val BASE_URL_USER = "http://47.110.147.60:8080/api/front/user/"
     const val BASE_URL_RESOURCE = "http://47.110.147.60:8080/api/front/resource/"
     private const val TAG = "ApiServiceS"

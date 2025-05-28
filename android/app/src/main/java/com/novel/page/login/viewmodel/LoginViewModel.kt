@@ -14,6 +14,7 @@ import com.novel.utils.network.TokenProvider
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
 import com.novel.utils.network.api.front.resource.ImageVerifyCodeService
+import com.novel.utils.network.api.front.user.RegisterService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -74,11 +75,18 @@ sealed class LoginAction {
     data class InputPassword(val value: String) : LoginAction()
     data class InputPasswordConfirm(val value: String) : LoginAction()
     data object ToggleRegisterMode : LoginAction()
+    data class DoRegister(
+        val username: String,
+        val password: String,
+        val sessionId: String,
+        val velCode: String
+    ) : LoginAction()
 }
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginService: LoginService,
+    private val registerService: RegisterService,
     private val userInfoService: UserInfoService,
     private val tokenProvider: TokenProvider,
     private val userDefaults: NovelUserDefaults,
@@ -148,20 +156,31 @@ class LoginViewModel @Inject constructor(
                 is LoginAction.RefreshCaptcha -> {
                     loadCaptcha()
                 }
+
                 is LoginAction.InputUsername -> {
-                    val error = validateUsername(action.value)
-                    _uiState.update { it.copy(username = action.value, usernameError = error) }
+                    _uiState.update { it.copy(username = action.value) }
                 }
+
                 is LoginAction.InputPassword -> {
-                    val error = validatePassword(action.value)
-                    _uiState.update { it.copy(password = action.value, passwordError = error) }
+                    _uiState.update { it.copy(password = action.value) }
                 }
+
                 is LoginAction.InputPasswordConfirm -> {
-                    val error = validatePasswordConfirm(action.value, uiState.value.password)
-                    _uiState.update { it.copy(passwordConfirm = action.value, passwordConfirmError = error) }
+                    _uiState.update {
+                        it.copy(
+                            passwordConfirm = action.value
+                        )
+                    }
                 }
+
                 is LoginAction.ToggleRegisterMode -> {
                     _uiState.update { it.copy(isRegisterMode = !it.isRegisterMode) }
+                }
+
+                is LoginAction.DoRegister -> {
+                    if (validateInputs()) {
+                        performRegister(action)
+                    }
                 }
             }
         }
@@ -191,27 +210,41 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun validateVerifyCode(code: String): String? {
-        return if (uiState.value.isRegisterMode && code.isBlank()) "验证码不能为空" else null
+        return if (uiState.value.isRegisterMode && code.length < 4) "验证码输入错误" else null
     }
 
     private fun validateInputs(): Boolean {
         val state = uiState.value
+        // 1. 逐项校验
         val usernameError = validateUsername(state.username)
         val passwordError = validatePassword(state.password)
-        val passwordConfirmError = if (state.isRegisterMode) validatePasswordConfirm(state.passwordConfirm, state.password) else null
+        val passwordConfirmError = if (state.isRegisterMode)
+            validatePasswordConfirm(state.passwordConfirm, state.password)
+        else null
         val verifyCodeError = validateVerifyCode(state.verifyCode)
 
+        // 2. 如果有错，清空该字段并保留 error 作为 placeText
         _uiState.update {
             it.copy(
+                username = if (usernameError != null) "" else it.username,
                 usernameError = usernameError,
+
+                password = if (passwordError != null) "" else it.password,
                 passwordError = passwordError,
+
+                passwordConfirm = if (passwordConfirmError != null) "" else it.passwordConfirm,
                 passwordConfirmError = passwordConfirmError,
+
+                verifyCode = if (verifyCodeError != null) "" else it.verifyCode,
                 verifyCodeError = verifyCodeError
             )
         }
 
-        return usernameError == null && passwordError == null && passwordConfirmError == null && verifyCodeError == null
+        // 3. 仅所有字段无错才返回 true
+        return listOf(usernameError, passwordError, passwordConfirmError, verifyCodeError)
+            .all { it == null }
     }
+
 
     /** 拉取并更新验证码图片和 sessionId */
     private fun loadCaptcha() {
@@ -281,13 +314,55 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    private fun performRegister(action: LoginAction.DoRegister) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }    // 显示加载状态
+            try {
+                val resp = withContext(Dispatchers.IO) {
+                    registerService.registerBlocking(
+                        RegisterService.RegisterRequest(
+                            username = action.username,
+                            password = action.password,
+                            sessionId = action.sessionId,
+                            velCode = action.velCode
+                        )
+                    )
+                }
+                if (resp.code == 200 && resp.data != null) {
+                    // 存 token、过期时间、uid
+                    tokenProvider.saveToken(resp.data.token, "")
+                    userDefaults.set(
+                        System.currentTimeMillis() + 3600_000,
+                        NovelUserDefaultsKey.TOKEN_EXPIRES_AT
+                    )
+                    userDefaults.set(true, NovelUserDefaultsKey.IS_LOGGED_IN)
+                    userDefaults.set(resp.data.uid, NovelUserDefaultsKey.USER_ID)
+                    _events.send(LoginEvent.ShowToast("注册成功"))
+                    _events.send(LoginEvent.Navigate("main"))
+                } else {
+                    val msg = resp.msg.orEmpty().ifBlank { "注册失败" }
+                    _events.send(LoginEvent.ShowToast(msg))
+                }
+            } catch (e: Exception) {
+                _events.send(LoginEvent.ShowToast("网络异常：${e.localizedMessage}"))
+            } finally {
+                _uiState.update { it.copy(isLoading = false) } // 隐藏加载状态
+            }
+        }
+    }
+
     /** 登录逻辑复用函数  */
     private fun performLogin() {
         viewModelScope.launch {
             _events.send(LoginEvent.ShowToast("开始登录..."))
             try {
                 val resp = withContext(Dispatchers.IO) {
-                    loginService.loginBlocking(LoginService.LoginRequest(uiState.value.username, uiState.value.password))
+                    loginService.loginBlocking(
+                        LoginService.LoginRequest(
+                            uiState.value.username,
+                            uiState.value.password
+                        )
+                    )
                 }
                 Log.d("LoginVM", "loginBlocking 返回: $resp")
                 if (resp.code == 200 && resp.data != null) {

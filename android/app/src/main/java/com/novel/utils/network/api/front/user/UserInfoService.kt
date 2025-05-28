@@ -10,7 +10,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import com.novel.utils.network.ApiService
-import com.novel.utils.network.ApiService.BASE_URL_USER
+import com.novel.utils.network.ApiService.BASE_URL_FRONT
 
 class UserInfoService @Inject constructor(
     private val repo: UserRepository      // 通过 Hilt 注入
@@ -35,9 +35,9 @@ class UserInfoService @Inject constructor(
         // 1. 先拿到原始响应（或本地 mock）
         val parsed: UserInfoResponse? = suspendCancellableCoroutine { cont ->
             ApiService.get(
-                baseUrl = BASE_URL_USER,
+                baseUrl = BASE_URL_FRONT,
                 params = mapOf(),
-                endpoint = "",
+                endpoint = "user",
                 headers = mapOf("Accept" to "application/json")
             ) { response, error ->
                 // 把 handleResponse 的逻辑内联，直接 resume

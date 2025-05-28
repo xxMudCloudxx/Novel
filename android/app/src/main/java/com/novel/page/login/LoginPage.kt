@@ -74,7 +74,7 @@ fun LoginPage() {
         uiState.isAgreementChecked &&
                 uiState.username.isNotBlank() &&
                 uiState.password.isNotBlank() &&
-                (!uiState.isRegisterMode || (uiState.passwordConfirm == uiState.password && uiState.verifyCode.isNotBlank()))
+                (!uiState.isRegisterMode || (uiState.passwordConfirm.isNotBlank() && uiState.verifyCode.isNotBlank()))
     }
 
     // 收集一次性事件
@@ -160,6 +160,14 @@ fun LoginPage() {
                 secondText = if (uiState.isRegisterMode) "返回登录" else "暂无账号，去注册",
                 onFirstClick = {
                     if (uiState.isRegisterMode) {
+                        vm.onAction(
+                            LoginAction.DoRegister(
+                                username = uiState.username,
+                                password = uiState.password,
+                                sessionId = uiState.sessionId,
+                                velCode = uiState.verifyCode
+                            )
+                        )
                     } else {
                         vm.onAction(LoginAction.DoLogin(uiState.username, uiState.password))
                     }

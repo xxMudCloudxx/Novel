@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,7 +32,6 @@ import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.PingFangFamily
 import com.novel.utils.ssp
 import com.novel.utils.wdp
-import java.lang.Error
 
 /**
  * 带占位符的输入框
@@ -69,7 +67,7 @@ fun NovelTextField(
         contentAlignment = Alignment.Center
     ) {
         // 如果输入框值为空，则显示占位符
-        if (value == "" && !hasFocus) {
+        if (value == "" && !hasFocus && !isError) {
             NovelText(
                 text = placeText, // 显示占位符文字
                 style = TextStyle(
@@ -105,20 +103,22 @@ fun NovelTextField(
         )
 
         // 错误提示区域
-        if (errorMessage != null) {
-            NovelText(
-                text = errorMessage,
-                style = TextStyle(
-                    fontSize = 12.ssp,
-                    fontWeight = FontWeight.W400
-                ),
-                color = NovelColors.NovelText, // 错误提示颜色
-                modifier = Modifier.padding(start = 16.wdp, top = 4.wdp)
-            )
+        if (isError) {
+            if (errorMessage != null) {
+                NovelText(
+                    text = errorMessage,
+                    style = TextStyle(
+                        fontSize = 12.ssp,
+                        fontWeight = FontWeight.W400
+                    ),
+                    color = NovelColors.NovelError, // 错误提示颜色
+                    modifier = Modifier.padding(start = 16.wdp, top = 4.wdp)
+                )
+            }
         }
 
         // 密码框才展示可见切换按钮
-        if (isPassword) {
+        if (isPassword && value != "") {
             IconButton(
                 onClick = { passwordVisible = !passwordVisible },
                 modifier = Modifier.padding(end = 16.wdp)

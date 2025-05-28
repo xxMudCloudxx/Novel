@@ -7,8 +7,11 @@ import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class RegisterService {
+@Singleton
+class RegisterService @Inject constructor() {
     // region 数据结构
     data class RegisterRequest(
         @SerializedName("username") val username: String,
@@ -37,11 +40,13 @@ class RegisterService {
         val requestBody = mutableMapOf<String, String>().apply {
             put("username", request.username)
             put("password", request.password)
+            put("sessionId", request.sessionId)
+            put("velCode", request.velCode)
         }
 
         ApiService.post(
             baseUrl = BASE_URL_USER,
-            endpoint = "/register",
+            endpoint = "register",
             params = requestBody, // 自动序列化对象
             headers = mapOf(
                 "Content-Type" to "application/json",
