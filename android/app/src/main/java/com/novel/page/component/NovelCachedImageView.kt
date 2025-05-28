@@ -76,29 +76,47 @@ class HttpImageLoaderService @Inject constructor(
     private val memoryCache: MemoryCache,
     private val tokenProvider: TokenProvider
 ) : ImageLoaderService {
+    
+    companion object {
+        private const val BASE_URL = "http://47.110.147.60:8080" // 基础URL
+    }
+    
     override suspend fun loadImage(url: String, needToken: Boolean): Bitmap? =
         withContext(Dispatchers.IO) {
-            // 1. 内存缓存
-            memoryCache.get(url)?.let { return@withContext it }
-            // 2. 构建请求
-            val reqBuilder = Request.Builder()
-                .url(url)
-                .get()
-            if (needToken) tokenProvider.getToken()?.let {
-                reqBuilder.header("Authorization", "Bearer $it")
-            }
-            // 3. 执行请求（OkHttp 自动硬盘缓存）
-            runCatching {
+            try {
+                // 1. 内存缓存
+                memoryCache.get(url)?.let { return@withContext it }
+                
+                // 2. 处理URL - 如果是相对路径，添加基础URL
+                val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+                    url
+                } else {
+                    "$BASE_URL$url"
+                }
+                
+                // 3. 构建请求
+                val reqBuilder = Request.Builder()
+                    .url(fullUrl)
+                    .get()
+                if (needToken) tokenProvider.getToken()?.let {
+                    reqBuilder.header("Authorization", "$it")
+                }
+                
+                // 4. 执行请求（OkHttp 自动硬盘缓存）
                 client.newCall(reqBuilder.build()).execute().use { resp ->
                     if (!resp.isSuccessful) return@withContext null
                     resp.body?.byteStream()?.let { stream ->
                         BitmapFactory.decodeStream(stream)?.also {
-                            // 4. 写入内存缓存
+                            // 5. 写入内存缓存
                             memoryCache.put(url, it)
                         }
                     }
                 }
-            }.getOrNull()
+            } catch (e: Exception) {
+                // 记录错误但不抛出异常，返回null让UI显示占位符
+                android.util.Log.w("ImageLoader", "加载图片失败: $url", e)
+                null
+            }
         }
 }
 
@@ -117,6 +135,12 @@ object NetworkingModule {
         OkHttpClient.Builder()
             .cache(cache)
             .build()
+
+    @Provides @Singleton
+    fun provideMemoryCache(): MemoryCache = LruMemoryCache()
+
+    @Provides @Singleton
+    fun provideTokenProvider(keyChainTokenProvider: KeyChainTokenProvider): TokenProvider = keyChainTokenProvider
 
     @Provides @Singleton
     fun provideImageLoaderService(

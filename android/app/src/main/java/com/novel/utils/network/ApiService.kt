@@ -109,7 +109,7 @@ object ApiService {
     fun get(
         baseUrl: String,
         endpoint: String,
-        params: Map<String, String>? = null,
+        params: Map<String, String>? = mapOf(),
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
@@ -182,7 +182,7 @@ object ApiService {
     fun patch(
         baseUrl: String,
         endpoint: String,
-        params: Map<String, String>? = null,
+        params: Map<String, String>? = mapOf(),
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {

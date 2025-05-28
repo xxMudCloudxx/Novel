@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.novel.R
 import com.novel.page.component.NovelText
-import com.novel.page.home.HomePage
+import com.novel.page.home.NewHomePage
 import com.novel.page.login.LoginPage
 import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.NovelTheme
@@ -60,7 +60,7 @@ fun MainPage() {
             userScrollEnabled = false
         ) { pageIndex ->
             when (pageIndex) {
-                0 -> HomePage()
+                0 -> NewHomePage()
                 2 -> LoginPage()
                 4 -> ReactNativePage()
                 else -> Box(

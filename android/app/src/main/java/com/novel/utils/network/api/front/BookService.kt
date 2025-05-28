@@ -442,6 +442,48 @@ class BookService @Inject constructor() {
             }
         }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun getVisitRankBooksBlocking(): BookRankResponse {
+        return suspendCancellableCoroutine { cont ->
+            getVisitRankBooks { response, error ->
+                if (error != null) {
+                    cont.resumeWith(Result.failure(error))
+                } else {
+                    response?.let { cont.resumeWith(Result.success(it)) }
+                        ?: cont.resumeWith(Result.failure(Exception("Response is null")))
+                }
+            }
+        }
+    }
+    
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun getUpdateRankBooksBlocking(): BookRankResponse {
+        return suspendCancellableCoroutine { cont ->
+            getUpdateRankBooks { response, error ->
+                if (error != null) {
+                    cont.resumeWith(Result.failure(error))
+                } else {
+                    response?.let { cont.resumeWith(Result.success(it)) }
+                        ?: cont.resumeWith(Result.failure(Exception("Response is null")))
+                }
+            }
+        }
+    }
+    
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun getNewestRankBooksBlocking(): BookRankResponse {
+        return suspendCancellableCoroutine { cont ->
+            getNewestRankBooks { response, error ->
+                if (error != null) {
+                    cont.resumeWith(Result.failure(error))
+                } else {
+                    response?.let { cont.resumeWith(Result.success(it)) }
+                        ?: cont.resumeWith(Result.failure(Exception("Response is null")))
+                }
+            }
+        }
+    }
     // endregion
 
     // region 响应处理

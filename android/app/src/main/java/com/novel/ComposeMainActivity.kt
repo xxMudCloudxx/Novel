@@ -7,29 +7,42 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import com.novel.page.component.ImageLoaderService
+import com.novel.page.component.LocalImageLoaderService
 import com.novel.ui.theme.NovelTheme
 import com.novel.utils.AdaptiveScreen
 import com.novel.utils.NavigationSetup
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class ComposeMainActivity : ComponentActivity() {
+    
+    @Inject
+    lateinit var imageLoaderService: ImageLoaderService
+    
     private val rim by lazy {
         (application as MainApplication).reactNativeHost.reactInstanceManager
     }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         rim.createReactContextInBackground()
         setContent {
-            NovelTheme{
+            NovelTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AdaptiveScreen {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            NavigationSetup()
+                    CompositionLocalProvider(
+                        LocalImageLoaderService provides imageLoaderService
+                    ) {
+                        AdaptiveScreen {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                NavigationSetup()
+                            }
                         }
                     }
                 }
