@@ -33,6 +33,7 @@ import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.PingFangFamily
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import java.lang.Error
 
 /**
  * 带占位符的输入框
@@ -50,7 +51,9 @@ fun NovelTextField(
     modifier: Modifier,
     round: Dp = 26.wdp,
     placeText: String = "",
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    isError: Boolean = false,
+    errorMessage: String? = null
 ) {
     val focusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
@@ -92,6 +95,7 @@ fun NovelTextField(
             } else {
                 VisualTransformation.None
             },
+
             modifier = Modifier
                 .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
@@ -99,6 +103,19 @@ fun NovelTextField(
                     hasFocus = focusState.isFocused
                 }
         )
+
+        // 错误提示区域
+        if (errorMessage != null) {
+            NovelText(
+                text = errorMessage,
+                style = TextStyle(
+                    fontSize = 12.ssp,
+                    fontWeight = FontWeight.W400
+                ),
+                color = NovelColors.NovelText, // 错误提示颜色
+                modifier = Modifier.padding(start = 16.wdp, top = 4.wdp)
+            )
+        }
 
         // 密码框才展示可见切换按钮
         if (isPassword) {

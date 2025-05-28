@@ -25,7 +25,8 @@ fun NovelMainButton(
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
-    round: Dp = 24.wdp
+    round: Dp = 24.wdp,
+    enabldeClicke: Boolean = true
 ) {
     Box(
         modifier = modifier
@@ -36,6 +37,7 @@ fun NovelMainButton(
                 shape = RoundedCornerShape(round)
             )
             .clickable(
+                enabled = enabldeClicke,
                 onClick = onClick,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }

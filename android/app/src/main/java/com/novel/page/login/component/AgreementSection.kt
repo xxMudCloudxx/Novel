@@ -40,7 +40,8 @@ fun AgreementSection(
     onCheckedChange: (Boolean) -> Unit,
     onTelServiceClick: () -> Unit,
     onUserAgreementClick: () -> Unit,
-    onRegisterAgreementClick: () -> Unit
+    onRegisterAgreementClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     //—— ① 预取主题色，避免在 Canvas DrawScope 内重复调用 @Composable Getter
     val checkedColor = NovelColors.NovelMainLight
@@ -56,9 +57,8 @@ fun AgreementSection(
     )
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(top = 16.wdp)
             .padding(horizontal = 40.wdp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

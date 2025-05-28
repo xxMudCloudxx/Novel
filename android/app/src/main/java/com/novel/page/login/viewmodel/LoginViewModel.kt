@@ -23,6 +23,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
+// 错误类型
+sealed class LoginError {
+    data class InputError(val field: String, val message: String) : LoginError()
+    data class NetworkError(val message: String) : LoginError()
+    data class CaptchaError(val message: String) : LoginError()
+}
+
 // —— UI 状态 ——
 data class LoginUiState(
     val isAgreementChecked: Boolean = false,
@@ -32,7 +39,16 @@ data class LoginUiState(
     val verifyImage: String = "",      // Base64 Data URI
     val sessionId: String = "",         // 验证码对应的会话 ID
     val isCaptchaLoading: Boolean = true, // 新增：验证码加载状态
-    val captchaError: String? = null      // 新增：验证码加载错误信息
+    val captchaError: String? = null,      // 新增：验证码加载错误信息
+    val username: String = "",
+    val password: String = "",
+    val passwordConfirm: String = "",
+    val isRegisterMode: Boolean = false,
+    val isLoading: Boolean = false,      // 新增：整体加载状态
+    val usernameError: String? = null,
+    val passwordError: String? = null,
+    val passwordConfirmError: String? = null,
+    val verifyCodeError: String? = null,
 )
 
 // —— 一次性事件 ——
@@ -54,6 +70,10 @@ sealed class LoginAction {
     data class ToggleAgreement(val checked: Boolean) : LoginAction()
     data class InputVerifyCode(val code: String) : LoginAction() // 用户输入验证码
     data object RefreshCaptcha : LoginAction()                        // 刷新验证码
+    data class InputUsername(val value: String) : LoginAction()
+    data class InputPassword(val value: String) : LoginAction()
+    data class InputPasswordConfirm(val value: String) : LoginAction()
+    data object ToggleRegisterMode : LoginAction()
 }
 
 @HiltViewModel
@@ -79,13 +99,13 @@ class LoginViewModel @Inject constructor(
         // 预加载手机号和运营商
         viewModelScope.launch {
             val info = phoneInfoUtil.fetch()
-            loadCaptcha()
             _uiState.update {
                 it.copy(
                     phoneNumber = maskPhoneNumber(info.phoneNumber),
                     operatorName = info.operatorName
                 )
             }
+            loadCaptcha()
         }
     }
 
@@ -112,10 +132,12 @@ class LoginViewModel @Inject constructor(
                 }
 
                 is LoginAction.DoLogin -> {
-                    performLogin(action.username, action.password)
+                    if (validateInputs()) {
+                        performLogin()
+                    }
                 }
 
-                LoginAction.ToRegister -> {
+                is LoginAction.ToRegister -> {
                     _events.send(LoginEvent.Navigate("register"))
                 }
 
@@ -126,8 +148,69 @@ class LoginViewModel @Inject constructor(
                 is LoginAction.RefreshCaptcha -> {
                     loadCaptcha()
                 }
+                is LoginAction.InputUsername -> {
+                    val error = validateUsername(action.value)
+                    _uiState.update { it.copy(username = action.value, usernameError = error) }
+                }
+                is LoginAction.InputPassword -> {
+                    val error = validatePassword(action.value)
+                    _uiState.update { it.copy(password = action.value, passwordError = error) }
+                }
+                is LoginAction.InputPasswordConfirm -> {
+                    val error = validatePasswordConfirm(action.value, uiState.value.password)
+                    _uiState.update { it.copy(passwordConfirm = action.value, passwordConfirmError = error) }
+                }
+                is LoginAction.ToggleRegisterMode -> {
+                    _uiState.update { it.copy(isRegisterMode = !it.isRegisterMode) }
+                }
             }
         }
+    }
+
+    private fun validateUsername(username: String): String? {
+        return when {
+            username.isBlank() -> "手机号不能为空"
+            !username.matches(Regex("^1[3-9]\\d{9}$")) -> "请输入有效的手机号"
+            else -> null
+        }
+    }
+
+    private fun validatePassword(password: String): String? {
+        return when {
+            password.isBlank() -> "密码不能为空"
+            password.length < 6 -> "密码长度需至少6位"
+            else -> null
+        }
+    }
+
+    private fun validatePasswordConfirm(confirm: String, password: String): String? {
+        return when {
+            confirm != password -> "两次输入的密码不一致"
+            else -> null
+        }
+    }
+
+    private fun validateVerifyCode(code: String): String? {
+        return if (uiState.value.isRegisterMode && code.isBlank()) "验证码不能为空" else null
+    }
+
+    private fun validateInputs(): Boolean {
+        val state = uiState.value
+        val usernameError = validateUsername(state.username)
+        val passwordError = validatePassword(state.password)
+        val passwordConfirmError = if (state.isRegisterMode) validatePasswordConfirm(state.passwordConfirm, state.password) else null
+        val verifyCodeError = validateVerifyCode(state.verifyCode)
+
+        _uiState.update {
+            it.copy(
+                usernameError = usernameError,
+                passwordError = passwordError,
+                passwordConfirmError = passwordConfirmError,
+                verifyCodeError = verifyCodeError
+            )
+        }
+
+        return usernameError == null && passwordError == null && passwordConfirmError == null && verifyCodeError == null
     }
 
     /** 拉取并更新验证码图片和 sessionId */
@@ -199,12 +282,12 @@ class LoginViewModel @Inject constructor(
     }
 
     /** 登录逻辑复用函数  */
-    private fun performLogin(username: String, password: String) {
+    private fun performLogin() {
         viewModelScope.launch {
             _events.send(LoginEvent.ShowToast("开始登录..."))
             try {
                 val resp = withContext(Dispatchers.IO) {
-                    loginService.loginBlocking(LoginService.LoginRequest(username, password))
+                    loginService.loginBlocking(LoginService.LoginRequest(uiState.value.username, uiState.value.password))
                 }
                 Log.d("LoginVM", "loginBlocking 返回: $resp")
                 if (resp.code == 200 && resp.data != null) {

@@ -1,32 +1,38 @@
 package com.novel.page.login
 
-import android.util.Log
+import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.novel.page.component.NovelDivider
-import com.novel.page.component.NovelImageView
-import com.novel.page.component.NovelTextField
 import com.novel.page.login.component.ActionButtons
 import com.novel.page.login.component.AgreementSection
 import com.novel.page.login.component.LoginAppBar
@@ -42,18 +48,34 @@ import com.novel.utils.AdaptiveScreen
 import com.novel.utils.NavViewModel.navController
 import com.novel.utils.wdp
 import kotlinx.coroutines.flow.collectLatest
+import com.novel.page.login.component.InputSection
+
+// 动画常量
+private object AnimationConfig {
+    const val DURATION_MS = 600
+    const val DELAY_MS = 200
+    const val BUTTON_DURATION_MS = 800
+    val SPRING_SPEC = spring<Dp>(
+        stiffness = Spring.StiffnessLow,
+        dampingRatio = Spring.DampingRatioMediumBouncy
+    )
+}
 
 /**
  * 登录页面
  */
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun LoginPage() {
     val vm: LoginViewModel = hiltViewModel()
     val uiState by vm.uiState.collectAsState()
-    var isRegisterMode by remember { mutableStateOf(false) }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordConfirm by remember { mutableStateOf("") }
+    // 验证按钮是否可点击
+    val isLoginButtonEnabled by derivedStateOf {
+        uiState.isAgreementChecked &&
+                uiState.username.isNotBlank() &&
+                uiState.password.isNotBlank() &&
+                (!uiState.isRegisterMode || (uiState.passwordConfirm == uiState.password && uiState.verifyCode.isNotBlank()))
+    }
 
     // 收集一次性事件
     LaunchedEffect(Unit) {
@@ -83,6 +105,7 @@ fun LoginPage() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .animateContentSize(animationSpec = tween(durationMillis = 300))
                 .padding(top = 60.wdp)
                 .background(color = NovelColors.NovelBackground),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -100,98 +123,98 @@ fun LoginPage() {
             // 脱敏后手机号
             PhoneSection(uiState.phoneNumber)
 
-            NovelTextField(
-                value = username, // 绑定到状态
-                onValueChange = { username = it }, // 更新状态
-                modifier = Modifier
-                    .height(45.wdp)
-                    .width(329.wdp),
-                placeText = "请输入手机号"
+            // 输入框
+            InputSection(
+                uiState = uiState,
+                onAction = vm::onAction
             )
 
-            Spacer(modifier = Modifier.padding(top = 19.wdp))
+            // 1. 构建注册模式切换的 Transition
+            val transition =
+                updateTransition(targetState = uiState.isRegisterMode, label = "registerTransition")
 
-            NovelTextField(
-                value = password, // 绑定到状态
-                onValueChange = { password = it }, // 状态更新
-                modifier = Modifier
-                    .height(45.wdp)
-                    .width(329.wdp),
-                placeText = "请输入密码",
-                isPassword = true
-            )
-
-            if(isRegisterMode){
-                Spacer(modifier = Modifier.padding(top = 19.wdp))
-
-                NovelTextField(
-                    value = passwordConfirm, // 绑定到状态
-                    onValueChange = { passwordConfirm = it }, // 状态更新
-                    modifier = Modifier
-                        .height(45.wdp)
-                        .width(329.wdp),
-                    placeText = "再次输入密码",
-                    isPassword = true
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier
-                        .padding(top = 19.wdp)
-                        .fillMaxWidth()
-                        .padding(horizontal = 22.5.wdp)
-                ) {
-                    NovelTextField(
-                        value = uiState.verifyCode,
-                        onValueChange = { vm.onAction(LoginAction.InputVerifyCode(it)) },
-                        modifier = Modifier
-                            .height(45.wdp)
-                            .width(180.wdp),
-                        placeText = "输入验证码",
-                        isPassword = false
+            // 按钮区也用同样的弹性位移 + 透明度
+            val buttonOffset by transition.animateDp(
+                transitionSpec = {
+                    AnimationConfig.SPRING_SPEC
+                },
+                label = "buttonOffset"
+            ) { state ->
+                if (state) 20.wdp else 0.wdp
+            }
+            val buttonAlpha by transition.animateFloat(
+                transitionSpec = {
+                    tween(
+                        durationMillis = AnimationConfig.BUTTON_DURATION_MS,
+                        easing = FastOutSlowInEasing
                     )
-                    Spacer(Modifier.width(8.wdp))
-                    Log.d(
-                        "LoginPage",
-                        "Rendering NovelImageView with verifyImage: ${uiState.verifyImage}"
-                    )
-                    NovelImageView(
-                        imageUrl = uiState.verifyImage,
-                        isLoading = uiState.isCaptchaLoading,
-                        error = uiState.captchaError,
-                        widthDp = 100,
-                        heightDp = 45,
-                        modifier = Modifier.clickable { vm.onAction(LoginAction.RefreshCaptcha) },
-                        onRetry = { vm.onAction(LoginAction.RefreshCaptcha) }
-                    )
-                }
+                },
+                label = "buttonAlpha"
+            ) { state ->
+                if (state) 1f else 1f
             }
 
-            //  登录按钮
+            // 按钮区：在登录/注册两种模式下都保持可见，但切换时做淡入淡出+展开收缩
             ActionButtons(
-                firstText = if (isRegisterMode) "注册" else "登录",
-                secondText = if (isRegisterMode) "返回登录" else "暂无账号，进行注册",
+                firstText = if (uiState.isRegisterMode) "注册" else "登录",
+                secondText = if (uiState.isRegisterMode) "返回登录" else "暂无账号，去注册",
                 onFirstClick = {
-                    if (isRegisterMode) {
+                    if (uiState.isRegisterMode) {
                     } else {
-                        vm.onAction(LoginAction.DoLogin(username, password))
+                        vm.onAction(LoginAction.DoLogin(uiState.username, uiState.password))
                     }
                 },
-                onSecondClick = {
-                    isRegisterMode = !isRegisterMode
-                }
+                isFirstEnabled = isLoginButtonEnabled,
+                onSecondClick = { vm.onAction(LoginAction.ToggleRegisterMode) },
+                modifier = Modifier
+                    .offset(y = buttonOffset)
+                    .alpha(buttonAlpha)
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.5.wdp)
             )
 
             //  协议
-            AgreementSection(
-                operator = uiState.operatorName,
-                isChecked = uiState.isAgreementChecked,
-                onCheckedChange = { vm.onAction(LoginAction.ToggleAgreement(it)) },
-                onTelServiceClick = { vm.onAction(LoginAction.OpenTelService) },
-                onUserAgreementClick = { vm.onAction(LoginAction.OpenUserAgreement) },
-                onRegisterAgreementClick = { vm.onAction(LoginAction.OpenRegisterAgreement) }
-            )
+            AnimatedVisibility(
+                visible = true,
+                enter = expandVertically(
+                    animationSpec = tween(
+                        AnimationConfig.DURATION_MS,
+                        AnimationConfig.DELAY_MS,
+                        FastOutSlowInEasing
+                    )
+                ) +
+                        fadeIn(
+                            animationSpec = tween(
+                                AnimationConfig.DURATION_MS,
+                                AnimationConfig.DELAY_MS,
+                                FastOutSlowInEasing
+                            )
+                        ),
+                exit = shrinkVertically(
+                    animationSpec = tween(
+                        AnimationConfig.DURATION_MS,
+                        easing = FastOutSlowInEasing
+                    )
+                ) +
+                        fadeOut(
+                            animationSpec = tween(
+                                AnimationConfig.DURATION_MS,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+            ) {
+                AgreementSection(
+                    operator = uiState.operatorName,
+                    isChecked = uiState.isAgreementChecked,
+                    onCheckedChange = { vm.onAction(LoginAction.ToggleAgreement(it)) },
+                    onTelServiceClick = { vm.onAction(LoginAction.OpenTelService) },
+                    onUserAgreementClick = { vm.onAction(LoginAction.OpenUserAgreement) },
+                    onRegisterAgreementClick = { vm.onAction(LoginAction.OpenRegisterAgreement) },
+                    modifier = Modifier
+                        .offset(y = buttonOffset)
+                        .padding(top = 16.wdp)
+                )
+            }
         }
     }
 }
