@@ -22,9 +22,10 @@ class LoginService @Inject constructor() {
 
     // 登录响应数据结构
     data class LoginAPIResponse(
-        @SerializedName("code") val code: Int?,
+        @SerializedName("code") val code: String?,
         @SerializedName("msg") val msg: String?,
-        @SerializedName("data") val data: LoginResponseData?
+        @SerializedName("data") val data: LoginResponseData?,
+        @SerializedName("ok") val ok: Boolean?
     )
 
     data class LoginResponseData(

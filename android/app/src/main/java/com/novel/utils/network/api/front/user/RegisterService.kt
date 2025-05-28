@@ -21,9 +21,10 @@ class RegisterService @Inject constructor() {
     )
 
     data class RegisterResponse(
-        @SerializedName("code") val code: Int?,
+        @SerializedName("code") val code: String?,
         @SerializedName("msg") val msg: String?,
-        @SerializedName("data") val data: RegisterData?
+        @SerializedName("data") val data: RegisterData?,
+        @SerializedName("ok") val ok: Boolean?
     )
 
     data class RegisterData(

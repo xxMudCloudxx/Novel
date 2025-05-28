@@ -17,7 +17,8 @@ class ImageVerifyCodeService @Inject constructor() {
     data class ImageVerifyCodeAPIResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: VerifyCodeData?
+        @SerializedName("data") val data: VerifyCodeData?,
+        @SerializedName("ok") val ok: Boolean?
     )
 
     data class VerifyCodeData(

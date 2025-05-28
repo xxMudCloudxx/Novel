@@ -328,7 +328,7 @@ class LoginViewModel @Inject constructor(
                         )
                     )
                 }
-                if (resp.code == 200 && resp.data != null) {
+                if (resp.ok == true && resp.data != null) {
                     // 存 token、过期时间、uid
                     tokenProvider.saveToken(resp.data.token, "")
                     userDefaults.set(
@@ -337,6 +337,7 @@ class LoginViewModel @Inject constructor(
                     )
                     userDefaults.set(true, NovelUserDefaultsKey.IS_LOGGED_IN)
                     userDefaults.set(resp.data.uid, NovelUserDefaultsKey.USER_ID)
+                    launch(Dispatchers.IO) { runCatching { userInfoService.getUserInfoBlocking() } }
                     _events.send(LoginEvent.ShowToast("注册成功"))
                     _events.send(LoginEvent.Navigate("main"))
                 } else {
@@ -365,7 +366,7 @@ class LoginViewModel @Inject constructor(
                     )
                 }
                 Log.d("LoginVM", "loginBlocking 返回: $resp")
-                if (resp.code == 200 && resp.data != null) {
+                if (resp.ok == true && resp.data != null) {
                     val data = resp.data
                     // 存 token、过期时间、uid
                     tokenProvider.saveToken(data.token, "")

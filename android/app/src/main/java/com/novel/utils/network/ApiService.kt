@@ -111,6 +111,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
+        Log.d("NetworkLog", "Sending GET to: ${baseUrl + endpoint}")
         getService(baseUrl).get(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }

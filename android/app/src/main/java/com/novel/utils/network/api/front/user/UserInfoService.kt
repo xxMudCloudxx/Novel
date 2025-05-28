@@ -17,9 +17,10 @@ class UserInfoService @Inject constructor(
 ) {
     // region 数据结构
     data class UserInfoResponse(
-        @SerializedName("code") val code: Int,
+        @SerializedName("code") val code: String,
         @SerializedName("msg") val msg: String,
-        @SerializedName("data") val data: UserInfoData?
+        @SerializedName("data") val data: UserInfoData?,
+        @SerializedName("ok") val ok: Boolean?
     )
 
     data class UserInfoData(
@@ -34,6 +35,7 @@ class UserInfoService @Inject constructor(
     suspend fun getUserInfoBlocking(): UserInfoResponse? = withContext(Dispatchers.IO) {
         // 1. 先拿到原始响应（或本地 mock）
         val parsed: UserInfoResponse? = suspendCancellableCoroutine { cont ->
+            Log.d("UserInfoService", "开始请求用户信息")
             ApiService.get(
                 baseUrl = BASE_URL_FRONT,
                 params = mapOf(),
@@ -62,7 +64,8 @@ class UserInfoService @Inject constructor(
         Log.d("UserInfoService", "获取用户信息成功: ${parsed?.data}")
 
         // 2. 挂起地写缓存
-        parsed?.data?.let { repo.cacheUser(it) }
+        if (parsed?.data != null)
+            parsed.data.let { repo.cacheUser(it) }
 
         // 3. 返回结果
         parsed
