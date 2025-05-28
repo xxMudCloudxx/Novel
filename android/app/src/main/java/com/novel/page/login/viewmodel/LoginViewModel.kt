@@ -8,13 +8,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.utils.PhoneInfoUtil
 import com.novel.utils.maskPhoneNumber
-import com.novel.utils.network.api.front.user.LoginService
-import com.novel.utils.network.api.front.user.UserInfoService
+import com.novel.utils.network.api.front.user.UserService
+import com.novel.utils.network.api.front.resource.ResourceService
 import com.novel.utils.network.TokenProvider
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
-import com.novel.utils.network.api.front.resource.ImageVerifyCodeService
-import com.novel.utils.network.api.front.user.RegisterService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -85,12 +83,10 @@ sealed class LoginAction {
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginService: LoginService,
-    private val registerService: RegisterService,
-    private val userInfoService: UserInfoService,
+    private val userService: UserService,
+    private val resourceService: ResourceService,
     private val tokenProvider: TokenProvider,
     private val userDefaults: NovelUserDefaults,
-    private val imageVerifyService: ImageVerifyCodeService,
     @SuppressLint("StaticFieldLeak") private val context: Context,
     phoneInfoUtil: PhoneInfoUtil
 ) : ViewModel() {
@@ -259,14 +255,14 @@ class LoginViewModel @Inject constructor(
                 )
             } // 重置图片和错误
             runCatching {
-                imageVerifyService.getImageVerifyCodeBlocking()
+                resourceService.getImageVerifyCodeBlocking()
             }.onSuccess { resp ->
                 resp.data?.let { data ->
                     // 解码 Base64 数据
-                    val imageBytes = Base64.decode(resp.data.imgBase64, Base64.DEFAULT)
+                    val imageBytes = Base64.decode(data.imgBase64, Base64.DEFAULT)
                     // 将字节数组写入临时文件
                     val tempFile = withContext(Dispatchers.IO) {
-                        val file = File(context.cacheDir, "captcha_${resp.data.sessionId}.jpg")
+                        val file = File(context.cacheDir, "captcha_${data.sessionId}.jpg")
                         file.writeBytes(imageBytes)
                         file
                     }
@@ -319,8 +315,8 @@ class LoginViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }    // 显示加载状态
             try {
                 val resp = withContext(Dispatchers.IO) {
-                    registerService.registerBlocking(
-                        RegisterService.RegisterRequest(
+                    userService.registerBlocking(
+                        UserService.RegisterRequest(
                             username = action.username,
                             password = action.password,
                             sessionId = action.sessionId,
@@ -337,7 +333,7 @@ class LoginViewModel @Inject constructor(
                     )
                     userDefaults.set(true, NovelUserDefaultsKey.IS_LOGGED_IN)
                     userDefaults.set(resp.data.uid, NovelUserDefaultsKey.USER_ID)
-                    launch(Dispatchers.IO) { runCatching { userInfoService.getUserInfoBlocking() } }
+                    launch(Dispatchers.IO) { runCatching { userService.getUserInfoBlocking() } }
                     _events.send(LoginEvent.ShowToast("注册成功"))
                     _events.send(LoginEvent.Navigate("main"))
                 } else {
@@ -358,8 +354,8 @@ class LoginViewModel @Inject constructor(
             _events.send(LoginEvent.ShowToast("开始登录..."))
             try {
                 val resp = withContext(Dispatchers.IO) {
-                    loginService.loginBlocking(
-                        LoginService.LoginRequest(
+                    userService.loginBlocking(
+                        UserService.LoginRequest(
                             uiState.value.username,
                             uiState.value.password
                         )
@@ -377,7 +373,7 @@ class LoginViewModel @Inject constructor(
                     userDefaults.set(true, NovelUserDefaultsKey.IS_LOGGED_IN)
                     userDefaults.set(data.uid, NovelUserDefaultsKey.USER_ID)
                     // 异步拿用户详情
-                    launch(Dispatchers.IO) { runCatching { userInfoService.getUserInfoBlocking() } }
+                    launch(Dispatchers.IO) { runCatching { userService.getUserInfoBlocking() } }
                     _events.send(LoginEvent.ShowToast("登录成功"))
                     _events.send(LoginEvent.Navigate("main"))
                 } else {

@@ -97,6 +97,8 @@ object ApiService {
     const val BASE_URL_FRONT = "http://47.110.147.60:8080/api/front/"
     const val BASE_URL_USER = "http://47.110.147.60:8080/api/front/user/"
     const val BASE_URL_RESOURCE = "http://47.110.147.60:8080/api/front/resource/"
+    const val BASE_URL_AUTHOR = "http://47.110.147.60:8080/api/author/"
+    const val BASE_URL_AI = "http://47.110.147.60:8080/api/author/ai/"
     private const val TAG = "ApiServiceS"
 
     // 获取指定 baseUrl 的服务实例
