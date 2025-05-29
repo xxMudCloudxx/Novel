@@ -4,7 +4,6 @@ import android.util.Log
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_USER
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
-import com.novel.utils.dao.UserRepository
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
@@ -18,9 +17,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class UserService @Inject constructor(
-    private val repo: UserRepository
-) {
+class UserService @Inject constructor() {
     
     // region 数据结构
     data class BaseResponse(
@@ -65,7 +62,7 @@ class UserService @Inject constructor(
     )
 
     data class RegisterData(
-        @SerializedName("uid") val uid: String,
+        @SerializedName("uid") val uid: Int,
         @SerializedName("token") val token: String,
     )
 
@@ -425,7 +422,7 @@ class UserService @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getUserInfoBlocking(): UserInfoResponse? = withContext(Dispatchers.IO) {
-        val parsed: UserInfoResponse? = suspendCancellableCoroutine { cont ->
+        suspendCancellableCoroutine { cont ->
             Log.d("UserService", "开始请求用户信息")
             getUserInfo { response, error ->
                 if (error != null) {
@@ -434,20 +431,11 @@ class UserService @Inject constructor(
                 } else if (response != null) {
                     cont.resume(response, onCancellation = null)
                 } else {
-                    Log.w("UserService", "收到空响应，使用本地数据")
+                    Log.w("UserService", "收到空响应")
                     cont.resume(null, onCancellation = null)
                 }
             }
         }
-
-        Log.d("UserService", "获取用户信息成功: ${parsed?.data}")
-
-        // 挂起地写缓存
-        if (parsed?.data != null) {
-            parsed.data.let { repo.cacheUser(it) }
-        }
-
-        parsed
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

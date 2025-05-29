@@ -2,9 +2,9 @@ package com.novel.di
 
 import android.content.Context
 import androidx.room.Room
-import com.novel.utils.dao.NovelDatabase
-import com.novel.utils.dao.UserDao
+import com.novel.page.login.dao.UserDao
 import com.novel.page.home.dao.HomeDao
+import com.novel.utils.dao.NovelDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
