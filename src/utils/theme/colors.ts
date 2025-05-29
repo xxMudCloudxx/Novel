@@ -14,30 +14,27 @@ export function useDynamicColor(light: string, dark: string): string {
   return scheme === 'dark' ? dark : light;
 }
 
-/**
- * Novel 应用的主题色集，支持动态切换
- * 返回一个对象，内含各项颜色属性，可直接用于样式中
- */
-export function useNovelColors() {
-  const scheme = useColorScheme();
-  return {
-    // 主色
-    novelMain: '#1EA59E',
-    // 浅主色
-    novelMainLight: '#28CCC3',
-    // 分割线颜色
-    novelDivider: scheme === 'dark' ? '#1C1C1E' : '#F7F7F8',
-    // 次级背景
-    novelSecondaryBackground: scheme === 'dark' ? '#1C1C1E' : '#F7F7F8',
-    // 页面背景
-    novelBackground: scheme === 'dark' ? '#000000' : '#FFFFFF',
-    // 文本灰色
-    novelTextGray: scheme === 'dark' ? '#97989F' : '#7F7F7F',
-    // 文本默认色
-    novelText: scheme === 'dark' ? '#FFFFFF' : '#000000',
-    // 浅灰背景
-    novelLightGray: scheme === 'dark' ? '#1C1C1E' : '#DDDDDD',
-    // Chip 背景
-    novelChipBackground: scheme === 'dark' ? '#23242B' : '#EBEDF0',
-  };
+export interface NovelColors {
+  novelBackground: string;
+  novelMain: string;
+  novelText: string;
+  novelDivider: string;
 }
+
+const lightColors: NovelColors = {
+  novelBackground: '#f5f5f5',
+  novelMain: '#007AFF',
+  novelText: '#333333',
+  novelDivider: '#e0e0e0',
+};
+
+const darkColors: NovelColors = {
+  novelBackground: '#1a1a1a',
+  novelMain: '#007AFF',
+  novelText: '#ffffff',
+  novelDivider: '#333333',
+};
+
+export const useNovelColors = (): NovelColors => {
+  return lightColors;
+};
