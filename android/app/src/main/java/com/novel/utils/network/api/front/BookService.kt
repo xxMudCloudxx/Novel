@@ -484,6 +484,20 @@ class BookService @Inject constructor() {
             }
         }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun getBookCategoriesBlocking(workDirection: Int): BookCategoryResponse {
+        return suspendCancellableCoroutine { cont ->
+            getBookCategories(workDirection) { response, error ->
+                if (error != null) {
+                    cont.resumeWith(Result.failure(error))
+                } else {
+                    response?.let { cont.resumeWith(Result.success(it)) }
+                        ?: cont.resumeWith(Result.failure(Exception("Response is null")))
+                }
+            }
+        }
+    }
     // endregion
 
     // region 响应处理

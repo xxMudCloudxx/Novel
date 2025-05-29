@@ -1,6 +1,7 @@
 package com.novel.page.home.dao
 
 import android.util.Log
+import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.HomeService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -15,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class HomeRepository @Inject constructor(
     private val homeDao: HomeDao,
-    private val homeService: HomeService
+    private val homeService: HomeService,
+    private val bookService: BookService  // 添加BookService依赖
 ) {
     
     companion object {
@@ -27,8 +29,70 @@ class HomeRepository @Inject constructor(
         const val TYPE_NEW = "new"
         const val TYPE_VIP = "vip"
         const val TYPE_WEEKLY = "weekly"
+        
+        // 榜单类型常量
+        const val RANK_TYPE_VISIT = "点击榜"
+        const val RANK_TYPE_UPDATE = "更新榜"
+        const val RANK_TYPE_NEWEST = "新书榜"
+        
+        // 榜单显示数量
+        const val RANK_BOOK_LIMIT = 16
     }
     
+    // region 榜单相关
+    
+    /**
+     * 获取榜单书籍数据
+     */
+    fun getRankBooks(rankType: String): Flow<List<BookService.BookRank>> = flow {
+        try {
+            Log.d(TAG, "开始获取榜单数据：$rankType")
+            
+            val response = when (rankType) {
+                RANK_TYPE_VISIT -> bookService.getVisitRankBooksBlocking()
+                RANK_TYPE_UPDATE -> bookService.getUpdateRankBooksBlocking()
+                RANK_TYPE_NEWEST -> bookService.getNewestRankBooksBlocking()
+                else -> bookService.getVisitRankBooksBlocking()
+            }
+            
+            if (response.ok == true && response.data != null) {
+                // 限制显示16本书
+                val limitedBooks = response.data.take(RANK_BOOK_LIMIT)
+                emit(limitedBooks)
+                Log.d(TAG, "$rankType 数据获取成功，共${limitedBooks.size}本书")
+            } else {
+                Log.e(TAG, "$rankType 数据获取失败：${response.message}")
+                emit(emptyList())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "获取 $rankType 数据异常", e)
+            emit(emptyList())
+        }
+    }
+    
+    /**
+     * 获取分类数据
+     */
+    fun getBookCategories(): Flow<List<BookService.BookCategory>> = flow {
+        try {
+            Log.d(TAG, "开始获取分类数据")
+            
+            val response = bookService.getBookCategoriesBlocking(0)
+            if (response.ok == true && response.data != null) {
+                emit(response.data)
+                Log.d(TAG, "分类数据获取成功，共${response.data.size}个分类")
+            } else {
+                Log.e(TAG, "分类数据获取失败：${response.message}")
+                emit(emptyList())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "获取分类数据异常", e)
+            emit(emptyList())
+        }
+    }
+    
+    // endregion
+
     // region 书籍相关
     
     /**
