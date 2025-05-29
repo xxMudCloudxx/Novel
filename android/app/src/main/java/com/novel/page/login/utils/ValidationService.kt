@@ -1,4 +1,4 @@
-package com.novel.page.login.domain
+package com.novel.page.login.utils
 
 import com.novel.utils.security.SecurityConfig
 import javax.inject.Inject
@@ -21,7 +21,7 @@ class ValidationService @Inject constructor(
     fun validatePhone(phone: String): ValidationResult? {
         return when {
             phone.isBlank() -> ValidationResult.Error("手机号不能为空")
-            !phone.matches(Regex(SecurityConfig.PHONE_REGEX)) -> 
+            !phone.matches(Regex(SecurityConfig.PHONE_REGEX)) ->
                 ValidationResult.Error("请输入有效的手机号")
             else -> null
         }
@@ -36,11 +36,11 @@ class ValidationService @Inject constructor(
     fun validatePassword(password: String): ValidationResult? {
         return when {
             password.isBlank() -> ValidationResult.Error("密码不能为空")
-            password.length < SecurityConfig.MIN_PASSWORD_LENGTH -> 
+            password.length < SecurityConfig.MIN_PASSWORD_LENGTH ->
                 ValidationResult.Error("密码长度需至少${SecurityConfig.MIN_PASSWORD_LENGTH}位")
-            password.length > SecurityConfig.MAX_PASSWORD_LENGTH -> 
+            password.length > SecurityConfig.MAX_PASSWORD_LENGTH ->
                 ValidationResult.Error("密码长度不能超过${SecurityConfig.MAX_PASSWORD_LENGTH}位")
-            !password.matches(Regex(SecurityConfig.PASSWORD_REGEX)) -> 
+            !password.matches(Regex(SecurityConfig.PASSWORD_REGEX)) ->
                 ValidationResult.Error("密码包含非法字符")
             else -> null
         }
@@ -69,9 +69,9 @@ class ValidationService @Inject constructor(
     fun validateVerifyCode(verifyCode: String, isRequired: Boolean = true): ValidationResult? {
         return when {
             isRequired && verifyCode.isBlank() -> ValidationResult.Error("验证码不能为空")
-            isRequired && verifyCode.length < SecurityConfig.CAPTCHA_MIN_LENGTH -> 
+            isRequired && verifyCode.length < SecurityConfig.CAPTCHA_MIN_LENGTH ->
                 ValidationResult.Error("验证码格式错误")
-            verifyCode.isNotBlank() && !verifyCode.matches(Regex(SecurityConfig.CAPTCHA_REGEX)) -> 
+            verifyCode.isNotBlank() && !verifyCode.matches(Regex(SecurityConfig.CAPTCHA_REGEX)) ->
                 ValidationResult.Error("验证码格式错误")
             else -> null
         }

@@ -1,17 +1,17 @@
 package com.novel.page.login.viewmodel
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.novel.page.login.domain.AuthResult
-import com.novel.page.login.domain.AuthService
-import com.novel.page.login.domain.CaptchaService
-import com.novel.page.login.domain.LoginForm
-import com.novel.page.login.domain.RegisterForm
-import com.novel.page.login.domain.RegisterRequest
-import com.novel.page.login.domain.ValidationResult
-import com.novel.page.login.domain.ValidationService
+import com.novel.page.login.utils.AuthResult
+import com.novel.page.login.utils.AuthService
+import com.novel.page.login.utils.CaptchaService
+import com.novel.page.login.utils.LoginForm
+import com.novel.page.login.utils.RegisterForm
+import com.novel.page.login.utils.RegisterRequest
+import com.novel.page.login.utils.ValidationResult
+import com.novel.page.login.utils.ValidationResults
+import com.novel.page.login.utils.ValidationService
 import com.novel.utils.PhoneInfoUtil
 import com.novel.utils.maskPhoneNumber
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -327,7 +327,7 @@ class LoginViewModel @Inject constructor(
     /**
      * 更新验证错误状态
      */
-    private fun updateValidationErrors(validationResult: com.novel.page.login.domain.ValidationResults) {
+    private fun updateValidationErrors(validationResult: ValidationResults) {
         _uiState.update {
             it.copy(
                 usernameError = (validationResult.phoneError as? ValidationResult.Error)?.message,

@@ -1,4 +1,4 @@
-package com.novel.page.login.domain
+package com.novel.page.login.utils
 
 import android.content.Context
 import android.util.Base64

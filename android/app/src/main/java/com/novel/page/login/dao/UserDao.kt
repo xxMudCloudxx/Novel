@@ -9,19 +9,6 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 用户实体 - 本地数据库表结构
- */
-@Entity(tableName = "users")
-data class UserEntity(
-    @PrimaryKey
-    val uid: String,
-    val nickName: String,
-    val userPhoto: String,
-    val userSex: Int,
-    val lastUpdateTime: Long = System.currentTimeMillis() // 添加最后更新时间
-)
-
-/**
  * 用户数据访问对象 - 提供数据库操作接口
  */
 @Dao

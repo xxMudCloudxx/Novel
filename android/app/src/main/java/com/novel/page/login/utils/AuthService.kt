@@ -1,4 +1,4 @@
-package com.novel.page.login.domain
+package com.novel.page.login.utils
 
 import com.novel.page.login.dao.UserRepository
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
