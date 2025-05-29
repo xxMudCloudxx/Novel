@@ -44,7 +44,7 @@ import com.novel.utils.debounceClickable
  */
 @Composable
 fun NovelImageView(
-    imageUrl: String,
+    imageUrl: String?,
     isLoading: Boolean = false,
     error: String? = null,
     widthDp: Int = 0,
@@ -57,10 +57,7 @@ fun NovelImageView(
     onRetry: () -> Unit = {},
     placeholderContent: @Composable () -> Unit = {
         Box(
-            Modifier
-                .fillMaxSize()
-                .wrapContentSize(Alignment.Center)
-                .background(NovelColors.NovelBackground)
+            modifier.wrapContentSize(Alignment.Center)
         ) {
             CircularProgressIndicator(
                 strokeWidth = 2.wdp,
@@ -72,22 +69,19 @@ fun NovelImageView(
     },
     errorContent: @Composable (retry: () -> Unit) -> Unit = { retry ->
         Box(
-            Modifier
-                .fillMaxSize()
-                .wrapContentSize(Alignment.Center)
-                .background(NovelColors.NovelBackground)
+            modifier.wrapContentSize (Alignment.Center)
         ) {
-            IconButton(onClick = { retry() }) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "加载失败，点击重试",
-                    tint = NovelColors.NovelText,
-                    modifier = Modifier
-                        .size(24.wdp)
-                        .debounceClickable(retryDebounceMs) { onRetry() }
-                )
-            }
+        IconButton(onClick = { retry() }) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "加载失败，点击重试",
+                tint = NovelColors.NovelText,
+                modifier = Modifier
+                    .size(24.wdp)
+                    .debounceClickable(retryDebounceMs) { onRetry() }
+            )
         }
+    }
     }
 ) {
     // 构造 Modifier
@@ -125,7 +119,7 @@ fun NovelImageView(
                 }
             }
 
-            imageUrl.isEmpty() -> {
+            imageUrl.isNullOrEmpty() -> {
                 // 空 URL 显示错误占位
                 Box(
                     modifier = imgModifier,
