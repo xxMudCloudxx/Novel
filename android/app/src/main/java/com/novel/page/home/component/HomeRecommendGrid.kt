@@ -73,19 +73,20 @@ private fun FullHeightHomeRecommendGrid(
     modifier: Modifier = Modifier
 ) {
     val staggeredGridState = rememberLazyStaggeredGridState()
-    
+
     // 监听滚动到底部，触发加载更多
     LaunchedEffect(staggeredGridState) {
         snapshotFlow { staggeredGridState.layoutInfo }
             .collect { layoutInfo ->
                 val visibleItemsInfo = layoutInfo.visibleItemsInfo
-                if (layoutInfo.totalItemsCount > 0 && 
-                    visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1) {
+                if (layoutInfo.totalItemsCount > 0 &&
+                    visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
+                ) {
                     onLoadMore()
                 }
             }
     }
-    
+
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(2), // 固定2列
         state = staggeredGridState,
@@ -126,7 +127,7 @@ private fun FixedHeightHomeRecommendGrid(
 ) {
     // 当前显示的总数量
     val totalItems = if (homeBooks.isNotEmpty()) homeBooks.size else books.size
-    
+
     Row(
         modifier = modifier.padding(horizontal = 15.wdp),
         horizontalArrangement = Arrangement.spacedBy(10.wdp)
@@ -135,7 +136,7 @@ private fun FixedHeightHomeRecommendGrid(
             // 处理首页推荐书籍 - 显示所有已加载的书籍
             val leftColumnBooks = homeBooks.filterIndexed { index, _ -> index % 2 == 0 }
             val rightColumnBooks = homeBooks.filterIndexed { index, _ -> index % 2 == 1 }
-            
+
             // 左列
             Column(
                 modifier = Modifier.weight(1f),
@@ -148,7 +149,7 @@ private fun FixedHeightHomeRecommendGrid(
                     )
                 }
             }
-            
+
             // 右列
             Column(
                 modifier = Modifier.weight(1f),
@@ -165,7 +166,7 @@ private fun FixedHeightHomeRecommendGrid(
             // 处理搜索结果书籍 - 显示所有已加载的书籍
             val leftColumnBooks = books.filterIndexed { index, _ -> index % 2 == 0 }
             val rightColumnBooks = books.filterIndexed { index, _ -> index % 2 == 1 }
-            
+
             // 左列
             Column(
                 modifier = Modifier.weight(1f),
@@ -178,7 +179,7 @@ private fun FixedHeightHomeRecommendGrid(
                     )
                 }
             }
-            
+
             // 右列
             Column(
                 modifier = Modifier.weight(1f),
@@ -193,7 +194,7 @@ private fun FixedHeightHomeRecommendGrid(
             }
         }
     }
-    
+
     // 当显示的书籍数量是8的倍数且不为0时，自动触发加载更多
     LaunchedEffect(totalItems) {
         if (totalItems > 0 && totalItems % 8 == 0) {
@@ -217,7 +218,7 @@ private fun HomeBookStaggeredItem(
         minHeight = 200,
         maxHeight = 280
     ).wdp
-    
+
     // 根据描述长度动态调整文本区域高度
     val descriptionLines = remember(book.bookDesc) {
         when {
@@ -226,7 +227,7 @@ private fun HomeBookStaggeredItem(
             else -> 1
         }
     }
-    
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -257,7 +258,7 @@ private fun HomeBookStaggeredItem(
                 }
             }
         )
-        
+
         // 书籍信息 - 动态高度
         Column(
             modifier = Modifier.padding(10.wdp)
@@ -271,9 +272,9 @@ private fun HomeBookStaggeredItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Spacer(modifier = Modifier.height(5.wdp))
-            
+
             // 作者
             NovelText(
                 text = book.authorName,
@@ -282,9 +283,9 @@ private fun HomeBookStaggeredItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Spacer(modifier = Modifier.height(5.wdp))
-            
+
             // 描述 - 根据内容长度动态显示行数
             NovelText(
                 text = book.bookDesc,
@@ -312,12 +313,12 @@ private fun SearchBookStaggeredItem(
         minHeight = 200,
         maxHeight = 280
     ).wdp
-    
+
     // 根据书名长度动态调整
     val titleLines = remember(book.bookName) {
         if (book.bookName.length > 12) 2 else 1
     }
-    
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -348,7 +349,7 @@ private fun SearchBookStaggeredItem(
                 }
             }
         )
-        
+
         // 书籍信息 - 动态高度
         Column(
             modifier = Modifier.padding(10.wdp)
@@ -362,9 +363,9 @@ private fun SearchBookStaggeredItem(
                 maxLines = titleLines,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Spacer(modifier = Modifier.height(5.wdp))
-            
+
             // 作者和分类
             NovelText(
                 text = "${book.authorName} · ${book.categoryName}",
@@ -373,9 +374,9 @@ private fun SearchBookStaggeredItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Spacer(modifier = Modifier.height(5.wdp))
-            
+
             // 字数和状态
             val statusText = if (book.bookStatus == 1) "完结" else "连载中"
             NovelText(
@@ -435,21 +436,26 @@ fun HomeRecommendLoadMoreIndicator(
                     )
                 }
             }
+
             hasMoreData -> {
-                // 显示手动加载更多按钮
-                TextButton(
-                    onClick = onLoadMore,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = NovelColors.NovelMain
-                    )
+                // 显示加载中状态
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.wdp)
                 ) {
+                    CircularProgressIndicator(
+                        color = NovelColors.NovelMain,
+                        modifier = Modifier.size(20.wdp),
+                        strokeWidth = 2.wdp
+                    )
                     NovelText(
-                        text = "点击加载更多",
+                        text = "加载中...",
                         fontSize = 14.ssp,
-                        color = NovelColors.NovelMain
+                        color = NovelColors.NovelTextGray
                     )
                 }
             }
+
             else -> {
                 // 没有更多数据 - 显示已加载全部
                 Column(

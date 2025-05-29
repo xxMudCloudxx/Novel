@@ -26,6 +26,12 @@ class MainApplication : Application(), ReactApplication {
     @Inject
     lateinit var tokenProvider: TokenProvider
 
+    companion object {
+        private var instance: MainApplication? = null
+        
+        fun getInstance(): MainApplication? = instance
+    }
+
     override val reactNativeHost: ReactNativeHost =
         object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> =
@@ -46,11 +52,13 @@ class MainApplication : Application(), ReactApplication {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         RetrofitClient.init(
             authInterceptor = authInterceptor,
             tokenProvider = tokenProvider
         )
         SoLoader.init(this, OpenSourceMergedSoMapping)
+        reactNativeHost.reactInstanceManager.createReactContextInBackground()
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
             load()
         }

@@ -9,11 +9,13 @@ import com.novel.page.home.dao.HomeRepository
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
+import com.novel.utils.ReactNativeBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 
 /**
  * 分类数据
@@ -134,6 +136,14 @@ class HomeViewModel @Inject constructor(
     init {
         // 初始化时加载数据
         onAction(HomeAction.LoadInitialData)
+        
+        // 发送测试数据到RN（确保RN能接收到数据）
+        viewModelScope.launch {
+            delay(2000) // 等待RN初始化完成
+            ReactNativeBridge.sendTestUserDataToRN()
+            delay(500)
+            ReactNativeBridge.sendTestRecommendBooksToRN()
+        }
     }
     
     /**
@@ -293,6 +303,11 @@ class HomeViewModel @Inject constructor(
                     ) 
                 }
                 
+                // 发送推荐书籍数据到RN
+                if (currentBooks.isNotEmpty()) {
+                    ReactNativeBridge.sendRecommendBooksToRN(currentBooks)
+                }
+                
                 Log.d(TAG, "首页推荐数据加载完成：当前显示${currentBooks.size}本，总共${cachedHomeBooks.size}本，hasMore=$hasMore")
             } catch (e: Exception) {
                 Log.e(TAG, "加载首页推荐书籍失败", e)
@@ -409,6 +424,7 @@ class HomeViewModel @Inject constructor(
                             recommendPage = nextPage
                         ) 
                     }
+
                 } else {
                     throw Exception(response.message ?: "加载更多失败")
                 }
@@ -668,6 +684,9 @@ class HomeViewModel @Inject constructor(
                         hasMoreHomeRecommend = hasMore
                     ) 
                 }
+
+
+                ReactNativeBridge.sendRecommendBooksToRN(updatedBooks)
                 
                 Log.d(TAG, "加载更多首页推荐：当前显示${updatedBooks.size}本，总共${cachedHomeBooks.size}本，hasMore=$hasMore")
             } catch (e: Exception) {
