@@ -1,8 +1,8 @@
 // React Native 动态主题色实现，基于系统深色/浅色模式自动切换
 // 使用 TypeScript + React Native 内置的 useColorScheme Hook
 
-import { useColorScheme } from 'react-native';
 
+import { useColorScheme } from "react-native/Libraries/Utilities/Appearance";
 /**
  * 返回当前系统模式下的颜色值
  * @param light 浅色模式下使用的十六进制颜色字符串

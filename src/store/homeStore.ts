@@ -14,6 +14,23 @@ export interface Book {
   rating?: number;
 }
 
+// 仿照Android HomeService的数据结构
+export interface HomeBook {
+  type: number; // 0-轮播图 1-顶部栏 2-本周强推 3-热门推荐 4-精品推荐
+  bookId: number;
+  picUrl: string;
+  bookName: string;
+  authorName: string;
+  bookDesc: string;
+}
+
+export interface HomeBooksResponse {
+  code: string;
+  message: string;
+  data: HomeBook[];
+  ok: boolean;
+}
+
 export interface HomeState {
   recommendBooks: Book[];
   loading: boolean;
@@ -30,6 +47,18 @@ export interface HomeState {
   
   rankBooks: Book[];
   selectedRankType: 'hot' | 'new' | 'recommend';
+  
+  // 新增：仿照Android的首页推荐状态
+  homeRecommendBooks: HomeBook[];
+  homeRecommendLoading: boolean;
+  hasMoreHomeRecommend: boolean;
+  homeRecommendPage: number;
+  
+  // 缓存的完整推荐数据
+  cachedHomeBooks: HomeBook[];
+  
+  // 当前显示模式
+  isRecommendMode: boolean; // true=推荐模式，false=分类模式
 }
 
 interface HomeActions {
@@ -45,12 +74,14 @@ interface HomeActions {
   // 数据更新
   setRecommendBooks: (books: Book[]) => void;
   appendBooks: (books: Book[]) => void;
+  setHomeRecommendBooks: (books: HomeBook[]) => void;
   
-  // 异步操作
+  // 异步操作 - 仿照Android实现
   fetchRecommendBooks: () => Promise<void>;
   refreshBooks: () => Promise<void>;
   loadMoreBooks: () => Promise<void>;
   fetchRankBooks: (type: 'hot' | 'new' | 'recommend') => Promise<void>;
+  loadHomeRecommendBooks: (isRefresh?: boolean) => Promise<void>;
 }
 
 type HomeStore = HomeState & HomeActions;
@@ -60,7 +91,7 @@ const initialState: HomeState = {
   loading: false,
   error: null,
   currentPage: 0,
-  pageSize: 20,
+  pageSize: 8, // 仿照Android的RECOMMEND_PAGE_SIZE
   hasMore: true,
   
   isRefreshing: false,
@@ -71,7 +102,18 @@ const initialState: HomeState = {
   
   rankBooks: [],
   selectedRankType: 'hot',
+  
+  // 新增状态
+  homeRecommendBooks: [],
+  homeRecommendLoading: false,
+  hasMoreHomeRecommend: true,
+  homeRecommendPage: 1,
+  cachedHomeBooks: [],
+  isRecommendMode: true,
 };
+
+// API基础URL - 仿照Android的BASE_URL_FRONT
+const BASE_URL_FRONT = "http://47.110.147.60:8080/api/front/";
 
 export const useHomeStore = create<HomeStore>()(
   immer((set, get) => ({
@@ -115,106 +157,157 @@ export const useHomeStore = create<HomeStore>()(
       state.recommendBooks.push(...books);
     }),
     
-    // 异步操作
-    fetchRecommendBooks: async () => {
+    setHomeRecommendBooks: (books) => set((state) => {
+      state.homeRecommendBooks = books;
+    }),
+    
+    // 异步操作 - 仿照Android实现
+    
+    /**
+     * 加载首页推荐书籍 - 仿照Android的loadHomeRecommendBooks
+     */
+    loadHomeRecommendBooks: async (isRefresh = false) => {
       const state = get();
       set((draft) => {
-        draft.loading = true;
-        draft.error = null;
+        draft.homeRecommendLoading = true;
+        if (isRefresh) {
+          draft.error = null;
+        }
       });
       
       try {
-        // 这里调用API
-        const response = await fetch(`http://47.110.147.60:8080/api/front/home/book?page=1&size=${state.pageSize}`);
-        const data = await response.json();
+        // 如果是刷新或者缓存为空，重新获取数据
+        if (isRefresh || state.cachedHomeBooks.length === 0) {
+          console.log('正在获取首页推荐数据...');
+          
+          const response = await fetch(`${BASE_URL_FRONT}home/books`, {
+            method: 'GET',
+            headers: {
+              'Accept': '*/*',
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          console.log('API响应状态:', response.status, response.statusText);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data: HomeBooksResponse = await response.json();
+          console.log('API响应数据:', data);
+          
+          if (data.ok && data.data) {
+            console.log(`获取到${data.data.length}本推荐书籍`);
+            set((draft) => {
+              draft.cachedHomeBooks = data.data;
+            });
+          } else {
+            throw new Error(data.message || '获取推荐书籍失败');
+          }
+        }
+        
+        // 基于缓存数据进行分页
+        const currentState = get();
+        const currentPage = isRefresh ? 1 : currentState.homeRecommendPage;
+        const startIndex = (currentPage - 1) * currentState.pageSize;
+        const endIndex = startIndex + currentState.pageSize;
+        
+        const currentBooks = isRefresh ? 
+          currentState.cachedHomeBooks.slice(0, currentState.pageSize) :
+          currentState.cachedHomeBooks.slice(0, endIndex);
+        
+        const hasMore = endIndex < currentState.cachedHomeBooks.length;
         
         set((draft) => {
-          draft.loading = false;
-          draft.recommendBooks = data.books || [];
-          draft.hasMore = data.hasMore || false;
-          draft.currentPage = 1;
+          draft.homeRecommendBooks = currentBooks;
+          draft.homeRecommendLoading = false;
+          draft.hasMoreHomeRecommend = hasMore;
+          draft.homeRecommendPage = currentPage;
+          draft.isRefreshing = false;
         });
+        
+        console.log(`首页推荐数据加载完成：当前显示${currentBooks.length}本，总共${currentState.cachedHomeBooks.length}本，hasMore=${hasMore}`);
+        
       } catch (error) {
+        console.error('加载首页推荐书籍失败:', error);
         set((draft) => {
-          draft.loading = false;
-          draft.error = error instanceof Error ? error.message : '获取数据失败';
+          draft.homeRecommendLoading = false;
+          draft.isRefreshing = false;
+          draft.error = error instanceof Error ? `加载推荐书籍失败: ${error.message}` : '加载推荐书籍失败';
         });
       }
     },
     
-    refreshBooks: async () => {
-      const state = get();
-      set((draft) => {
-        draft.isRefreshing = true;
-        draft.error = null;
-        draft.currentPage = 0;
-      });
-      
-      try {
-        const response = await fetch(`http://47.110.147.60:8080/api/front/home/book?page=1&size=${state.pageSize}`);
-        const data = await response.json();
-        
-        set((draft) => {
-          draft.isRefreshing = false;
-          draft.recommendBooks = data.books || [];
-          draft.hasMore = data.hasMore || false;
-          draft.currentPage = 1;
-        });
-      } catch (error) {
-        set((draft) => {
-          draft.isRefreshing = false;
-          draft.error = error instanceof Error ? error.message : '刷新失败';
-        });
-      }
-    },
-    
+    /**
+     * 加载更多首页推荐书籍
+     */
     loadMoreBooks: async () => {
       const state = get();
-      if (!state.hasMore || state.isLoadingMore) return;
+      if (!state.hasMoreHomeRecommend || state.homeRecommendLoading) return;
       
       set((draft) => {
-        draft.isLoadingMore = true;
+        draft.homeRecommendLoading = true;
         draft.error = null;
       });
       
       try {
-        const nextPage = state.currentPage + 1;
-        const response = await fetch(`http://47.110.147.60:8080/api/front/home/book?page=${nextPage}&size=${state.pageSize}`);
-        const data = await response.json();
+        const nextPage = state.homeRecommendPage + 1;
+        const endIndex = nextPage * state.pageSize;
+        
+        const currentBooks = state.cachedHomeBooks.slice(0, endIndex);
+        const hasMore = endIndex < state.cachedHomeBooks.length;
         
         set((draft) => {
-          draft.isLoadingMore = false;
-          draft.recommendBooks.push(...(data.books || []));
-          draft.hasMore = data.hasMore || false;
-          draft.currentPage = nextPage;
+          draft.homeRecommendBooks = currentBooks;
+          draft.homeRecommendLoading = false;
+          draft.hasMoreHomeRecommend = hasMore;
+          draft.homeRecommendPage = nextPage;
         });
+        
       } catch (error) {
+        console.error('加载更多推荐书籍失败:', error);
         set((draft) => {
-          draft.isLoadingMore = false;
+          draft.homeRecommendLoading = false;
           draft.error = error instanceof Error ? error.message : '加载更多失败';
         });
       }
     },
     
+    /**
+     * 刷新推荐书籍
+     */
+    refreshBooks: async () => {
+      const { loadHomeRecommendBooks } = get();
+      await loadHomeRecommendBooks(true);
+    },
+    
+    // 保持原有的兼容性方法
+    fetchRecommendBooks: async () => {
+      const { loadHomeRecommendBooks } = get();
+      await loadHomeRecommendBooks();
+    },
+    
     fetchRankBooks: async (type) => {
       set((draft) => {
+        draft.selectedRankType = type;
         draft.loading = true;
         draft.error = null;
-        draft.selectedRankType = type;
       });
       
       try {
-        const response = await fetch(`http://47.110.147.60:8080/api/front/home/rank/${type}`);
-        const data = await response.json();
+        // 这里可以实现榜单数据的获取逻辑
+        // 暂时使用模拟数据
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         set((draft) => {
           draft.loading = false;
-          draft.rankBooks = data.books || [];
+          draft.rankBooks = []; // 榜单数据
         });
       } catch (error) {
         set((draft) => {
           draft.loading = false;
-          draft.error = error instanceof Error ? error.message : '获取排行榜失败';
+          draft.error = error instanceof Error ? error.message : '获取榜单失败';
         });
       }
     },
