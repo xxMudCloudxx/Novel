@@ -69,14 +69,7 @@ private object AnimationConfig {
 fun LoginPage() {
     val vm: LoginViewModel = hiltViewModel()
     val uiState by vm.uiState.collectAsState()
-    // 验证按钮是否可点击
-    val isLoginButtonEnabled by derivedStateOf {
-        uiState.isAgreementChecked &&
-                uiState.username.isNotBlank() &&
-                uiState.password.isNotBlank() &&
-                (!uiState.isRegisterMode || (uiState.passwordConfirm.isNotBlank() && uiState.verifyCode.isNotBlank()))
-    }
-
+    
     // 收集一次性事件
     LaunchedEffect(Unit) {
         vm.events.collectLatest { event ->
@@ -172,7 +165,7 @@ fun LoginPage() {
                         vm.onAction(LoginAction.DoLogin(uiState.username, uiState.password))
                     }
                 },
-                isFirstEnabled = isLoginButtonEnabled,
+                isFirstEnabled = uiState.isActionButtonEnabled,
                 onSecondClick = { vm.onAction(LoginAction.ToggleRegisterMode) },
                 modifier = Modifier
                     .offset(y = buttonOffset)
