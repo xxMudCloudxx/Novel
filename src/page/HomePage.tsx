@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Dimensions,
-  StyleSheet,
-} from 'react-native';
 import { useUserStore } from '../store/userStore';
-import { useHomeStore } from '../store/homeStore';
+import { useHomeStore, HomeBook } from '../store/homeStore';
 import IconComponent from '../component/IconComponent';
+import { useNovelColors } from '../utils/theme/colors';
+import { typography } from '../utils/theme/typography';
+import { wp, fp, sp, commonSizes } from '../utils/theme/dimensions';
+import { View, Text, TouchableOpacity, Image, Dimensions, ScrollView ,StyleSheet } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming,
+  interpolate,
+  Extrapolate,
+  runOnJS,
+} from 'react-native-reanimated';
+
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -30,156 +34,132 @@ interface BookItemProps {
   index: number;
 }
 
-// 使用React.memo优化BookItem
-const BookItem: React.FC<BookItemProps> = React.memo(({ book, onPress, index }) => {
-  // 使用缓存的高度，避免每次重新计算
-  const imageHeight = React.useMemo(() => {
-    if (itemHeightCache.has(book.id)) {
-      return itemHeightCache.get(book.id)!;
-    }
-    const baseHeight = 180;
-    const variableHeight = (book.id * 17) % 60; // 使用ID计算，保证一致性
-    const height = baseHeight + variableHeight;
-    itemHeightCache.set(book.id, height);
-    return height;
-  }, [book.id]);
-
-  // 根据描述长度决定显示行数
-  const descriptionLines = React.useMemo(() => {
-    if (!book.description) return 1;
-    if (book.description.length > 80) return 3;
-    if (book.description.length > 40) return 2;
-    return 1;
-  }, [book.description]);
-
-  return (
-    <TouchableOpacity 
-      style={[styles.waterfallBookItem, { width: (screenWidth - 45) / 2 }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      {/* 书籍封面 */}
-      <View style={[styles.waterfallBookCover, { height: imageHeight }]}>
-        {book.coverUrl ? (
-          <Image 
-            source={{ uri: book.coverUrl }} 
-            style={styles.waterfallCoverImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.waterfallPlaceholderCover}>
-            <Text style={styles.waterfallPlaceholderText}>暂无封面</Text>
-          </View>
-        )}
-      </View>
-      
-      {/* 书籍信息 */}
-      <View style={styles.waterfallBookInfo}>
-        {/* 书名 */}
-        <Text 
-          style={styles.waterfallBookTitle}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
-          {book.title}
-        </Text>
-        
-        {/* 作者 */}
-        <Text 
-          style={styles.waterfallBookAuthor}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {book.author}
-        </Text>
-        
-        {/* 描述 */}
-        {book.description && (
-          <Text 
-            style={styles.waterfallBookDescription}
-            numberOfLines={descriptionLines}
-            ellipsizeMode="tail"
-          >
-            {book.description}
-          </Text>
-        )}
-        
-        {/* 额外信息 */}
-        {(book.readCount || book.rating) && (
-          <View style={styles.waterfallBookMeta}>
-            {book.readCount && (
-              <Text style={styles.waterfallMetaText}>
-                阅读 {formatReadCount(book.readCount)}
-              </Text>
-            )}
-            {book.rating && (
-              <Text style={styles.waterfallMetaText}>
-                {book.rating.toFixed(1)}分
-              </Text>
-            )}
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-});
-
-// 格式化阅读数
-const formatReadCount = (count: number): string => {
-  if (count >= 10000) {
-    return `${(count / 10000).toFixed(1)}万`;
-  } else if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}k`;
-  }
-  return count.toString();
+// 将HomeBook转换为Book格式的辅助函数
+const convertHomeBooksToBooks = (homeBooks: HomeBook[]) => {
+  return homeBooks.map(homeBook => ({
+    id: homeBook.bookId,
+    title: homeBook.bookName,
+    author: homeBook.authorName,
+    description: homeBook.bookDesc,
+    coverUrl: homeBook.picUrl,
+    categoryId: homeBook.type,
+    readCount: Math.floor(Math.random() * 10000), // 模拟数据
+    rating: Math.random() * 5, // 模拟数据
+  }));
 };
-
-// 加载更多指示器
-const LoadMoreIndicator: React.FC<{
-  loading: boolean;
-  hasMore: boolean;
-}> = React.memo(({ loading, hasMore }) => {
-  if (loading) {
-    return (
-      <View style={styles.waterfallLoadingContainer}>
-        <Text style={styles.waterfallLoadingText}>加载中...</Text>
-      </View>
-    );
-  }
-
-  if (!hasMore) {
-    return (
-      <View style={styles.waterfallLoadingContainer}>
-        <View style={styles.waterfallEndLine} />
-        <Text style={styles.waterfallEndText}>已加载全部</Text>
-        <View style={styles.waterfallEndLine} />
-      </View>
-    );
-  }
-
-  return null;
-});
 
 const HomePage: React.FC = () => {
   // 使用Zustand stores
   const { uid, nickname, photo, isLoggedIn, balance, coins } = useUserStore();
   const { 
-    recommendBooks, 
-    loading, 
-    isRefreshing, 
-    isLoadingMore, 
-    hasMore,
-    fetchRecommendBooks,
+    homeRecommendBooks,
+    homeRecommendLoading,
+    isRefreshing,
+    hasMoreHomeRecommend,
+    loadHomeRecommendBooks,
     refreshBooks,
     loadMoreBooks 
   } = useHomeStore();
   
   const [currentPage, setCurrentPage] = useState(0);
+  const colors = useNovelColors();
+  
+  //动画相关的状态
+  const scrollX = useSharedValue(0);
+  const pageWidth = wp(350); // 恢复页面宽度
+  
+  // 预计算动画高度值，避免在worklet中调用wp函数
+  const minHeight = wp(200);
+  const maxHeight = wp(250);
+
+  // 将HomeBook转换为Book格式
+  const convertedBooks = React.useMemo(() => {
+    return convertHomeBooksToBooks(homeRecommendBooks);
+  }, [homeRecommendBooks]);
 
   // 初始化数据
   useEffect(() => {
-    fetchRecommendBooks();
-  }, [fetchRecommendBooks]);
+    loadHomeRecommendBooks();
+  }, [loadHomeRecommendBooks]);
+
+  // 创建动态高度动画样式
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    // 根据滑动距离插值高度：从minHeight到maxHeight
+    const height = interpolate(
+      scrollX.value,
+      [0, pageWidth, pageWidth * 2],
+      [minHeight, maxHeight, maxHeight],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      height: height,
+    };
+  });
+
+  // 第一页图标透明度动画
+  const firstPageIconsStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollX.value,
+      [0, pageWidth * 0.5, pageWidth],
+      [1, 0.3, 0.3],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      opacity: opacity,
+    };
+  });
+
+  // 第二页图标透明度动画
+  const secondPageIconsStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollX.value,
+      [0, pageWidth * 0.5, pageWidth, pageWidth * 1.5, pageWidth * 2],
+      [0.3, 0.3, 1, 0.3, 0.3],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      opacity: opacity,
+    };
+  });
+
+  // 第三页图标透明度动画
+  const thirdPageIconsStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollX.value,
+      [pageWidth, pageWidth * 1.5, pageWidth * 2],
+      [0.3, 0.3, 1],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      opacity: opacity,
+    };
+  });
+
+  // 第一页广告显示/隐藏动画
+  const firstPageAdStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollX.value,
+      [0, pageWidth * 0.5, pageWidth],
+      [1, 0, 0],
+      Extrapolate.CLAMP
+    );
+    
+    const translateY = interpolate(
+      scrollX.value,
+      [0, pageWidth * 0.5, pageWidth],
+      [0, -20, -20],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      opacity: opacity,
+      transform: [{ translateY: translateY }],
+    };
+  });
 
   // 登录函数
   const toLogin = useCallback(() => {
@@ -194,10 +174,10 @@ const HomePage: React.FC = () => {
 
   // 上拉加载更多
   const handleLoadMore = useCallback(() => {
-    if (hasMore && !isLoadingMore && !loading) {
+    if (hasMoreHomeRecommend && !homeRecommendLoading) {
       loadMoreBooks();
     }
-  }, [hasMore, isLoadingMore, loading, loadMoreBooks]);
+  }, [hasMoreHomeRecommend, homeRecommendLoading, loadMoreBooks]);
 
   // 书籍点击
   const handleBookPress = useCallback((book: any) => {
@@ -207,14 +187,14 @@ const HomePage: React.FC = () => {
 
   // 图标数据
   const iconsData: IconData[] = [
-    // 第一页的5个图标
+    // 第一页的4个图标
     { id: 'wallet', name: '我的钱包', icon: 'wallet', onPress: () => console.log('钱包') },
     { id: 'download', name: '我的下载', icon: 'download', onPress: () => console.log('下载') },
     { id: 'history', name: '游戏中心', icon: 'history', onPress: () => console.log('历史') },
     { id: 'subscribe', name: '推书中心', icon: 'subscribe', onPress: () => console.log('订阅') },
-    { id: 'game', name: '我的', icon: 'game', onPress: () => console.log('游戏') },
     
-    // 第二页的12个图标（3x4布局）
+    // 第二页的15个图标
+    { id: 'game', name: '我的', icon: 'game', onPress: () => console.log('游戏') },
     { id: 'my_preorder', name: '我的预约', icon: 'member', onPress: () => console.log('我的预约') },
     { id: 'my_download', name: '我的下载', icon: 'download', onPress: () => console.log('我的下载') },
     { id: 'game_center', name: '游戏中心', icon: 'game', onPress: () => console.log('游戏中心') },
@@ -227,50 +207,54 @@ const HomePage: React.FC = () => {
     { id: 'help_guide', name: '帮助指南', icon: 'guide', onPress: () => console.log('帮助指南') },
     { id: 'my_public_welfare', name: '我的公益', icon: 'public_welfare', onPress: () => console.log('我的公益') },
     { id: 'member_center', name: '会员中心', icon: 'member', onPress: () => console.log('会员中心') },
-    
-    // 最后一页的剩余图标
     { id: 'my_wallet2', name: '我的钱包', icon: 'wallet', onPress: () => console.log('我的钱包') },
     { id: 'feedback_help', name: '反馈与帮助', icon: 'feedback', onPress: () => console.log('反馈与帮助') },
+    
+    // 第三页的剩余图标
+    { id: 'my_wallet21', name: '我的钱包', icon: 'wallet', onPress: () => console.log('我的钱包') },
+    { id: 'feedback_help1', name: '反馈与帮助', icon: 'feedback', onPress: () => console.log('反馈与帮助') },
+    { id: 'my_wallet22', name: '我的钱包', icon: 'wallet', onPress: () => console.log('我的钱包') },
+    { id: 'feedback_help2', name: '反馈与帮助', icon: 'feedback', onPress: () => console.log('反馈与帮助') },
   ];
 
   // 分页图标数据
   const getPageIcons = (pageIndex: number): IconData[] => {
     if (pageIndex === 0) {
-      return iconsData.slice(0, 5);
+      return iconsData.slice(0, 4);
     } else if (pageIndex === 1) {
-      return iconsData.slice(5, 17);
+      return iconsData.slice(4, 16);
     } else {
-      return iconsData.slice(17);
+      return iconsData.slice(19, 23);
     }
   };
 
   // 渲染顶部Bar
   const renderTopBar = () => (
-    <View style={styles.topBar}>
+    <View style={themedStyles.topBar}>
       <TouchableOpacity onPress={() => console.log('QR Code')}>
-        <IconComponent name="qrscan" width={24} height={24} />
+        <IconComponent name="qrscan" width={commonSizes.iconSize} height={commonSizes.iconSize} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => console.log('Moon Mode')}>
-        <IconComponent name="moon_mode" width={24} height={24} />
+        <IconComponent name="moon_mode" width={commonSizes.iconSize} height={commonSizes.iconSize} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => console.log('Settings')}>
-        <IconComponent name="settings" width={24} height={24} />
+        <IconComponent name="settings" width={commonSizes.iconSize} height={commonSizes.iconSize} />
       </TouchableOpacity>
-      </View>
+    </View>
   );
 
   // 渲染登录栏
   const renderLoginBar = () => (
-    <View style={styles.loginBar}>
-      <View style={styles.avatar}>
+    <View style={themedStyles.loginBar}>
+      <View style={themedStyles.avatar}>
         {photo ? (
-          <View style={styles.avatarImage} />
+          <View style={themedStyles.avatarImage} />
         ) : (
-          <View style={styles.defaultAvatar} />
+          <View style={themedStyles.defaultAvatar} />
         )}
       </View>
-      <TouchableOpacity onPress={toLogin} style={styles.loginButton}>
-        <Text style={styles.loginText}>
+      <TouchableOpacity onPress={toLogin} style={themedStyles.loginButton}>
+        <Text style={themedStyles.loginText}>
           {isLoggedIn && nickname ? nickname : '点击登录/注册'}
         </Text>
       </TouchableOpacity>
@@ -281,130 +265,150 @@ const HomePage: React.FC = () => {
   const renderIcon = (iconData: IconData, index: number) => (
     <TouchableOpacity 
       key={iconData.id} 
-      style={styles.iconItem} 
+      style={themedStyles.iconItem} 
       onPress={iconData.onPress}
     >
-      <IconComponent name={iconData.icon} width={40} height={40} />
-      <Text style={styles.iconText}>{iconData.name}</Text>
+      <IconComponent name={iconData.icon} width={wp(25)} height={wp(25)} />
+      <Text style={themedStyles.iconText}>{iconData.name}</Text>
     </TouchableOpacity>
   );
 
   // 渲染广告组件
   const renderAdvertisement = () => (
-    <View style={styles.advertisement}>
-      <View style={styles.adBookCover} />
-      <View style={styles.adContent}>
-        <Text style={styles.adTitle} numberOfLines={2}>
+    <View style={themedStyles.advertisement}>
+      <View style={themedStyles.adBookCover} />
+      <View style={themedStyles.adContent}>
+        <Text style={themedStyles.adTitle} numberOfLines={2}>
           加饰披摩，高冷校花消不住了
         </Text>
-        <Text style={styles.adAuthor} numberOfLines={1}>
+        <Text style={themedStyles.adAuthor} numberOfLines={1}>
           书时真
         </Text>
       </View>
-      <TouchableOpacity style={styles.continueReading}>
-        <Text style={styles.continueText}>继续阅读 &gt;</Text>
+      <TouchableOpacity style={themedStyles.continueReading}>
+        <Text style={themedStyles.continueText}>继续阅读 &gt;</Text>
       </TouchableOpacity>
     </View>
   );
 
-  // 渲染可滑动区域
+  // 渲染可滑动区域 - 修复间距问题并添加动画
   const renderScrollableArea = () => {
     const totalPages = 3;
     
     return (
-      <View style={styles.scrollableContainer}>
-        <ScrollView 
-          horizontal 
-          pagingEnabled 
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event: any) => {
-            const pageIndex = Math.round(event.nativeEvent.contentOffset.x / 350);
-            setCurrentPage(pageIndex);
-          }}
-          style={[
-            styles.scrollArea,
-            { height: currentPage === 0 ? 200 : 400 }
-          ]}
-        >
-          {/* 第一页：5个图标 + 广告 */}
-          <View style={[styles.page, { width: 350 }]}>
-            <View style={styles.firstPageIcons}>
-              {getPageIcons(0).map((iconData, index) => renderIcon(iconData, index))}
-        </View>
-        {renderAdvertisement()}
-      </View>
+      <View style={themedStyles.scrollableContainer}>
+        <Animated.View style={[themedStyles.scrollArea, animatedContainerStyle]}>
+          <ScrollView 
+            horizontal 
+            pagingEnabled 
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event: any) => {
+              const pageIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+              setCurrentPage(pageIndex);
+            }}
+            onScroll={(event: any) => {
+              scrollX.value = event.nativeEvent.contentOffset.x;
+            }}
+            scrollEventThrottle={16}
+          >
+            {/* 第一页：4个图标 + 广告 */}
+            <View style={[themedStyles.page, { width: pageWidth }]}>
+              <Animated.View style={[themedStyles.firstPageIcons, firstPageIconsStyle]}>
+                {getPageIcons(0).map((iconData, index) => renderIcon(iconData, index))}
+              </Animated.View>
+              <Animated.View style={firstPageAdStyle}>
+                {renderAdvertisement()}
+              </Animated.View>
+            </View>
 
-          {/* 第二页：3x4图标布局 */}
-          <View style={[styles.page, { width: 350 }]}>
-            <View style={styles.gridContainer}>
-              {getPageIcons(1).map((iconData, index) => renderIcon(iconData, index))}
-      </View>
-    </View>
+            {/* 第二页：15个图标布局 */}
+            <View style={[themedStyles.page, { width: pageWidth }]}>
+              <Animated.View style={[themedStyles.gridContainer, secondPageIconsStyle]}>
+                {getPageIcons(1).map((iconData, index) => renderIcon(iconData, index))}
+              </Animated.View>
+            </View>
 
-          {/* 最后一页：剩余图标 */}
-          <View style={[styles.page, { width: 350 }]}>
-            <View style={styles.lastPageContainer}>
-              {getPageIcons(2).map((iconData, index) => renderIcon(iconData, index))}
-      </View>
-    </View>
-        </ScrollView>
+            {/* 第三页：剩余图标 */}
+            <View style={[themedStyles.page, { width: pageWidth }]}>
+              <Animated.View style={[themedStyles.lastPageContainer, thirdPageIconsStyle]}>
+                {getPageIcons(2).map((iconData, index) => renderIcon(iconData, index))}
+              </Animated.View>
+            </View>
+          </ScrollView>
+        </Animated.View>
         
-        {/* 页面指示器 */}
-        <View style={styles.pageIndicator}>
-          {Array.from({ length: totalPages }).map((_, index) => (
-        <View
-          key={index}
-          style={[
-                styles.dot, 
-                currentPage === index && styles.activeDot
-          ]}
-        />
-      ))}
+        {/* 动画页面指示器 */}
+        <View style={themedStyles.pageIndicator}>
+          {Array.from({ length: totalPages }).map((_, index) => {
+            // 为每个指示器创建动画样式
+            const animatedDotStyle = useAnimatedStyle(() => {
+              const isActive = Math.round(scrollX.value / pageWidth) === index;
+              return {
+                backgroundColor: withTiming(
+                  isActive ? colors.novelMain : '#cccccc',
+                  { duration: 200 }
+                ),
+                transform: [
+                  {
+                    scale: withTiming(
+                      isActive ? 1.2 : 1,
+                      { duration: 200 }
+                    )
+                  }
+                ]
+              };
+            });
+
+            return (
+              <Animated.View
+                key={index}
+                style={[themedStyles.dot, animatedDotStyle]}
+              />
+            );
+          })}
         </View>
-    </View>
-  );
+      </View>
+    );
   };
 
   // 渲染底部方框
   const renderBottomBox = () => (
-    <View style={styles.bottomBox}>
+    <View style={themedStyles.bottomBox}>
       {/* 第一行：金币余额信息 */}
-      <View style={styles.balanceRow}>
-        <Text style={styles.balanceText}>{coins} 金币</Text>
-        <Text style={styles.balanceText}>{balance.toFixed(2)} 余额（元）</Text>
-        <TouchableOpacity style={styles.withdrawButton}>
-          <Text style={styles.withdrawText}>微信提现 &gt;</Text>
+      <View style={themedStyles.balanceRow}>
+        <Text style={themedStyles.balanceText}>{coins} 金币</Text>
+        <Text style={themedStyles.balanceText}>{balance.toFixed(2)} 余额（元）</Text>
+        <TouchableOpacity style={themedStyles.withdrawButton}>
+          <Text style={themedStyles.withdrawText}>微信提现 &gt;</Text>
         </TouchableOpacity>
       </View>
       
       {/* 第二行：广告 */}
-      <View style={styles.bottomAd}>
-      {renderAdvertisement()}
+      <View style={themedStyles.bottomAd}>
+        {renderAdvertisement()}
       </View>
     </View>
   );
 
   // 渲染推荐瀑布流
   const renderWaterfallGrid = () => {
-    if (recommendBooks.length === 0 && !loading) {
+    if (convertedBooks.length === 0 && !homeRecommendLoading) {
       return (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>暂无推荐书籍</Text>
+        <View style={themedStyles.emptyContainer}>
+          <Text style={themedStyles.emptyText}>暂无推荐书籍</Text>
         </View>
       );
     }
 
     // 将书籍分为两列
-    const leftColumnBooks = recommendBooks.filter((_, index) => index % 2 === 0);
-    const rightColumnBooks = recommendBooks.filter((_, index) => index % 2 === 1);
+    const leftColumnBooks = convertedBooks.filter((_, index) => index % 2 === 0);
+    const rightColumnBooks = convertedBooks.filter((_, index) => index % 2 === 1);
 
     return (
-      <View style={styles.waterfallContainer}>
-        <Text style={styles.waterfallTitle}>📚 推荐书籍</Text>
-        
-        <View style={styles.waterfallGrid}>
+      <View>
+        <View style={themedStyles.waterfallGrid}>
           {/* 左列 */}
-          <View style={styles.waterfallColumn}>
+          <View style={themedStyles.waterfallColumn}>
             {leftColumnBooks.map((book, index) => (
               <BookItem 
                 key={`left-${book.id}`}
@@ -415,8 +419,12 @@ const HomePage: React.FC = () => {
             ))}
           </View>
           
+          <View style={{
+            width: wp(10),
+          }}></View>
+
           {/* 右列 */}
-          <View style={styles.waterfallColumn}>
+          <View style={themedStyles.waterfallColumn}>
             {rightColumnBooks.map((book, index) => (
               <BookItem 
                 key={`right-${book.id}`}
@@ -429,34 +437,280 @@ const HomePage: React.FC = () => {
         </View>
         
         {/* 加载更多按钮 */}
-        {hasMore && (
+        {hasMoreHomeRecommend && (
           <TouchableOpacity 
-            style={styles.loadMoreButton} 
+            style={themedStyles.loadMoreButton} 
             onPress={handleLoadMore}
-            disabled={isLoadingMore}
+            disabled={homeRecommendLoading}
           >
-            <Text style={styles.loadMoreText}>
-              {isLoadingMore ? '加载中...' : '加载更多'}
+            <Text style={themedStyles.loadMoreText}>
+              {homeRecommendLoading ? '加载中...' : '加载更多'}
             </Text>
           </TouchableOpacity>
         )}
         
-        <LoadMoreIndicator loading={isLoadingMore} hasMore={hasMore} />
+        <LoadMoreIndicator loading={homeRecommendLoading} hasMore={hasMoreHomeRecommend} />
       </View>
     );
   };
 
+  // 创建使用主题的动态样式
+  const createThemedStyles = () => StyleSheet.create({
+    // 继承基础样式
+    ...styles,
+    // 覆盖需要使用主题的样式
+    container: {
+      ...styles.container,
+      backgroundColor: colors.novelBackground,
+    },
+    loginText: {
+      ...typography.bodyMedium,
+      color: colors.novelText,
+    },
+    iconText: {
+      ...typography.labelSmall,
+      color: colors.novelText,
+      textAlign: 'center',
+      lineHeight: fp(16),
+      marginTop: wp(5),
+    },
+    adTitle: {
+      ...typography.labelLarge,
+      fontWeight: '600',
+      color: colors.novelText,
+      lineHeight: fp(18),
+    },
+    adAuthor: {
+      ...typography.labelSmall,
+      color: colors.novelText,
+      opacity: 0.7,
+      lineHeight: fp(16),
+    },
+    continueText: {
+      ...typography.labelSmall,
+      color: colors.novelMain,
+      fontWeight: '500',
+    },
+    balanceText: {
+      ...typography.labelLarge,
+      color: colors.novelText,
+      fontWeight: '500',
+    },
+    withdrawText: {
+      ...typography.labelSmall,
+      color: '#4caf50',
+      fontWeight: '500',
+    },
+    emptyText: {
+      ...typography.bodyMedium,
+      color: colors.novelText,
+      opacity: 0.6,
+    },
+    waterfallTitle: {
+      ...typography.titleLarge,
+      color: colors.novelText,
+      marginBottom: wp(10),
+    },
+    waterfallBookTitle: {
+      ...typography.labelLarge,
+      fontWeight: '600',
+      color: colors.novelText,
+      lineHeight: fp(18),
+      marginBottom: wp(5),
+    },
+    waterfallBookAuthor: {
+      ...typography.labelSmall,
+      color: colors.novelText,
+      opacity: 0.7,
+      lineHeight: fp(16),
+      marginBottom: wp(5),
+    },
+    waterfallBookDescription: {
+      ...typography.labelSmall,
+      color: colors.novelText,
+      opacity: 0.6,
+      lineHeight: fp(16),
+      marginBottom: wp(5),
+    },
+    loadMoreText: {
+      ...typography.labelLarge,
+      color: '#FFFFFF',
+      fontWeight: '600',
+    },
+    waterfallLoadingText: {
+      ...typography.labelLarge,
+      color: colors.novelText,
+      opacity: 0.6,
+    },
+    waterfallEndText: {
+      ...typography.labelSmall,
+      color: colors.novelText,
+      opacity: 0.5,
+      marginHorizontal: wp(10),
+    },
+    bottomBox: {
+      width: wp(350),
+      height: wp(200),
+      backgroundColor: '#ffffff',
+      borderRadius: sp(10),
+      padding: wp(20),
+      alignSelf: 'center',
+      marginVertical: wp(10),
+    },
+    balanceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: wp(20),
+    },
+    withdrawButton: {
+      paddingHorizontal: wp(10),
+      paddingVertical: wp(5),
+    },
+    waterfallGrid: {
+      flexDirection: 'row',
+      gap: wp(10),
+    },
+    waterfallColumn: {
+      flex: 1,
+    },
+    loadMoreButton: {
+      backgroundColor: colors.novelMain,
+      paddingVertical: wp(12),
+      paddingHorizontal: wp(24),
+      borderRadius: sp(6),
+      alignSelf: 'center',
+      marginVertical: wp(15),
+    },
+  });
+  
+  const themedStyles = createThemedStyles();
+
+  // 格式化阅读数
+  const formatReadCount = (count: number): string => {
+    if (count >= 10000) {
+      return `${(count / 10000).toFixed(1)}万`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}k`;
+    }
+    return count.toString();
+  };
+
+  // 使用React.memo优化BookItem - 移到组件内部
+  const BookItem: React.FC<BookItemProps> = React.memo(({ book, onPress, index }) => {
+    // 使用缓存的高度，避免每次重新计算
+    const imageHeight = React.useMemo(() => {
+      if (itemHeightCache.has(book.id)) {
+        return itemHeightCache.get(book.id)!;
+      }
+      const baseHeight = wp(180); // 基于852px高度适配
+      const variableHeight = (book.id * 17) % wp(60); // 使用ID计算，保证一致性
+      const height = baseHeight + variableHeight;
+      itemHeightCache.set(book.id, height);
+      return height;
+    }, [book.id]);
+
+    // 根据描述长度决定显示行数
+    const descriptionLines = React.useMemo(() => {
+      if (!book.description) return 1;
+      if (book.description.length > 80) return 3;
+      if (book.description.length > 40) return 2;
+      return 1;
+    }, [book.description]);
+
+    return (
+      <TouchableOpacity 
+        style={[themedStyles.waterfallBookItem, { width: (screenWidth - wp(45)) / 2 }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {/* 书籍封面 */}
+        <View style={[themedStyles.waterfallBookCover, { height: imageHeight }]}>
+          {book.coverUrl ? (
+            <Image 
+              source={{ uri: book.coverUrl }} 
+              style={themedStyles.waterfallCoverImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={themedStyles.waterfallPlaceholderCover}>
+              <Text style={themedStyles.waterfallPlaceholderText}>暂无封面</Text>
+            </View>
+          )}
+        </View>
+        
+        {/* 书籍信息 */}
+        <View style={themedStyles.waterfallBookInfo}>
+          {/* 书名 */}
+          <Text 
+            style={themedStyles.waterfallBookTitle}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {book.title}
+          </Text>
+          
+          {/* 作者 */}
+          <Text 
+            style={themedStyles.waterfallBookAuthor}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {book.author}
+          </Text>
+          
+          {/* 描述 */}
+          {book.description && (
+            <Text 
+              style={themedStyles.waterfallBookDescription}
+              numberOfLines={descriptionLines}
+              ellipsizeMode="tail"
+            >
+              {book.description}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  });
+
+  // 加载更多指示器 - 移到组件内部
+  const LoadMoreIndicator: React.FC<{
+    loading: boolean;
+    hasMore: boolean;
+  }> = React.memo(({ loading, hasMore }) => {
+    if (loading) {
+      return (
+        <View style={themedStyles.waterfallLoadingContainer}>
+          <Text style={themedStyles.waterfallLoadingText}>加载中...</Text>
+        </View>
+      );
+    }
+
+    if (!hasMore) {
+      return (
+        <View style={themedStyles.waterfallLoadingContainer}>
+          <View style={themedStyles.waterfallEndLine} />
+          <Text style={themedStyles.waterfallEndText}>已加载全部</Text>
+          <View style={themedStyles.waterfallEndLine} />
+        </View>
+      );
+    }
+
+    return null;
+  });
+
   return (
     <ScrollView 
-      style={styles.container} 
+      style={themedStyles.container} 
       showsVerticalScrollIndicator={false}
     >
-        {renderTopBar()}
+      {renderTopBar()}
       {renderLoginBar()}
       {renderScrollableArea()}
       {renderBottomBox()}
       {renderWaterfallGrid()}
-      </ScrollView>
+    </ScrollView>
   );
 };
 
@@ -464,7 +718,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingHorizontal: 15,
+    paddingHorizontal: wp(15),
   },
   
   // 顶部Bar样式
@@ -472,21 +726,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingVertical: 10,
-    gap: 15,
+    paddingVertical: wp(10),
+    gap: wp(15),
   },
   
   // 登录栏样式
   loginBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    gap: 15,
+    paddingVertical: wp(15),
+    gap: wp(15),
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: sp(50),
+    height: sp(50),
+    borderRadius: sp(25),
     overflow: 'hidden',
   },
   avatarImage: {
@@ -497,30 +751,35 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#000000',
-    borderRadius: 25,
+    borderRadius: sp(25),
   },
   loginButton: {
     flex: 1,
   },
   loginText: {
-    fontSize: 16,
+    fontSize: fp(16),
     color: '#333333',
     fontWeight: '500',
   },
   
   // 可滑动区域样式
   scrollableContainer: {
+    borderRadius: sp(10),
+    width: wp(350), // 调整为与pageWidth一致
     alignItems: 'center',
-    marginVertical: 10,
+    backgroundColor: '#ffffff',
+    marginVertical: wp(10),
+    paddingBottom: wp(15),
   },
   scrollArea: {
-    width: 350,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 20,
+    width: wp(350),
+    borderRadius: sp(10),
+    overflow: 'hidden', // 确保内容不会溢出动画容器
+    paddingTop: wp(20),
   },
   page: {
-    paddingHorizontal: 20,
+    paddingHorizontal: wp(20),
+    width: wp(350), // 确保页面宽度一致
   },
   
   // 第一页样式
@@ -528,16 +787,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-around',
-    gap: 15,
-    marginBottom: 20,
+    gap: wp(10),
+    marginBottom: wp(10),
   },
   
   // 第二页网格布局
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 20,
+    justifyContent: 'space-around',
+    gap: wp(10),
   },
   
   // 最后一页布局
@@ -545,38 +804,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
-    gap: 20,
+    gap: wp(10),
   },
   
   // 图标样式
   iconItem: {
-    width: 60,
+    width: wp(60),
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: wp(15),
   },
   iconText: {
-    fontSize: 12,
-    color: '#666666',
+    fontSize: fp(12),
+    color: useNovelColors().novelText,
     textAlign: 'center',
-    lineHeight: 16,
-    marginTop: 5,
+    lineHeight: fp(16),
+    marginTop: wp(5),
   },
   
   // 页面指示器
   pageIndicator: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 10,
-    gap: 8,
+    gap: wp(3),
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#cccccc',
-  },
-  activeDot: {
-    backgroundColor: '#ff6b6b',
+    width: sp(3),
+    height: sp(3),
+    borderRadius: sp(3),
+    backgroundColor: useNovelColors().novelMain, // 默认颜色，动画会覆盖这个值
   },
   
   // 广告组件样式
@@ -584,68 +839,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 15,
-    gap: 10,
+    borderRadius: sp(8),
+    padding: wp(15),
+    gap: wp(10),
   },
   adBookCover: {
-    width: 30,
-    height: 20,
+    width: wp(30),
+    height: wp(20),
     backgroundColor: '#000000',
-    borderRadius: 5,
+    borderRadius: sp(5),
   },
   adContent: {
     flex: 1,
-    gap: 5,
+    gap: wp(5),
   },
   adTitle: {
-    fontSize: 14,
+    fontSize: fp(14),
     fontWeight: '600',
     color: '#333333',
-    lineHeight: 18,
+    lineHeight: fp(18),
   },
   adAuthor: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#666666',
-    lineHeight: 16,
+    lineHeight: fp(16),
   },
   continueReading: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: wp(10),
+    paddingVertical: wp(5),
   },
   continueText: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#ff6b6b',
     fontWeight: '500',
   },
   
   // 底部方框样式
   bottomBox: {
-    width: 350,
-    height: 200,
+    width: wp(350),
+    height: wp(200),
     backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 20,
+    borderRadius: sp(10),
+    padding: wp(20),
     alignSelf: 'center',
-    marginVertical: 10,
+    marginVertical: wp(10),
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: wp(20),
   },
   balanceText: {
-    fontSize: 14,
+    fontSize: fp(14),
     color: '#333333',
     fontWeight: '500',
   },
   withdrawButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: wp(10),
+    paddingVertical: wp(5),
   },
   withdrawText: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#4caf50',
     fontWeight: '500',
   },
@@ -653,36 +908,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  waterfallContainer: {
-    padding: 10,
-  },
+
   waterfallTitle: {
-    fontSize: 18,
+    fontSize: fp(18),
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: wp(10),
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    paddingVertical: wp(50),
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: fp(16),
     color: '#666666',
   },
   // 瀑布流样式
   waterfallGrid: {
     flexDirection: 'row',
-    gap: 10,
+    gap: wp(10),
   },
   waterfallColumn: {
     flex: 1,
   },
   waterfallBookItem: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    marginBottom: 10,
+    borderRadius: sp(8),
+    marginBottom: wp(10),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -706,72 +959,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   waterfallPlaceholderText: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#999999',
   },
   waterfallBookInfo: {
-    padding: 10,
+    padding: wp(10),
   },
   waterfallBookTitle: {
-    fontSize: 14,
+    fontSize: fp(14),
     fontWeight: '600',
     color: '#333333',
-    lineHeight: 18,
-    marginBottom: 5,
+    lineHeight: fp(18),
+    marginBottom: wp(5),
   },
   waterfallBookAuthor: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#666666',
-    lineHeight: 16,
-    marginBottom: 5,
+    lineHeight: fp(16),
+    marginBottom: wp(5),
   },
   waterfallBookDescription: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#666666',
-    lineHeight: 16,
-    marginBottom: 5,
+    lineHeight: fp(16),
+    marginBottom: wp(5),
   },
   waterfallBookMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 5,
+    marginTop: wp(5),
   },
   waterfallMetaText: {
-    fontSize: 10,
+    fontSize: fp(10),
     color: '#999999',
   },
   waterfallLoadingContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
-    gap: 8,
+    paddingVertical: wp(20),
+    gap: wp(8),
   },
   waterfallLoadingText: {
-    fontSize: 14,
+    fontSize: fp(14),
     color: '#666666',
   },
   waterfallEndLine: {
-    width: 30,
-    height: 1,
+    width: wp(30),
+    height: wp(1),
     backgroundColor: '#CCCCCC',
   },
   waterfallEndText: {
-    fontSize: 12,
+    fontSize: fp(12),
     color: '#999999',
-    marginHorizontal: 10,
-  },
-  loadMoreButton: {
-    backgroundColor: '#FF6B6B',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 6,
-    alignSelf: 'center',
-    marginVertical: 15,
+    marginHorizontal: wp(10),
   },
   loadMoreText: {
+    ...typography.labelLarge,
     color: '#FFFFFF',
-    fontSize: 14,
     fontWeight: '600',
   },
 });
