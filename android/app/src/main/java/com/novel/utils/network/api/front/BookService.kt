@@ -164,7 +164,7 @@ class BookService @Inject constructor() {
     /**
      * 小说信息查询接口
      */
-    fun getBookById(
+    private fun getBookById(
         bookId: Long,
         callback: (BookInfoResponse?, Throwable?) -> Unit
     ) {
@@ -182,7 +182,7 @@ class BookService @Inject constructor() {
     /**
      * 小说点击榜查询接口
      */
-    fun getVisitRankBooks(
+    private fun getVisitRankBooks(
         callback: (BookRankResponse?, Throwable?) -> Unit
     ) {
         Log.d("BookService", "开始 getVisitRankBooks()")
@@ -199,7 +199,7 @@ class BookService @Inject constructor() {
     /**
      * 小说更新榜查询接口
      */
-    fun getUpdateRankBooks(
+    private fun getUpdateRankBooks(
         callback: (BookRankResponse?, Throwable?) -> Unit
     ) {
         Log.d("BookService", "开始 getUpdateRankBooks()")
@@ -216,7 +216,7 @@ class BookService @Inject constructor() {
     /**
      * 小说新书榜查询接口
      */
-    fun getNewestRankBooks(
+    private fun getNewestRankBooks(
         callback: (BookRankResponse?, Throwable?) -> Unit
     ) {
         Log.d("BookService", "开始 getNewestRankBooks()")
@@ -233,7 +233,7 @@ class BookService @Inject constructor() {
     /**
      * 小说推荐列表查询接口
      */
-    fun getRecommendBooks(
+    private fun getRecommendBooks(
         bookId: Long,
         callback: (BookListResponse?, Throwable?) -> Unit
     ) {
@@ -252,7 +252,7 @@ class BookService @Inject constructor() {
     /**
      * 小说章节列表查询接口
      */
-    fun getBookChapters(
+    private fun getBookChapters(
         bookId: Long,
         callback: (BookChapterResponse?, Throwable?) -> Unit
     ) {
@@ -271,7 +271,7 @@ class BookService @Inject constructor() {
     /**
      * 小说内容相关信息查询接口
      */
-    fun getBookContent(
+    private fun getBookContent(
         chapterId: Long,
         callback: (BookContentResponse?, Throwable?) -> Unit
     ) {
@@ -289,7 +289,7 @@ class BookService @Inject constructor() {
     /**
      * 小说最新评论查询接口
      */
-    fun getNewestComments(
+    private fun getNewestComments(
         bookId: Long,
         callback: (BookCommentResponse?, Throwable?) -> Unit
     ) {
@@ -308,7 +308,7 @@ class BookService @Inject constructor() {
     /**
      * 小说分类列表查询接口
      */
-    fun getBookCategories(
+    private fun getBookCategories(
         workDirection: Int,
         callback: (BookCategoryResponse?, Throwable?) -> Unit
     ) {
@@ -327,7 +327,7 @@ class BookService @Inject constructor() {
     /**
      * 获取上一章节ID接口
      */
-    fun getPreChapterId(
+    private fun getPreChapterId(
         chapterId: Long,
         callback: (ChapterIdResponse?, Throwable?) -> Unit
     ) {
@@ -345,7 +345,7 @@ class BookService @Inject constructor() {
     /**
      * 获取下一章节ID接口
      */
-    fun getNextChapterId(
+    private fun getNextChapterId(
         chapterId: Long,
         callback: (ChapterIdResponse?, Throwable?) -> Unit
     ) {
@@ -363,7 +363,7 @@ class BookService @Inject constructor() {
     /**
      * 小说最新章节相关信息查询接口
      */
-    fun getLastChapterAbout(
+    private fun getLastChapterAbout(
         bookId: Long,
         callback: (BookChapterAboutResponse?, Throwable?) -> Unit
     ) {
@@ -382,7 +382,7 @@ class BookService @Inject constructor() {
     /**
      * 增加小说点击量接口
      */
-    fun addVisitCount(
+    private fun addVisitCount(
         bookId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -401,7 +401,6 @@ class BookService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getBookByIdBlocking(bookId: Long): BookInfoResponse {
         return suspendCancellableCoroutine { cont ->
             getBookById(bookId) { response, error ->
@@ -415,7 +414,6 @@ class BookService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getBookContentBlocking(chapterId: Long): BookContentResponse {
         return suspendCancellableCoroutine { cont ->
             getBookContent(chapterId) { response, error ->
@@ -429,7 +427,6 @@ class BookService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getBookChaptersBlocking(bookId: Long): BookChapterResponse {
         return suspendCancellableCoroutine { cont ->
             getBookChapters(bookId) { response, error ->
@@ -443,7 +440,6 @@ class BookService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getVisitRankBooksBlocking(): BookRankResponse {
         return suspendCancellableCoroutine { cont ->
             getVisitRankBooks { response, error ->
@@ -456,8 +452,7 @@ class BookService @Inject constructor() {
             }
         }
     }
-    
-    @OptIn(ExperimentalCoroutinesApi::class)
+
     suspend fun getUpdateRankBooksBlocking(): BookRankResponse {
         return suspendCancellableCoroutine { cont ->
             getUpdateRankBooks { response, error ->
@@ -470,8 +465,7 @@ class BookService @Inject constructor() {
             }
         }
     }
-    
-    @OptIn(ExperimentalCoroutinesApi::class)
+
     suspend fun getNewestRankBooksBlocking(): BookRankResponse {
         return suspendCancellableCoroutine { cont ->
             getNewestRankBooks { response, error ->
@@ -485,7 +479,6 @@ class BookService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getBookCategoriesBlocking(workDirection: Int): BookCategoryResponse {
         return suspendCancellableCoroutine { cont ->
             getBookCategories(workDirection) { response, error ->

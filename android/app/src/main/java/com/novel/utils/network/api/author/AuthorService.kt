@@ -132,7 +132,7 @@ class AuthorService @Inject constructor() {
     /**
      * 作家注册接口
      */
-    fun registerAuthor(
+    private fun registerAuthor(
         request: AuthorRegisterRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -162,7 +162,7 @@ class AuthorService @Inject constructor() {
     /**
      * 作家状态查询接口
      */
-    fun getAuthorStatus(
+    private fun getAuthorStatus(
         callback: (AuthorStatusResponse?, Throwable?) -> Unit
     ) {
         Log.d("AuthorService", "开始 getAuthorStatus()")
@@ -179,7 +179,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说发布接口
      */
-    fun publishBook(
+    private fun publishBook(
         request: BookAddRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -211,7 +211,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说发布列表查询接口
      */
-    fun getAuthorBooks(
+    private fun getAuthorBooks(
         pageNum: Int = 1,
         pageSize: Int = 10,
         callback: (BookListResponse?, Throwable?) -> Unit
@@ -236,7 +236,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说章节发布接口
      */
-    fun publishChapter(
+    private fun publishChapter(
         bookId: Long,
         request: ChapterAddRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
@@ -266,7 +266,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说章节发布列表查询接口
      */
-    fun getBookChapters(
+    private fun getBookChapters(
         bookId: Long,
         pageNum: Int = 1,
         pageSize: Int = 10,
@@ -292,7 +292,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说章节查询接口
      */
-    fun getChapter(
+    private fun getChapter(
         chapterId: Long,
         callback: (ChapterContentResponse?, Throwable?) -> Unit
     ) {
@@ -310,7 +310,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说章节更新接口
      */
-    fun updateChapter(
+    private fun updateChapter(
         chapterId: Long,
         request: ChapterUpdateRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
@@ -336,7 +336,7 @@ class AuthorService @Inject constructor() {
     /**
      * 小说章节删除接口
      */
-    fun deleteChapter(
+    private fun deleteChapter(
         chapterId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -354,7 +354,6 @@ class AuthorService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun registerAuthorBlocking(request: AuthorRegisterRequest): BaseResponse {
         return suspendCancellableCoroutine { cont ->
             registerAuthor(request) { response, error ->
@@ -368,7 +367,6 @@ class AuthorService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getAuthorStatusBlocking(): AuthorStatusResponse {
         return suspendCancellableCoroutine { cont ->
             getAuthorStatus { response, error ->
@@ -382,7 +380,6 @@ class AuthorService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun publishBookBlocking(request: BookAddRequest): BaseResponse {
         return suspendCancellableCoroutine { cont ->
             publishBook(request) { response, error ->
@@ -396,7 +393,6 @@ class AuthorService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getAuthorBooksBlocking(pageNum: Int = 1, pageSize: Int = 10): BookListResponse {
         return suspendCancellableCoroutine { cont ->
             getAuthorBooks(pageNum, pageSize) { response, error ->
@@ -410,7 +406,6 @@ class AuthorService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun publishChapterBlocking(bookId: Long, request: ChapterAddRequest): BaseResponse {
         return suspendCancellableCoroutine { cont ->
             publishChapter(bookId, request) { response, error ->
@@ -424,7 +419,6 @@ class AuthorService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getChapterBlocking(chapterId: Long): ChapterContentResponse {
         return suspendCancellableCoroutine { cont ->
             getChapter(chapterId) { response, error ->

@@ -1,4 +1,4 @@
-package com.atcumt.kxq.utils
+package com.novel.utils
 
 object ValidationUtil {
 

@@ -131,43 +131,6 @@ object ApiService {
             .enqueue(createCallback(callback))
     }
 
-    /**
-     * 支持 SSE 流式响应的方法，专用于 AI 对话
-     * @param baseUrl 服务基础地址
-     * @param endpoint 接口路径
-     * @param params 请求参数，会被序列化为 JSON
-     * @param headers 请求头信息
-     * @param listener SSE 事件监听器，可处理 onEvent、onClosed 等回调
-     */
-    fun ssePost(
-        baseUrl: String,
-        endpoint: String,
-        params: Map<String, String> = mapOf(),
-        headers: Map<String, String> = mapOf(),
-        listener: EventSourceListener
-    ) {
-        val url = baseUrl + endpoint
-        Log.d(TAG, "创建 SSE 请求 ➜ URL: $url, params: $params, headers: $headers")
-
-        val client = (RetrofitClient.getRetrofit(baseUrl).callFactory() as? OkHttpClient)
-            ?: OkHttpClient()
-        val body = createJsonBody(params)
-        val requestBuilder = Request.Builder()
-            .url(url)
-            .post(body)
-            .header("Accept", "text/event-stream")
-        headers.forEach { (key, value) ->
-            requestBuilder.header(key, value)
-        }
-        val request = requestBuilder.build()
-        Log.d(TAG, "SSE 请求构建完毕，开始连接…")
-
-        EventSources.createFactory(client)
-            .newEventSource(request, listener)
-
-        Log.d(TAG, "SSE newEventSource 调用完成")
-    }
-
     // DELETE 请求方法
     fun delete(
         baseUrl: String,

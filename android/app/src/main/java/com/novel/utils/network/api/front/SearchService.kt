@@ -69,7 +69,7 @@ class SearchService @Inject constructor() {
     /**
      * 小说搜索接口
      */
-    fun searchBooks(
+    private fun searchBooks(
         request: SearchRequest,
         callback: (BookSearchResponse?, Throwable?) -> Unit
     ) {
@@ -101,7 +101,7 @@ class SearchService @Inject constructor() {
     /**
      * 简化的搜索方法，只需要关键字
      */
-    fun searchBooksByKeyword(
+    private fun searchBooksByKeyword(
         keyword: String,
         pageNum: Int = 1,
         pageSize: Int = 10,
@@ -118,7 +118,7 @@ class SearchService @Inject constructor() {
     /**
      * 按分类搜索
      */
-    fun searchBooksByCategory(
+    private fun searchBooksByCategory(
         categoryId: Int,
         workDirection: Int,
         pageNum: Int = 1,
@@ -137,7 +137,7 @@ class SearchService @Inject constructor() {
     /**
      * 高级搜索
      */
-    fun advancedSearch(
+    private fun advancedSearch(
         keyword: String? = null,
         workDirection: Int? = null,
         categoryId: Int? = null,
@@ -168,7 +168,6 @@ class SearchService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun searchBooksBlocking(request: SearchRequest): BookSearchResponse {
         return suspendCancellableCoroutine { cont ->
             searchBooks(request) { response, error ->
@@ -182,7 +181,6 @@ class SearchService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun searchBooksByKeywordBlocking(
         keyword: String,
         pageNum: Int = 1,

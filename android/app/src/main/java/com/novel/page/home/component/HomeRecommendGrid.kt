@@ -1,5 +1,6 @@
 package com.novel.page.home.component
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,18 +18,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.novel.page.component.NovelDivider
 import com.novel.page.component.NovelText
 import com.novel.page.component.NovelImageView
 import com.novel.page.home.utils.HomePerformanceOptimizer
 import com.novel.ui.theme.NovelColors
-import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.wdp
 import com.novel.utils.ssp
-import kotlin.random.Random
 
 /**
  * 首页推荐书籍瀑布流网格组件 - 真正的参差不齐瀑布流布局
@@ -39,7 +37,7 @@ fun HomeRecommendGrid(
     homeBooks: List<HomeService.HomeBook> = emptyList(),
     onBookClick: (Long) -> Unit,
     onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
     fixedHeight: Boolean = false  // 新增参数，用于在 LazyColumn 中使用
 ) {
     if (fixedHeight) {

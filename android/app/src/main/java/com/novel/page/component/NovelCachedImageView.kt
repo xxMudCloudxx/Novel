@@ -99,7 +99,7 @@ class HttpImageLoaderService @Inject constructor(
                     .url(fullUrl)
                     .get()
                 if (needToken) tokenProvider.getToken()?.let {
-                    reqBuilder.header("Authorization", "$it")
+                    reqBuilder.header("Authorization", it)
                 }
                 
                 // 4. 执行请求（OkHttp 自动硬盘缓存）

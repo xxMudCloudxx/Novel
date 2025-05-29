@@ -49,7 +49,7 @@ class HomeService @Inject constructor() {
     /**
      * 首页小说推荐查询接口
      */
-    fun getHomeBooks(
+    private fun getHomeBooks(
         callback: (HomeBooksResponse?, Throwable?) -> Unit
     ) {
         Log.d("HomeService", "开始 getHomeBooks()")
@@ -66,7 +66,7 @@ class HomeService @Inject constructor() {
     /**
      * 首页友情链接列表查询接口
      */
-    fun getFriendLinks(
+    private fun getFriendLinks(
         callback: (FriendLinksResponse?, Throwable?) -> Unit
     ) {
         Log.d("HomeService", "开始 getFriendLinks()")
@@ -83,7 +83,7 @@ class HomeService @Inject constructor() {
     /**
      * 获取特定类型的推荐书籍
      */
-    fun getBooksByType(
+    private fun getBooksByType(
         type: Int,
         callback: (List<HomeBook>?, Throwable?) -> Unit
     ) {
@@ -100,14 +100,14 @@ class HomeService @Inject constructor() {
     /**
      * 获取轮播图书籍
      */
-    fun getCarouselBooks(callback: (List<HomeBook>?, Throwable?) -> Unit) {
+    private fun getCarouselBooks(callback: (List<HomeBook>?, Throwable?) -> Unit) {
         getBooksByType(0, callback)
     }
 
     /**
      * 获取顶部栏书籍
      */
-    fun getTopBarBooks(callback: (List<HomeBook>?, Throwable?) -> Unit) {
+    private fun getTopBarBooks(callback: (List<HomeBook>?, Throwable?) -> Unit) {
         getBooksByType(1, callback)
     }
 
@@ -135,7 +135,6 @@ class HomeService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getHomeBooksBlocking(): HomeBooksResponse {
         return suspendCancellableCoroutine { cont ->
             getHomeBooks { response, error ->
@@ -149,7 +148,6 @@ class HomeService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getFriendLinksBlocking(): FriendLinksResponse {
         return suspendCancellableCoroutine { cont ->
             getFriendLinks { response, error ->
@@ -163,7 +161,6 @@ class HomeService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getCarouselBooksBlocking(): List<HomeBook> {
         return suspendCancellableCoroutine { cont ->
             getCarouselBooks { books, error ->

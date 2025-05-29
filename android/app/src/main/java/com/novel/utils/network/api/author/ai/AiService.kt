@@ -48,7 +48,7 @@ class AiService @Inject constructor() {
      * AI润色接口
      * @param text 需要润色的文本
      */
-    fun polishText(
+    private fun polishText(
         text: String,
         callback: (AiResponse?, Throwable?) -> Unit
     ) {
@@ -74,7 +74,7 @@ class AiService @Inject constructor() {
      * @param text 需要扩写的文本
      * @param ratio 扩写比例
      */
-    fun expandText(
+    private fun expandText(
         text: String,
         ratio: Double,
         callback: (AiResponse?, Throwable?) -> Unit
@@ -104,7 +104,7 @@ class AiService @Inject constructor() {
      * @param text 需要续写的文本
      * @param length 续写长度
      */
-    fun continueText(
+    private fun continueText(
         text: String,
         length: Int,
         callback: (AiResponse?, Throwable?) -> Unit
@@ -134,7 +134,7 @@ class AiService @Inject constructor() {
      * @param text 需要缩写的文本
      * @param ratio 缩写比例
      */
-    fun condenseText(
+    private fun condenseText(
         text: String,
         ratio: Int,
         callback: (AiResponse?, Throwable?) -> Unit
@@ -206,7 +206,6 @@ class AiService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun polishTextBlocking(text: String): AiResponse {
         return suspendCancellableCoroutine { cont ->
             polishText(text) { response, error ->
@@ -220,12 +219,10 @@ class AiService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun polishTextBlocking(request: PolishRequest): AiResponse {
         return polishTextBlocking(request.text)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun expandTextBlocking(text: String, ratio: Double): AiResponse {
         return suspendCancellableCoroutine { cont ->
             expandText(text, ratio) { response, error ->
@@ -239,12 +236,10 @@ class AiService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun expandTextBlocking(request: ExpandRequest): AiResponse {
         return expandTextBlocking(request.text, request.ratio)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun continueTextBlocking(text: String, length: Int): AiResponse {
         return suspendCancellableCoroutine { cont ->
             continueText(text, length) { response, error ->
@@ -258,12 +253,10 @@ class AiService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun continueTextBlocking(request: ContinueRequest): AiResponse {
         return continueTextBlocking(request.text, request.length)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun condenseTextBlocking(text: String, ratio: Int): AiResponse {
         return suspendCancellableCoroutine { cont ->
             condenseText(text, ratio) { response, error ->
@@ -277,7 +270,6 @@ class AiService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun condenseTextBlocking(request: CondenseRequest): AiResponse {
         return condenseTextBlocking(request.text, request.ratio)
     }

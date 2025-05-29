@@ -209,7 +209,7 @@ class UserService @Inject constructor() {
     /**
      * 用户信息修改接口
      */
-    fun updateUserInfo(
+    private fun updateUserInfo(
         request: UserInfoUpdateRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -234,7 +234,7 @@ class UserService @Inject constructor() {
     /**
      * 发表评论接口
      */
-    fun postComment(
+    private fun postComment(
         request: CommentRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -261,7 +261,7 @@ class UserService @Inject constructor() {
     /**
      * 修改评论接口
      */
-    fun updateComment(
+    private fun updateComment(
         commentId: Long,
         content: String,
         callback: (BaseResponse?, Throwable?) -> Unit
@@ -284,7 +284,7 @@ class UserService @Inject constructor() {
     /**
      * 删除评论接口
      */
-    fun deleteComment(
+    private fun deleteComment(
         commentId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -302,7 +302,7 @@ class UserService @Inject constructor() {
     /**
      * 查询会员评论列表接口
      */
-    fun getUserComments(
+    private fun getUserComments(
         pageRequest: PageRequest,
         callback: (UserCommentsResponse?, Throwable?) -> Unit
     ) {
@@ -327,14 +327,13 @@ class UserService @Inject constructor() {
     /**
      * 用户反馈提交接口
      */
-    fun submitFeedback(
+    private fun submitFeedback(
         feedback: String,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
         Log.d("UserService", "开始 submitFeedback()，参数：$feedback")
         
         val json = Gson().toJson(feedback)
-        val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
         
         ApiService.post(
             baseUrl = BASE_URL_USER,
@@ -352,7 +351,7 @@ class UserService @Inject constructor() {
     /**
      * 用户反馈删除接口
      */
-    fun deleteFeedback(
+    private fun deleteFeedback(
         feedbackId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
@@ -370,7 +369,7 @@ class UserService @Inject constructor() {
     /**
      * 查询书架状态接口
      */
-    fun getBookshelfStatus(
+    private fun getBookshelfStatus(
         bookId: String,
         callback: (BookshelfStatusResponse?, Throwable?) -> Unit
     ) {
@@ -389,7 +388,6 @@ class UserService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun loginBlocking(request: LoginRequest): LoginResponse {
         return suspendCancellableCoroutine { cont ->
             login(request) { response, error ->
@@ -403,7 +401,6 @@ class UserService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun registerBlocking(request: RegisterRequest): RegisterResponse {
         return suspendCancellableCoroutine { cont ->
             register(request) { response, error ->
@@ -438,7 +435,6 @@ class UserService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun updateUserInfoBlocking(request: UserInfoUpdateRequest): BaseResponse {
         return suspendCancellableCoroutine { cont ->
             updateUserInfo(request) { response, error ->
@@ -452,7 +448,6 @@ class UserService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun postCommentBlocking(request: CommentRequest): BaseResponse {
         return suspendCancellableCoroutine { cont ->
             postComment(request) { response, error ->
@@ -466,7 +461,6 @@ class UserService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getUserCommentsBlocking(pageRequest: PageRequest): UserCommentsResponse {
         return suspendCancellableCoroutine { cont ->
             getUserComments(pageRequest) { response, error ->
@@ -480,7 +474,6 @@ class UserService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getBookshelfStatusBlocking(bookId: String): BookshelfStatusResponse {
         return suspendCancellableCoroutine { cont ->
             getBookshelfStatus(bookId) { response, error ->

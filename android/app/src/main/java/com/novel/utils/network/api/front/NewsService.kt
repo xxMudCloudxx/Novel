@@ -45,7 +45,7 @@ class NewsService @Inject constructor() {
     /**
      * 新闻信息查询接口
      */
-    fun getNewsById(
+    private fun getNewsById(
         newsId: Long,
         callback: (NewsInfoResponse?, Throwable?) -> Unit
     ) {
@@ -63,7 +63,7 @@ class NewsService @Inject constructor() {
     /**
      * 最新新闻列表查询接口
      */
-    fun getLatestNews(
+    private fun getLatestNews(
         callback: (NewsListResponse?, Throwable?) -> Unit
     ) {
         Log.d("NewsService", "开始 getLatestNews()")
@@ -80,7 +80,6 @@ class NewsService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getNewsByIdBlocking(newsId: Long): NewsInfoResponse {
         return suspendCancellableCoroutine { cont ->
             getNewsById(newsId) { response, error ->
@@ -94,7 +93,6 @@ class NewsService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getLatestNewsBlocking(): NewsListResponse {
         return suspendCancellableCoroutine { cont ->
             getLatestNews { response, error ->

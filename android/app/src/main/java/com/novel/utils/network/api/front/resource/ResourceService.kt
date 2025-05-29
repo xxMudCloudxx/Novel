@@ -10,7 +10,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.lang.Exception
 import javax.inject.Inject
@@ -46,7 +45,7 @@ class ResourceService @Inject constructor() {
     /**
      * 获取图片验证码接口
      */
-    fun getImageVerifyCode(
+    private fun getImageVerifyCode(
         callback: (ImageVerifyCodeResponse?, Throwable?) -> Unit
     ) {
         ApiService.get(
@@ -66,7 +65,7 @@ class ResourceService @Inject constructor() {
     /**
      * 图片上传接口
      */
-    fun uploadImage(
+    private fun uploadImage(
         imageFile: File,
         callback: (ImageUploadResponse?, Throwable?) -> Unit
     ) {
@@ -103,7 +102,7 @@ class ResourceService @Inject constructor() {
     /**
      * 上传图片（使用字节数组）
      */
-    fun uploadImageBytes(
+    private fun uploadImageBytes(
         imageBytes: ByteArray,
         fileName: String,
         callback: (ImageUploadResponse?, Throwable?) -> Unit
@@ -129,7 +128,7 @@ class ResourceService @Inject constructor() {
     /**
      * 上传图片（使用 Base64 编码）
      */
-    fun uploadImageBase64(
+    private fun uploadImageBase64(
         base64Image: String,
         fileName: String,
         callback: (ImageUploadResponse?, Throwable?) -> Unit
@@ -157,7 +156,6 @@ class ResourceService @Inject constructor() {
     // endregion
 
     // region 协程版本
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getImageVerifyCodeBlocking(): ImageVerifyCodeResponse {
         return suspendCancellableCoroutine { cont ->
             getImageVerifyCode { resp, err ->
@@ -170,7 +168,6 @@ class ResourceService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun uploadImageBlocking(imageFile: File): ImageUploadResponse {
         return suspendCancellableCoroutine { cont ->
             uploadImage(imageFile) { response, error ->
@@ -184,7 +181,6 @@ class ResourceService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun uploadImageBytesBlocking(imageBytes: ByteArray, fileName: String): ImageUploadResponse {
         return suspendCancellableCoroutine { cont ->
             uploadImageBytes(imageBytes, fileName) { response, error ->
@@ -198,7 +194,6 @@ class ResourceService @Inject constructor() {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun uploadImageBase64Blocking(base64Image: String, fileName: String): ImageUploadResponse {
         return suspendCancellableCoroutine { cont ->
             uploadImageBase64(base64Image, fileName) { response, error ->

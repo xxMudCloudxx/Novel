@@ -2,14 +2,11 @@ package com.novel.page
 
 import android.annotation.SuppressLint
 import android.util.Log
-import android.view.View
-import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,7 +21,6 @@ import com.facebook.react.ReactRootView
 import com.facebook.react.bridge.ReactContext
 import com.novel.BuildConfig
 import com.novel.MainApplication
-import kotlinx.coroutines.delay
 
 /**
  * ReactNative 页面

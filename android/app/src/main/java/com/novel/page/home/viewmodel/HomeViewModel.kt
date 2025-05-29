@@ -427,7 +427,7 @@ class HomeViewModel @Inject constructor(
     /**
      * 加载榜单书籍 - 使用Repository
      */
-    fun loadRankBooks(rankType: String = HomeRepository.RANK_TYPE_VISIT) {
+    private fun loadRankBooks(rankType: String = HomeRepository.RANK_TYPE_VISIT) {
         viewModelScope.launch {
             updateState { it.copy(rankLoading = true) }
             
