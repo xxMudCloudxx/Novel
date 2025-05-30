@@ -1,6 +1,6 @@
 import { DeviceEventEmitter } from 'react-native';
-import { useUserStore } from '../store/userStore';
-import { useHomeStore } from '../store/homeStore';
+import { useUserStore } from '../page/HomePage/store/userStore';
+import { useHomeStore } from '../page/HomePage/store/homeStore';
 
 export interface NativeUserData {
   uid: string;

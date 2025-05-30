@@ -302,12 +302,7 @@ class HomeViewModel @Inject constructor(
                         isRefreshing = false
                     ) 
                 }
-                
-                // 发送推荐书籍数据到RN
-                if (currentBooks.isNotEmpty()) {
-                    ReactNativeBridge.sendRecommendBooksToRN(currentBooks)
-                }
-                
+
                 Log.d(TAG, "首页推荐数据加载完成：当前显示${currentBooks.size}本，总共${cachedHomeBooks.size}本，hasMore=$hasMore")
             } catch (e: Exception) {
                 Log.e(TAG, "加载首页推荐书籍失败", e)
@@ -684,9 +679,6 @@ class HomeViewModel @Inject constructor(
                         hasMoreHomeRecommend = hasMore
                     ) 
                 }
-
-
-                ReactNativeBridge.sendRecommendBooksToRN(updatedBooks)
                 
                 Log.d(TAG, "加载更多首页推荐：当前显示${updatedBooks.size}本，总共${cachedHomeBooks.size}本，hasMore=$hasMore")
             } catch (e: Exception) {

@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
-import HomePage from './src/page/HomePage';
+import HomePage from './src/page/HomePage/HomePage';
 import { initializeApp, cleanupApp } from './src/utils/appInit';
-import { useUserStore } from './src/store/userStore';
-import { useHomeStore } from './src/store/homeStore';
+import { useUserStore } from './src/page/HomePage/store/userStore';
+import { useHomeStore } from './src/page/HomePage/store/homeStore';
 
 export default function App(): React.JSX.Element {
   const userStore = useUserStore();
