@@ -491,6 +491,19 @@ class BookService @Inject constructor() {
             }
         }
     }
+
+    suspend fun getLastChapterAboutBlocking(bookId: Long): BookChapterAboutResponse {
+        return suspendCancellableCoroutine { cont ->
+            getLastChapterAbout(bookId) { response, error ->
+                if (error != null) {
+                    cont.resumeWith(Result.failure(error))
+                } else {
+                    response?.let { cont.resumeWith(Result.success(it)) }
+                        ?: cont.resumeWith(Result.failure(Exception("Response is null")))
+                }
+            }
+        }
+    }
     // endregion
 
     // region 响应处理

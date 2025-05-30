@@ -11,6 +11,9 @@ object NovelColors {
     val NovelMainLight: Color
         @Composable get() = Color(0xFFF86827)
 
+    val NovelBookBackground: Color
+        @Composable get() = dynamicColor(light = Color(0xFFE8E3CF), dark = Color(0xFFE8E3CF))
+
     val NovelDivider: Color
         @Composable get() = dynamicColor(light = Color(0xFFF7F7F8), dark = Color(0xFF1C1C1E))
 
