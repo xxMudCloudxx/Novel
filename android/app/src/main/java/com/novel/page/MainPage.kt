@@ -2,8 +2,6 @@ package com.novel.page
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +18,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +32,7 @@ import com.novel.page.home.HomePage
 import com.novel.page.login.LoginPage
 import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.NovelTheme
+import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 import kotlinx.coroutines.launch
@@ -114,11 +112,7 @@ fun NavButton(
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxHeight()
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onClick
-            ),
+            .debounceClickable(onClick = onClick),
     ) {
         Image(
             painter = painterResource(id = id),

@@ -2,7 +2,6 @@ package com.novel.page.home.component
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -28,6 +27,7 @@ import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.wdp
 import com.novel.utils.ssp
 import com.novel.utils.HtmlTextUtil
+import com.novel.utils.debounceClickable
 
 /**
  * 首页推荐书籍瀑布流网格组件 - 真正的参差不齐瀑布流布局
@@ -233,7 +233,7 @@ private fun HomeBookStaggeredItem(
         modifier = modifier
             .fillMaxWidth()
             .background(NovelColors.NovelBackground, RoundedCornerShape(8.wdp))
-            .clickable { onClick() }
+            .debounceClickable(onClick = onClick)
             .clip(RoundedCornerShape(8.wdp))
     ) {
         // 书籍封面 - 自适应高度
@@ -324,7 +324,7 @@ private fun SearchBookStaggeredItem(
         modifier = modifier
             .fillMaxWidth()
             .background(NovelColors.NovelBackground, RoundedCornerShape(8.wdp))
-            .clickable { onClick() }
+            .debounceClickable(onClick = onClick)
             .clip(RoundedCornerShape(8.wdp))
     ) {
         // 书籍封面 - 自适应高度

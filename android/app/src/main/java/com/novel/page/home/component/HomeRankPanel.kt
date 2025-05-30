@@ -2,7 +2,6 @@ package com.novel.page.home.component
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,6 +20,7 @@ import com.novel.page.component.NovelImageView
 import com.novel.page.home.dao.HomeRepository
 import com.novel.page.home.viewmodel.CategoryInfo
 import com.novel.ui.theme.NovelColors
+import com.novel.utils.debounceClickable
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.wdp
 import com.novel.utils.ssp
@@ -187,7 +187,7 @@ private fun RankFilterChip(
         text = filter,
         fontSize = 14.ssp,
         modifier = Modifier
-            .clickable { onClick() }
+            .debounceClickable(onClick = onClick)
             .padding(vertical = 8.wdp, horizontal = 12.wdp),
         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
         color = if (isSelected) NovelColors.NovelText else NovelColors.NovelTextGray
@@ -207,7 +207,7 @@ private fun RankBookGridItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .debounceClickable(onClick = onClick)
             .padding(2.wdp),
         verticalAlignment = Alignment.Top
     ) {

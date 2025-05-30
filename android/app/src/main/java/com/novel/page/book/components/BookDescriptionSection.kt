@@ -1,7 +1,5 @@
 package com.novel.page.book.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,13 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
 import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
-import com.novel.ui.theme.NovelTheme
 import com.novel.ui.theme.PingFangFamily
-import com.novel.utils.AdaptiveScreen
 import com.novel.utils.HtmlTextUtil
+import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 
@@ -47,7 +43,7 @@ fun BookDescriptionSection(
     ) {
         NovelText(
             text = "简介",
-            fontSize = 16.ssp,
+            fontSize = 18.ssp,
             fontWeight = FontWeight.Bold,
             color = NovelColors.NovelText,
             modifier = Modifier.padding(bottom = 8.wdp)
@@ -73,7 +69,7 @@ fun BookDescriptionSection(
                 text = firstLine,
                 fontSize = 14.ssp,
                 lineHeight = 14.ssp,
-                color = NovelColors.NovelText.copy(alpha = 0.7f),
+                color = NovelColors.NovelText.copy(alpha = 0.8f),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -86,10 +82,12 @@ fun BookDescriptionSection(
                         text = restAll,
                         fontSize = 14.ssp,
                         lineHeight = 14.ssp,
-                        color = NovelColors.NovelText.copy(alpha = 0.7f),
+                        color = NovelColors.NovelText.copy(alpha = 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Companion.Ellipsis,
-                        modifier = Modifier.padding(end = 60.wdp).weight(5f)
+                        modifier = Modifier
+                            .padding(end = 60.wdp)
+                            .weight(5f)
                     )
                 }
 
@@ -99,31 +97,9 @@ fun BookDescriptionSection(
                         fontSize = 14.ssp,
                         lineHeight = 14.ssp,
                         color = NovelColors.NovelMain,
-                        modifier = Modifier
-                            .clickable { onToggleExpand() }
+                        modifier = Modifier.debounceClickable(onClick = {})
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-@Preview
-fun BookStatsSectionPreview() {
-    NovelTheme {
-        AdaptiveScreen {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(NovelColors.NovelBookBackground)
-                    .padding(16.wdp)
-            ) {
-                BookDescriptionSection(
-//                    description = "This is a preview description. It is used to show how the book description section looks like. ",
-//                    isExpanded = false,
-                    description = "展示更多展示更多展示更多展示更多展示更多展示多展示多展示更多展示更多展示更多展示更多展示更多展示更多",
-                ) { }
             }
         }
     }

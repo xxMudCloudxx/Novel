@@ -2,6 +2,7 @@ package com.novel.utils
 
 import android.os.SystemClock
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -14,10 +15,15 @@ import androidx.compose.ui.composed
 @Composable
 fun Modifier.debounceClickable(
     intervalMillis: Long = 500L,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true
 ): Modifier = composed {
     var lastTime by remember { mutableLongStateOf(0L) }
-    clickable {
+    clickable(
+        enabled = enabled,
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() }
+    ) {
         val now = SystemClock.elapsedRealtime()
         if (now - lastTime > intervalMillis) {
             lastTime = now

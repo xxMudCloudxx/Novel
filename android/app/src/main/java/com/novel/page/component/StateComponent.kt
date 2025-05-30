@@ -1,6 +1,5 @@
 package com.novel.page.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.Text
@@ -14,6 +13,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import com.novel.utils.debounceClickable
 
 @Stable
 sealed class ViewState {
@@ -89,9 +89,7 @@ open class StateComponentDefaults : Defaults(), IStateComponentDefaults {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .clickable {
-                            component.retry()
-                        },
+                        .debounceClickable(onClick = {component.retry()}),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "请求错误")

@@ -24,7 +24,7 @@ fun BookReviewsSection(reviews: List<BookDetailUiState.BookReview>) {
     ) {
         NovelText(
             text = "热门书评",
-            fontSize = 16.ssp,
+            fontSize = 18.ssp,
             fontWeight = FontWeight.Bold,
             color = NovelColors.NovelText
         )
@@ -60,7 +60,7 @@ private fun BookReviewItem(review: BookDetailUiState.BookReview) {
             NovelText(
                 text = review.content,
                 fontSize = 14.ssp,
-                color = NovelColors.NovelText.copy(alpha = 0.7f) ,
+                color = NovelColors.NovelText.copy(alpha = 0.8f) ,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -74,7 +74,7 @@ private fun BookReviewItem(review: BookDetailUiState.BookReview) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = if (index < review.rating) NovelColors.NovelText.copy(alpha = 0.7f) else NovelColors.NovelTextGray,
+                        tint = if (index < review.rating) NovelColors.NovelText.copy(alpha = 0.8f) else NovelColors.NovelTextGray,
                         modifier = Modifier.size(12.wdp)
                     )
                 }
@@ -82,7 +82,8 @@ private fun BookReviewItem(review: BookDetailUiState.BookReview) {
                 NovelText(
                     text = review.readTime,
                     fontSize = 12.ssp,
-                    color = NovelColors.NovelTextGray
+                    color = NovelColors.NovelTextGray,
+                    modifier = Modifier.padding(start = 4.wdp)
                 )
             }
         }

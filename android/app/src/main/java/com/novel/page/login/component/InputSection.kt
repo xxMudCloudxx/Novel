@@ -12,7 +12,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +30,7 @@ import com.novel.page.component.NovelImageView
 import com.novel.page.component.NovelTextField
 import com.novel.page.login.viewmodel.LoginAction
 import com.novel.page.login.viewmodel.LoginUiState
+import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 
 // 动画常量
@@ -181,7 +181,7 @@ fun InputSection(
                             error = uiState.captchaError,
                             widthDp = 100,
                             heightDp = 45,
-                            modifier = Modifier.clickable { onAction(LoginAction.RefreshCaptcha) },
+                            modifier = Modifier.debounceClickable(onClick = { onAction(LoginAction.RefreshCaptcha) }),
                             onRetry = { onAction(LoginAction.RefreshCaptcha) }
                         )
                     }

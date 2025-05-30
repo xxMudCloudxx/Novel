@@ -1,7 +1,6 @@
 package com.novel.page.login.component
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -21,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.PingFangFamily
 import androidx.compose.foundation.text.BasicText
+import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 import com.novel.utils.ssp
 
@@ -68,7 +68,7 @@ fun AgreementSection(
             Box(
                 modifier = Modifier
                     .size(12.wdp)
-                    .clickable { onCheckedChange(!isChecked) },
+                    .debounceClickable(onClick = { onCheckedChange(!isChecked) }),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.matchParentSize()) {

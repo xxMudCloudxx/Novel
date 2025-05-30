@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
+import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 import com.novel.utils.ssp
 
@@ -43,7 +44,7 @@ fun HomeTopBar(
                 .height(48.wdp)
                 .clip(RoundedCornerShape(5.wdp))
                 .background(NovelColors.NovelBackground)
-                .clickable { onSearchClick() },
+                .debounceClickable(onClick = { onSearchClick() }),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(

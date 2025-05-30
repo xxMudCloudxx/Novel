@@ -1,18 +1,16 @@
 package com.novel.page.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import com.novel.ui.theme.NovelColors
+import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 
 /**
@@ -38,12 +36,7 @@ fun NovelMainButton(
                 ),
                 shape = RoundedCornerShape(round)
             )
-            .clickable(
-                enabled = enabldeClicke,
-                onClick = onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ),
+            .debounceClickable(onClick = onClick, enabled = enabldeClicke),
         contentAlignment = Alignment.Center
     ) {
         content()
@@ -70,11 +63,7 @@ fun NovelWeakenButton(
                 color = color,
                 shape = RoundedCornerShape(round)
             )
-            .clickable(
-                onClick = onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ),
+            .debounceClickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         content()

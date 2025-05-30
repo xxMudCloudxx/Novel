@@ -33,7 +33,7 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
         NovelText(
             text = bookInfo.authorName,
             fontSize = 14.ssp,
-            color = NovelColors.NovelText.copy(alpha = 0.7f),
+            color = NovelColors.NovelText.copy(alpha = 0.8f),
             modifier = Modifier.padding(horizontal = 8.wdp)
         )
         
@@ -43,13 +43,13 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
                 NovelText(
                     text = "关注",
                     fontSize = 14.ssp,
-                    color = NovelColors.NovelText.copy(alpha = 0.7f),
+                    color = NovelColors.NovelText.copy(alpha = 0.8f),
                     modifier = Modifier.padding(horizontal = 12.wdp)
                 )
             },
             onClick = { /* TODO: 实现关注功能 */ },
             round = 18.wdp,
-            color = NovelColors.NovelTextGray
+            color = NovelColors.NovelTextGray.copy(alpha = 0.1f),
         )
     }
 }

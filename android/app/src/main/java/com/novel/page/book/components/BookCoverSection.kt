@@ -22,7 +22,7 @@ fun BookCoverSection(bookInfo: BookDetailUiState.BookInfo?) {
     if (bookInfo == null) return
 
     Box(
-        modifier = Modifier.padding(top = 75.wdp)
+        modifier = Modifier.padding(top = 55.wdp)
             .fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {

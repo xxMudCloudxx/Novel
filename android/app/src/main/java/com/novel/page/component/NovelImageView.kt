@@ -78,7 +78,7 @@ fun NovelImageView(
                 tint = NovelColors.NovelText,
                 modifier = Modifier
                     .size(24.wdp)
-                    .debounceClickable(retryDebounceMs) { onRetry() }
+                    .debounceClickable(onClick = { retry() })
             )
         }
     }
