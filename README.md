@@ -57,6 +57,12 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - **简介展开/收起** - HTML标签清理与文本展示
 - **热门书评** - 星级评分、用户评论展示
 
+#### 🛠️ 工具类库 (Utils)
+- **NovelDateFormatter** - 智能时间格式化工具
+- **StringProvider** - 抽象化Android资源访问
+- **SecurityConfig** - 统一安全配置管理
+- **ReactNativeBridge** - 双端事件通信桥梁
+
 #### 🧭 导航系统 (NavigationUtil)
 - **NavHost路由** - 支持参数化路由导航
 - **NavViewModel** - 统一导航管理

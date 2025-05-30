@@ -112,7 +112,6 @@ fun BookDetailPage(
                 item {
                     BookDescriptionSection(
                         description = uiState.data.bookInfo?.bookDesc ?: "",
-                        isExpanded = uiState.data.isDescriptionExpanded,
                         onToggleExpand = { viewModel.toggleDescriptionExpanded() }
                     )
                 }

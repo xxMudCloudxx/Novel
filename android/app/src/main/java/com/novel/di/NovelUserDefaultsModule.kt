@@ -6,6 +6,9 @@ import com.novel.utils.Store.NovelKeyChain.NovelKeyChain
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.SharedPrefsUserDefaults
 import com.novel.utils.network.TokenProvider
+import com.novel.utils.StringProvider
+import com.novel.utils.AndroidStringProvider
+import java.time.Clock
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +17,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Hilt Module：提供 SharedPreferences & NovelUserDefaults
+ * Hilt Module：提供 SharedPreferences & NovelUserDefaults & Clock & StringProvider
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -40,4 +43,16 @@ object NovelUserDefaultsModule {
     @Provides
     @Singleton
     fun provideContext(@ApplicationContext context: Context): Context = context
+
+    // 添加Clock依赖
+    @Provides
+    @Singleton
+    fun provideClock(): Clock = Clock.systemDefaultZone()
+
+    // 添加StringProvider依赖
+    @Provides
+    @Singleton
+    fun provideStringProvider(
+        androidStringProvider: AndroidStringProvider
+    ): StringProvider = androidStringProvider
 }

@@ -6,20 +6,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import com.novel.page.book.utils.formatWordCount
 import com.novel.page.book.viewmodel.BookDetailUiState
 import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
-import com.novel.ui.theme.NovelTheme
-import com.novel.utils.AdaptiveScreen
+import com.novel.utils.NovelDateFormatter
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+/**
+ * 简单的ViewModel用于为Composable提供NovelDateFormatter实例
+ */
+@HiltViewModel
+class DateFormatterViewModel @Inject constructor(
+    val dateFormatter: NovelDateFormatter
+) : ViewModel()
 
 @Composable
 fun BookStatsSection(
     bookInfo: BookDetailUiState.BookInfo?,
-    lastChapter: BookDetailUiState.LastChapter?
+    lastChapter: BookDetailUiState.LastChapter?,
+    dateFormatter: NovelDateFormatter = hiltViewModel<DateFormatterViewModel>().dateFormatter
 ) {
     if (bookInfo == null) return
 
@@ -56,10 +67,12 @@ fun BookStatsSection(
                 .background(NovelColors.NovelTextGray)
         )
 
-        // 字数和更新时间
+        // 字数和更新时间 - 使用注入的 NovelDateFormatter
         StatsItem(
             value = "${formatWordCount(bookInfo.wordCount)}字",
-            subtitle = lastChapter?.chapterUpdateTime ?: "14小时前更新"
+            subtitle = lastChapter?.chapterUpdateTime?.let { 
+                dateFormatter.parseNewsDate(it) 
+            }?.takeIf { it.isNotEmpty() } ?: "14小时前更新"
         )
     }
 }
