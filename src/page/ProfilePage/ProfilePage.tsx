@@ -1,12 +1,12 @@
 import React, { useEffect, useCallback } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useUserStore } from './store/userStore';
-import { useHomeStore } from './store/homeStore';
+import { useHomeStore } from './store/BookStore';
 import { useNovelColors } from '../../utils/theme/colors';
-import { useHomePageAnimations } from './hooks/useHomePageAnimations';
+import { useProfilePageAnimations } from './hooks/useProfilePageAnimations';
 import { useRefreshLogic } from './hooks/useRefreshLogic';
 import { convertHomeBooksToBooks } from './utils/helpers';
-import { createHomePageStyles } from './styles/homePageStyles';
+import { createHomePageStyles } from './styles/ProfilePageStyles';
 import { Book } from './types';
 import {
   TopBar,
@@ -17,7 +17,7 @@ import {
   WaterfallGrid,
 } from './components';
 
-const HomePage: React.FC = () => {
+const ProfilePage: React.FC = () => {
   // 使用Zustand stores
   const { uid, nickname, photo, isLoggedIn, balance, coins } = useUserStore();
   const { 
@@ -47,7 +47,7 @@ const HomePage: React.FC = () => {
     loadMoreBooks,
   });
 
-  const animations = useHomePageAnimations(
+  const animations = useProfilePageAnimations(
     isRefreshing,
     refreshLogic.isPullingDown,
     refreshLogic.pullDistance,
@@ -132,4 +132,4 @@ const HomePage: React.FC = () => {
   );
 };
 
-export default HomePage; 
+export default ProfilePage; 

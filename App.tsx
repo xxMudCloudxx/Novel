@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
-import HomePage from './src/page/HomePage/HomePage';
+import ProfilePage from './src/page/ProfilePage/ProfilePage';
 import { initializeApp, cleanupApp } from './src/utils/appInit';
-import { useUserStore } from './src/page/HomePage/store/userStore';
-import { useHomeStore } from './src/page/HomePage/store/homeStore';
+import { useUserStore } from './src/page/ProfilePage/store/userStore';
+import { useHomeStore } from './src/page/ProfilePage/store/BookStore';
 
 export default function App(): React.JSX.Element {
   const userStore = useUserStore();
@@ -40,7 +40,7 @@ export default function App(): React.JSX.Element {
 
   return (
     <SafeAreaView style={styles.container}>
-      <HomePage />
+      <ProfilePage />
     </SafeAreaView>
   );
 }

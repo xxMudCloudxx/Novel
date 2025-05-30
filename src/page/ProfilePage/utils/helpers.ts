@@ -1,4 +1,4 @@
-import { HomeBook } from '../store/homeStore';
+import { HomeBook } from '../store/BookStore';
 import { Book } from '../types';
 import { itemHeightCache, screenWidth } from './constants';
 import { wp } from '../../../utils/theme/dimensions';

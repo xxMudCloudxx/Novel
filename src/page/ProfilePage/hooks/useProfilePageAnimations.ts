@@ -2,7 +2,7 @@ import { useSharedValue, useAnimatedStyle, withTiming, interpolate, Extrapolate 
 import { useEffect } from 'react';
 import { PAGE_WIDTH, MIN_HEIGHT, MAX_HEIGHT } from '../utils/constants';
 
-export const useHomePageAnimations = (isRefreshing: boolean, isPullingDown: boolean, pullDistance: number, PULL_THRESHOLD: number) => {
+export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: boolean, pullDistance: number, PULL_THRESHOLD: number) => {
   const scrollX = useSharedValue(0);
   const spinValue = useSharedValue(0);
 
