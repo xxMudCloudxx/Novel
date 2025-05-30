@@ -19,6 +19,7 @@ import com.novel.page.home.viewmodel.HomeEvent
 import com.novel.page.home.viewmodel.HomeViewModel
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
+import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -27,7 +28,6 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun HomePage(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToBook: (Long) -> Unit = {},
     onNavigateToCategory: (Long) -> Unit = {},
     onNavigateToSearch: (String) -> Unit = {},
     onNavigateToCategoryPage: () -> Unit = {}
@@ -45,7 +45,10 @@ fun HomePage(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is HomeEvent.NavigateToBook -> onNavigateToBook(event.bookId)
+                is HomeEvent.NavigateToBook -> {
+                    // 使用NavViewModel导航到书籍详情页
+                    NavViewModel.navigateToBookDetail(event.bookId.toString())
+                }
                 is HomeEvent.NavigateToCategory -> onNavigateToCategory(event.categoryId)
                 is HomeEvent.NavigateToSearch -> onNavigateToSearch(event.query)
                 is HomeEvent.NavigateToCategoryPage -> onNavigateToCategoryPage()
@@ -200,28 +203,28 @@ fun HomePage(
                             modifier = Modifier.padding(16.wdp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = error,
-                                color = androidx.compose.ui.graphics.Color.White,
+                            Column(
                                 modifier = Modifier.weight(1f)
-                            )
-                            
+                            ) {
+                                Text(
+                                    text = "加载失败",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onError
+                                )
+                                Text(
+                                    text = error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onError
+                                )
+                            }
                             TextButton(
                                 onClick = { viewModel.onAction(HomeAction.ClearError) }
                             ) {
-                                Text(
-                                    text = "确定",
-                                    color = androidx.compose.ui.graphics.Color.White
-                                )
+                                Text("关闭")
                             }
                         }
                     }
                 }
-            }
-            
-            // 8. 底部间距
-            item {
-                Spacer(modifier = Modifier.height(20.wdp))
             }
         }
     }

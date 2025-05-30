@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.novel.page.MainPage
 import com.novel.page.login.LoginPage
+import com.novel.page.book.BookDetailPage
 
 /**
  * 导航设置
@@ -32,9 +33,34 @@ fun NavigationSetup() {
         composable("login") {
             LoginPage()
         }
+        composable("book_detail/{bookId}") { backStackEntry ->
+            val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+            BookDetailPage(bookId = bookId)
+        }
     }
 }
 
 object NavViewModel : ViewModel() {
     val navController = MutableLiveData<NavHostController>()
+    
+    /**
+     * 导航到书籍详情页
+     */
+    fun navigateToBookDetail(bookId: String) {
+        navController.value?.navigate("book_detail/$bookId")
+    }
+    
+    /**
+     * 导航到登录页
+     */
+    fun navigateToLogin() {
+        navController.value?.navigate("login")
+    }
+    
+    /**
+     * 返回
+     */
+    fun navigateBack() {
+        navController.value?.popBackStack()
+    }
 }
