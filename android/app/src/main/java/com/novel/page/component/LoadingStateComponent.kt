@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
-import com.novel.utils.iosSwipeBack
+import androidx.compose.ui.graphics.Color
+import com.novel.utils.SwipeBackContainer
+import com.novel.utils.iosSwipeBackBasic
+import com.novel.ui.theme.NovelColors
 
 @Stable
 interface LoadingStateComponent : LoadingComponent, StateComponent
@@ -71,13 +74,14 @@ open class LoadingStateComponentDefaults(
         error: @Composable (BoxScope.() -> Unit)?,
         content: @Composable BoxScope.() -> Unit
     ) {
-        Box(
-            modifier = modifier
-                .iosSwipeBack()             // 👈 只加这一行就完成侧滑
+        // 使用新的SwipeBackContainer组件，指示器显示在背景区域
+        SwipeBackContainer(
+            modifier = modifier,
+            backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f) // 使用主题背景色
         ) {
             LoadingComponent(
                 component = component,
-                modifier = modifier,
+                modifier = Modifier, // 避免重复应用 modifier
                 enabled = enabled,
                 loading = loading,
             ) {
@@ -112,4 +116,72 @@ fun LoadingStateComponent(
         empty = empty,
         content = content
     )
+}
+
+/**
+ * 带自定义背景的LoadingStateComponent版本
+ * 可以指定背景颜色来匹配不同的设计需求
+ */
+@Composable
+fun LoadingStateComponent(
+    component: LoadingStateComponent,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = NovelColors.NovelBookBackground.copy(alpha = 0.7f),
+    enabled: Boolean = LoadingStateComponentDefaults.instance.enabled,
+    loading: @Composable BoxScope.() -> Unit = LoadingStateComponentDefaults.instance.loading,
+    error: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.error,
+    empty: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.empty,
+    content: @Composable BoxScope.() -> Unit
+) {
+    SwipeBackContainer(
+        modifier = modifier,
+        backgroundColor = backgroundColor
+    ) {
+        LoadingComponent(
+            component = component,
+            modifier = Modifier,
+            enabled = enabled,
+            loading = loading,
+        ) {
+            StateComponent(
+                component = component,
+                modifier = Modifier,
+                error = error,
+                empty = empty,
+                content = content
+            )
+        }
+    }
+}
+
+/**
+ * 基础版本的LoadingStateComponent - 不包含提示UI的侧滑返回
+ * 性能更优，适用于不需要提示文字的场景
+ */
+@Composable
+fun LoadingStateComponentBasic(
+    component: LoadingStateComponent,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = LoadingStateComponentDefaults.instance.enabled,
+    loading: @Composable BoxScope.() -> Unit = LoadingStateComponentDefaults.instance.loading,
+    error: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.error,
+    empty: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.empty,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(modifier = modifier.iosSwipeBackBasic()) {
+        LoadingComponent(
+            component = component,
+            modifier = Modifier,
+            enabled = enabled,
+            loading = loading,
+        ) {
+            StateComponent(
+                component = component,
+                modifier = Modifier,
+                error = error,
+                empty = empty,
+                content = content
+            )
+        }
+    }
 }
