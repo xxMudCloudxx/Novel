@@ -46,7 +46,7 @@ fun HomeRankPanel(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(400.wdp),
+            .height(370.wdp),
         shape = RoundedCornerShape(8.wdp),
         colors = CardDefaults.cardColors(
             containerColor = NovelColors.NovelBackground
@@ -61,7 +61,7 @@ fun HomeRankPanel(
                 rankTypes = rankTypes,
                 selectedRankType = selectedRankType,
                 onRankTypeSelected = onRankTypeSelected,
-                modifier = Modifier.padding(vertical = 10.wdp)
+                modifier = Modifier.padding(top = 10.wdp)
             )
 
             // 榜单书籍连续滚动列表 - 最多16本书，每列4本
@@ -260,6 +260,7 @@ private fun RankBookGridItem(
                 fontSize = 14.ssp,
                 fontWeight = FontWeight.Medium,
                 color = NovelColors.NovelText,
+                lineHeight = 15.ssp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -270,6 +271,7 @@ private fun RankBookGridItem(
             NovelText(
                 text = book.categoryName,
                 fontSize = 12.ssp,
+                lineHeight = 13.ssp,
                 color = NovelColors.NovelMain,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
