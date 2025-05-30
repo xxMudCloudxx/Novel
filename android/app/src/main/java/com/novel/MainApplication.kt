@@ -58,7 +58,7 @@ class MainApplication : Application(), ReactApplication {
             tokenProvider = tokenProvider
         )
         SoLoader.init(this, OpenSourceMergedSoMapping)
-        reactNativeHost.reactInstanceManager.createReactContextInBackground()
+//        reactNativeHost.reactInstanceManager.createReactContextInBackground()
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
             load()
         }

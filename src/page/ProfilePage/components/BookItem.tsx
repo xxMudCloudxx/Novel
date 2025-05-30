@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, Image } from 'react-native';
 import { BookItemProps } from '../types';
 import { calculateBookItemHeight, getDescriptionLines, getBookItemWidth } from '../utils/helpers';
+import { cleanHtml } from '../../../utils/htmlTextUtil';
 
 interface BookItemComponentProps extends BookItemProps {
   styles: any;
@@ -73,7 +74,7 @@ export const BookItem: React.FC<BookItemComponentProps> = React.memo(({
             numberOfLines={descriptionLines}
             ellipsizeMode="tail"
           >
-            {book.description}
+            {cleanHtml(book.description)}
           </Text>
         )}
       </View>

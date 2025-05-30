@@ -27,6 +27,7 @@ import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.wdp
 import com.novel.utils.ssp
+import com.novel.utils.HtmlTextUtil
 
 /**
  * 首页推荐书籍瀑布流网格组件 - 真正的参差不齐瀑布流布局
@@ -288,7 +289,7 @@ private fun HomeBookStaggeredItem(
 
             // 描述 - 根据内容长度动态显示行数
             NovelText(
-                text = book.bookDesc,
+                text = HtmlTextUtil.cleanHtml(book.bookDesc),
                 fontSize = 12.ssp,
                 color = NovelColors.NovelTextGray,
                 maxLines = descriptionLines,
