@@ -25,7 +25,7 @@ fun BookStatsSection(
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 5.wdp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 评分
