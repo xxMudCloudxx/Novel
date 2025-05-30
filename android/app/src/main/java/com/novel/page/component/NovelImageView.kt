@@ -18,6 +18,7 @@ import coil.compose.SubcomposeAsyncImageContent
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import coil.request.CachePolicy
@@ -56,7 +57,7 @@ fun NovelImageView(
     onRetry: () -> Unit = {},
     placeholderContent: @Composable () -> Unit = {
         Box(
-            modifier.wrapContentSize(Alignment.Center)
+            modifier.background(NovelColors.NovelMainLight).wrapContentSize(Alignment.Center)
         ) {
             CircularProgressIndicator(
                 strokeWidth = 2.wdp,
@@ -68,7 +69,7 @@ fun NovelImageView(
     },
     errorContent: @Composable (retry: () -> Unit) -> Unit = { retry ->
         Box(
-            modifier.wrapContentSize (Alignment.Center)
+            modifier.background(NovelColors.NovelMainLight).wrapContentSize (Alignment.Center)
         ) {
         IconButton(onClick = { retry() }) {
             Icon(

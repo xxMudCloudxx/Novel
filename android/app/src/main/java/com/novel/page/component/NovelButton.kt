@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
@@ -26,13 +27,14 @@ fun NovelMainButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     round: Dp = 24.wdp,
-    enabldeClicke: Boolean = true
+    enabldeClicke: Boolean = true,
+    colors: List<Color> = listOf(NovelColors.NovelMain, NovelColors.NovelMainLight)
 ) {
     Box(
         modifier = modifier
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(NovelColors.NovelMain, NovelColors.NovelMainLight)
+                    colors = colors
                 ),
                 shape = RoundedCornerShape(round)
             )
@@ -59,12 +61,13 @@ fun NovelWeakenButton(
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
-    round: Dp = 24.wdp
+    round: Dp = 24.wdp,
+    color: Color = NovelColors.NovelSecondaryBackground
 ) {
     Box(
         modifier = modifier
             .background(
-                color = NovelColors.NovelSecondaryBackground,
+                color = color,
                 shape = RoundedCornerShape(round)
             )
             .clickable(

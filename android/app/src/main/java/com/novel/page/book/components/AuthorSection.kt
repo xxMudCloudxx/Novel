@@ -38,7 +38,7 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
         NovelText(
             text = bookInfo.authorName,
             fontSize = 14.ssp,
-            color = NovelColors.NovelText.copy(alpha = 0.5f),
+            color = NovelColors.NovelText.copy(alpha = 0.7f),
             modifier = Modifier.padding(horizontal = 8.wdp)
         )
         
@@ -48,7 +48,7 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
                 NovelText(
                     text = "关注",
                     fontSize = 14.ssp,
-                    color = NovelColors.NovelText.copy(alpha = 0.5f),
+                    color = NovelColors.NovelText.copy(alpha = 0.7f),
                     modifier = Modifier.padding(horizontal = 12.wdp)
                 )
             },
