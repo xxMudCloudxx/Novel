@@ -95,7 +95,7 @@ private fun StatsItem(
                 text = number,
                 fontSize = 14.ssp,
                 lineHeight = 16.ssp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 color = NovelColors.NovelText,
                 modifier = Modifier.padding(end = 2.wdp)
             )
@@ -104,6 +104,7 @@ private fun StatsItem(
                     text = unit,
                     fontSize = 10.ssp,
                     lineHeight = 10.ssp,
+                    fontWeight = FontWeight.Bold,
                     color = NovelColors.NovelText,
                     modifier = Modifier.padding(bottom = 1.wdp)
                 )
