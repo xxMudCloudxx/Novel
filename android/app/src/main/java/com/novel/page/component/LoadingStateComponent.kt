@@ -1,9 +1,11 @@
 package com.novel.page.component
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
+import com.novel.utils.iosSwipeBack
 
 @Stable
 interface LoadingStateComponent : LoadingComponent, StateComponent
@@ -69,19 +71,24 @@ open class LoadingStateComponentDefaults(
         error: @Composable (BoxScope.() -> Unit)?,
         content: @Composable BoxScope.() -> Unit
     ) {
-        LoadingComponent(
-            component = component,
-            modifier = modifier,
-            enabled = enabled,
-            loading = loading,
+        Box(
+            modifier = modifier
+                .iosSwipeBack()             // 👈 只加这一行就完成侧滑
         ) {
-            StateComponent(
+            LoadingComponent(
                 component = component,
-                modifier = Modifier,
-                error = error,
-                empty = empty,
-                content = content
-            )
+                modifier = modifier,
+                enabled = enabled,
+                loading = loading,
+            ) {
+                StateComponent(
+                    component = component,
+                    modifier = Modifier,
+                    error = error,
+                    empty = empty,
+                    content = content
+                )
+            }
         }
     }
 }

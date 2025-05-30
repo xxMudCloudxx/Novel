@@ -2,6 +2,7 @@ package com.novel.page.book.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,13 +25,14 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 书籍简介组件
+ * 书籍简介组件 - 性能优化版本
  * 
  * 功能特性：
  * - 自动检测简介内容长度，超过2行时显示"更多"按钮
- * - 点击"更多"按钮弹出半屏弹窗展示完整简介
- * - 弹窗具有上方10dp圆角，可上下滑动查看内容
+ * - 点击"更多"按钮弹出底部弹窗展示完整简介
+ * - 弹窗具有动画效果，可拖拽关闭
  * - 支持HTML标签清理和文本格式化
+ * - 性能优化：缓存计算结果，减少重组
  * 
  * @param description 书籍简介原始内容（可能包含HTML标签）
  * @param onToggleExpand 展开/收起回调（当前未使用，为向后兼容保留）
@@ -40,21 +42,60 @@ fun BookDescriptionSection(
     description: String,
     onToggleExpand: () -> Unit
 ) {
-    val cleaned = HtmlTextUtil.cleanHtml(description)
+    // 性能优化：使用remember缓存HTML清理结果
+    val cleaned = remember(description) { 
+        if (description.isBlank()) "" else HtmlTextUtil.cleanHtml(description)
+    }
     
     // 弹窗状态管理
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // 1. 动态获取容器可用宽度（px）
+    // 容器宽度状态
     var containerWidthPx by remember { mutableIntStateOf(0) }
 
-    // 2. TextMeasurer 用于离线测量
+    // 性能优化：使用remember缓存TextMeasurer
     val textMeasurer = rememberTextMeasurer()
+    
+    // 性能优化：使用remember缓存文本样式
+    val textStyle = remember {
+        TextStyle(fontSize = 14.ssp, fontFamily = PingFangFamily)
+    }
+    
+    // 性能优化：使用derivedStateOf计算布局信息
+    val layoutInfo = remember(cleaned, containerWidthPx, textStyle) {
+        derivedStateOf {
+            if (containerWidthPx <= 0 || cleaned.isBlank()) {
+                LayoutInfo(false, "", "")
+            } else {
+                val fullLayout = textMeasurer.measure(
+                    AnnotatedString(cleaned),
+                    style = textStyle,
+                    constraints = Constraints(maxWidth = containerWidthPx)
+                )
+                val totalLines = fullLayout.lineCount
+                val showExpand = totalLines > 2
+                
+                if (showExpand && totalLines > 0) {
+                    val firstEnd = fullLayout.getLineEnd(0).coerceAtMost(cleaned.length)
+                    val firstLine = cleaned.substring(0, firstEnd)
+                    val restAll = cleaned.substring(firstEnd)
+                    LayoutInfo(true, firstLine, restAll)
+                } else {
+                    LayoutInfo(false, cleaned, "")
+                }
+            }
+        }
+    }.value
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .onSizeChanged { containerWidthPx = (it.width * 0.95).toInt() },  // 获取宽度
+            .onSizeChanged { size ->
+                val newWidth = (size.width * 0.95).toInt()
+                if (newWidth != containerWidthPx) {
+                    containerWidthPx = newWidth
+                }
+            }
     ) {
         NovelText(
             text = "简介",
@@ -64,59 +105,47 @@ fun BookDescriptionSection(
             modifier = Modifier.padding(bottom = 8.wdp)
         )
 
-        if (containerWidthPx > 0) {
-            // ---- 先测量整段文字 ----
-            val fullLayout = textMeasurer.measure(
-                AnnotatedString(cleaned),
-                style = TextStyle(fontSize = 14.ssp, fontFamily = PingFangFamily),
-                constraints = Constraints(maxWidth = containerWidthPx)
-            )
-            val totalLines = fullLayout.lineCount
-            val showExpand = totalLines > 2
-
-            // 第一行分割点
-            val firstEnd = fullLayout.getLineEnd(0)
-            val firstLine = cleaned.substring(0, firstEnd)
-            val restAll = cleaned.substring(firstEnd)
-
+        if (cleaned.isNotBlank()) {
             // 渲染第一行
             NovelText(
-                text = firstLine,
+                text = layoutInfo.firstLine,
                 fontSize = 14.ssp,
                 lineHeight = 14.ssp,
                 color = NovelColors.NovelText.copy(alpha = 0.8f),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (restAll.isNotBlank()) {
-                    NovelText(
-                        text = restAll,
-                        fontSize = 14.ssp,
-                        lineHeight = 14.ssp,
-                        color = NovelColors.NovelText.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Companion.Ellipsis,
-                        modifier = Modifier
-                            .padding(end = 60.wdp)
-                            .weight(5f)
-                    )
-                }
+            // 第二行和更多按钮
+            if (layoutInfo.restAll.isNotBlank() || layoutInfo.showExpand) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (layoutInfo.restAll.isNotBlank()) {
+                        NovelText(
+                            text = layoutInfo.restAll,
+                            fontSize = 14.ssp,
+                            lineHeight = 14.ssp,
+                            color = NovelColors.NovelText.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .padding(end = 60.wdp)
+                                .weight(5f)
+                        )
+                    }
 
-                if (showExpand) {
-                    NovelText(
-                        text = "更多",
-                        fontSize = 14.ssp,
-                        lineHeight = 14.ssp,
-                        color = NovelColors.NovelMain,
-                        modifier = Modifier.debounceClickable(onClick = {
-                            // 点击"更多"按钮时显示半屏弹窗
-                            showBottomSheet = true
-                        })
-                    )
+                    if (layoutInfo.showExpand) {
+                        NovelText(
+                            text = "更多",
+                            fontSize = 14.ssp,
+                            lineHeight = 14.ssp,
+                            color = NovelColors.NovelMain,
+                            modifier = Modifier.debounceClickable(onClick = {
+                                showBottomSheet = true
+                            })
+                        )
+                    }
                 }
             }
         }
@@ -130,3 +159,12 @@ fun BookDescriptionSection(
         )
     }
 }
+
+/**
+ * 布局信息数据类 - 缓存计算结果
+ */
+private data class LayoutInfo(
+    val showExpand: Boolean,
+    val firstLine: String,
+    val restAll: String
+)
