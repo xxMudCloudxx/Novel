@@ -1,5 +1,6 @@
 package com.novel.page.home
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,37 +18,78 @@ import com.novel.page.home.component.*
 import com.novel.page.home.viewmodel.HomeAction
 import com.novel.page.home.viewmodel.HomeEvent
 import com.novel.page.home.viewmodel.HomeViewModel
+import com.novel.page.component.rememberFlipBookAnimationController
+import com.novel.page.component.FlipBookTrigger
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import com.novel.page.component.FlipBookAnimationController
+import androidx.compose.ui.geometry.Offset
 
 /**
- * 新版首页 - 支持下拉刷新和上拉加载
+ * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
  */
 @Composable
 fun HomePage(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToCategory: (Long) -> Unit = {},
     onNavigateToSearch: (String) -> Unit = {},
-    onNavigateToCategoryPage: () -> Unit = {}
+    onNavigateToCategoryPage: () -> Unit = {},
+    // 接收全局动画控制器
+    globalFlipBookController: FlipBookAnimationController? = null
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    
+    // 使用传入的全局动画控制器，如果没有则创建本地控制器
+    val flipBookController = globalFlipBookController ?: rememberFlipBookAnimationController()
     
     // 下拉刷新状态
     val swipeRefreshState = rememberSwipeRefreshState(
         isRefreshing = uiState.isRefreshing
     )
     
+    // 监听从详情页返回的事件，触发倒放动画
+    LaunchedEffect(Unit) {
+        NavViewModel.backNavigationEvents.collect { event ->
+            Log.d("HomePage", "===== 收到返回事件 =====")
+            Log.d("HomePage", "fromRoute: ${event.fromRoute}")
+            Log.d("HomePage", "bookId: ${event.bookId}")  
+            Log.d("HomePage", "fromRank: ${event.fromRank}")
+            Log.d("HomePage", "===========================")
+            
+            if (event.fromRoute == "book_detail" && event.fromRank && event.bookId != null) {
+                // 触发倒放动画 - 查找对应书籍的图片URL
+                val book = uiState.rankBooks.find { it.id.toString() == event.bookId }
+                val imageUrl = book?.picUrl ?: ""
+                
+                Log.d("HomePage", "🔄 开始执行倒放动画")
+                Log.d("HomePage", "书籍ID: ${event.bookId}")
+                Log.d("HomePage", "图片URL: $imageUrl")
+                
+                try {
+                    flipBookController.startReverseAnimation(event.bookId, imageUrl)
+                    Log.d("HomePage", "✅ 倒放动画启动成功")
+                } catch (e: Exception) {
+                    Log.e("HomePage", "❌ 倒放动画启动失败: ${e.message}")
+                }
+            } else {
+                Log.d("HomePage", "⏭️ 不符合倒放条件，跳过动画")
+            }
+        }
+    }
+    
     // 监听事件
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is HomeEvent.NavigateToBook -> {
-                    // 使用NavViewModel导航到书籍详情页
-                    NavViewModel.navigateToBookDetail(event.bookId.toString())
+                    // 推荐流点击使用普通导航（不触发翻书动画）
+                    NavViewModel.navigateToBookDetail(event.bookId.toString(), fromRank = false)
                 }
                 is HomeEvent.NavigateToCategory -> onNavigateToCategory(event.categoryId)
                 is HomeEvent.NavigateToSearch -> onNavigateToSearch(event.query)
@@ -110,10 +152,10 @@ fun HomePage(
                 )
             }
             
-            // 3. 榜单面板 - 只在推荐模式下显示，使用单个面板
+            // 3. 榜单面板 - 只在推荐模式下显示，支持3D翻书动画
             if (uiState.isRecommendMode) {
                 item {
-                    // 单个榜单面板，支持内部切换
+                    // 单个榜单面板，支持内部切换和翻书动画
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -124,7 +166,21 @@ fun HomePage(
                             rankBooks = uiState.rankBooks,
                             selectedRankType = uiState.selectedRankType,
                             onRankTypeSelected = { viewModel.onAction(HomeAction.OnRankTypeSelected(it)) },
-                            onBookClick = { viewModel.onAction(HomeAction.OnRankBookClick(it)) }
+                            onBookClick = { bookId,offest,size ->
+                                // 榜单点击触发翻书动画
+                                coroutineScope.launch {
+                                    // 查找对应的书籍信息
+                                    val book = uiState.rankBooks.find { it.id == bookId }
+                                    flipBookController.startFlipAnimation(
+                                        bookId = bookId.toString(),
+                                        imageUrl = book?.picUrl ?: "",
+                                        originalPosition = offest, // 榜单大概位置
+                                        originalSize = size
+                                    )
+                                }
+                            },
+                            // 传递翻书动画控制器
+                            flipBookController = flipBookController
                         )
                     }
                 }

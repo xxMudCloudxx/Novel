@@ -17,11 +17,13 @@ import com.novel.utils.wdp
 /**
  * 书籍详情页面 - 集成 iOS 风格背景指示器侧滑返回
  * @param bookId 书籍ID
+ * @param fromRank 是否来自榜单（用于识别来源，不影响显示）
  * @param viewModel 视图模型
  */
 @Composable
 fun BookDetailPage(
     bookId: String,
+    fromRank: Boolean = false,
     viewModel: BookDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()

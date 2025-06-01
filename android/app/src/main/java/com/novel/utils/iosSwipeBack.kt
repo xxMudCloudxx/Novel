@@ -55,6 +55,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.novel.ui.theme.NovelColors
+import com.novel.utils.NavViewModel
 
 /**
  * 侧滑状态数据类 - 用于传递拖拽状态信息
@@ -282,7 +283,7 @@ fun SwipeBackContainer(
     modifier: Modifier = Modifier,
     edgeWidthDp: Dp = 300.wdp,
     firstThreshold: Float = 0.05f,
-    completeThreshold: Float = 0.15f,
+    completeThreshold: Float = 0.3f,
     backgroundColor: Color = NovelColors.NovelBookBackground.copy(alpha = 0.7f), // 默认浅灰色背景
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -347,12 +348,12 @@ private suspend fun decideFinish(
     navController: NavController
 ) {
     if (anim.value >= thresholdPx) {
-        // 快速完成动画并执行返回
-        anim.animateTo(
-            anim.upperBound ?: Float.MAX_VALUE,
-            animationSpec = tween(200) // 更快的动画提升体验
-        )
-        navController.popBackStack()
+        // 快速完成动画并执行返回 - 使用NavViewModel来触发返回事件
+//        anim.animateTo(
+//            anim.upperBound ?: Float.MAX_VALUE,
+//            animationSpec = tween(10) // 更快的动画提升体验
+//        )
+        NavViewModel.navigateBack() // 使用我们的NavViewModel来触发返回事件
     } else {
         // 弹性回弹动画
         anim.animateTo(

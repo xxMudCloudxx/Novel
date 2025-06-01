@@ -36,6 +36,10 @@ import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 import kotlinx.coroutines.launch
+import com.novel.utils.NavViewModel
+import com.novel.page.component.rememberFlipBookAnimationController
+import com.novel.page.component.FlipBookTrigger
+import com.novel.page.component.GlobalFlipBookOverlay
 
 @Composable
 fun MainPage() {
@@ -52,51 +56,73 @@ fun MainPage() {
 
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { pageCount })
     val scope = rememberCoroutineScope()
-
-    Column(Modifier.fillMaxSize()) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f).background(color = Color(0xffF6F6F6)),
-            userScrollEnabled = false
-        ) { pageIndex ->
-            when (pageIndex) {
-                0 -> HomePage()
-                2 -> LoginPage()
-                4 -> ReactNativePage()
-                else -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { NovelText("Page Not Found") }
-            }
-        }
-
-        BottomAppBar(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.wdp),
-            containerColor = MaterialTheme.colorScheme.background,
-            contentPadding = PaddingValues(0.wdp)
-        ) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 30.wdp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                labels.forEachIndexed { index, _ ->
-                    NavButton(
-                        onClick = {
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        },
-                        isSelect = pagerState.currentPage == index,
-                        text = labels[index],
-                        id = imageId[index]
+    
+    // 在MainPage级别创建全局的翻书动画控制器
+    val globalFlipBookController = rememberFlipBookAnimationController()
+    
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 主要内容
+        Column(Modifier.fillMaxSize()) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f).background(color = Color(0xffF6F6F6)),
+                userScrollEnabled = false
+            ) { pageIndex ->
+                when (pageIndex) {
+                    0 -> HomePage(
+                        // 传递全局动画控制器给HomePage
+                        globalFlipBookController = globalFlipBookController
                     )
+                    2 -> LoginPage()
+                    4 -> ReactNativePage()
+                    else -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { NovelText("Page Not Found") }
+                }
+            }
+
+            BottomAppBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.wdp),
+                containerColor = MaterialTheme.colorScheme.background,
+                contentPadding = PaddingValues(0.wdp)
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 30.wdp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    labels.forEachIndexed { index, _ ->
+                        NavButton(
+                            onClick = {
+                                scope.launch { pagerState.animateScrollToPage(index) }
+                            },
+                            isSelect = pagerState.currentPage == index,
+                            text = labels[index],
+                            id = imageId[index]
+                        )
+                    }
                 }
             }
         }
+        
+        // 全局翻书动画覆盖层 - 在最顶层
+        GlobalFlipBookOverlay(
+            controller = globalFlipBookController
+        )
     }
+    
+    // 全局翻书动画触发器
+    FlipBookTrigger(
+        controller = globalFlipBookController,
+        onNavigate = { bookId ->
+            NavViewModel.navigateToBookDetail(bookId, fromRank = true)
+        }
+    )
 }
 
 @Composable
