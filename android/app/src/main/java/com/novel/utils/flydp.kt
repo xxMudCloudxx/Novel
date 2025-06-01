@@ -16,6 +16,8 @@ val Int.wdp: Dp
 // 为 Float 添加 flydp 扩展属性
 val Double.wdp: Dp
     get() = (this * globalScaleX).dp
+val Float.wdp: Dp
+    get() = (this * globalScaleX).dp
 
 // 为 Int 添加 flydp 扩展属性
 val Int.hdp: Dp
