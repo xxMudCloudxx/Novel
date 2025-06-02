@@ -44,7 +44,7 @@ data class ReaderSettings(
  */
 enum class PageFlipEffect(val displayName: String) {
     REALISTIC("仿真"),
-    COVER("覆盖"), 
+    COVER("覆盖"),
     SLIDE("平移"),
     VERTICAL("上下"),
     NONE("无动画")
@@ -116,7 +116,7 @@ fun ReaderSettingsPanel(
                 .background(Color.Black.copy(alpha = 0.3f))
                 .clickable { onDismiss() }
         )
-        
+
         // 设置面板
         Card(
             modifier = Modifier
@@ -141,7 +141,7 @@ fun ReaderSettingsPanel(
                         fontWeight = FontWeight.Bold,
                         color = NovelColors.NovelText
                     )
-                    
+
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.size(24.wdp)
@@ -153,7 +153,7 @@ fun ReaderSettingsPanel(
                         )
                     }
                 }
-                
+
                 // 第一行：亮度调节
                 BrightnessControl(
                     brightness = brightness,
@@ -169,7 +169,7 @@ fun ReaderSettingsPanel(
                         onSettingsChange(settings.copy(brightness = clamped))
                     }
                 )
-                
+
                 // 第二行：字体大小调节
                 FontSizeControl(
                     fontSize = settings.fontSize,
@@ -177,7 +177,7 @@ fun ReaderSettingsPanel(
                         onSettingsChange(settings.copy(fontSize = fontSize))
                     }
                 )
-                
+
                 // 第三行：背景颜色选择
                 BackgroundColorControl(
                     backgroundThemes = backgroundThemes,
@@ -192,7 +192,7 @@ fun ReaderSettingsPanel(
                         )
                     }
                 )
-                
+
                 // 第四行：翻页效果选择
                 PageFlipEffectControl(
                     currentEffect = settings.pageFlipEffect,
@@ -222,7 +222,7 @@ private fun BrightnessControl(
     ) {
         NovelText("亮度", fontSize = 14.ssp)
         SolidCircleSlider(
-            modifier =  Modifier.weight(1f),
+            modifier = Modifier.weight(1f),
             progress = brightness,
             onValueChange = { rawValue ->
                 // 量化到最近的档位
@@ -252,72 +252,6 @@ private fun BrightnessControlPreview() {
 }
 
 /**
- * 字体大小控制组件
- */
-@Composable
-private fun FontSizeControl(
-    fontSize: Int,
-    onFontSizeChange: (Int) -> Unit
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.wdp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "字体",
-                tint = NovelColors.NovelTextGray,
-                modifier = Modifier.size(20.wdp)
-            )
-            
-            Text(
-                text = "字体大小",
-                fontSize = 14.sp,
-                color = NovelColors.NovelText,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(8.wdp))
-        
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val fontSizes = listOf(12, 14, 16, 18, 20, 22, 24)
-            
-            fontSizes.forEach { size ->
-                val isSelected = fontSize == size
-                
-                Card(
-                    modifier = Modifier
-                        .size(40.wdp)
-                        .clickable { onFontSizeChange(size) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) NovelColors.NovelMain else NovelColors.NovelDivider
-                    ),
-                    shape = CircleShape
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "A",
-                            fontSize = (size * 0.6).sp,
-                            color = if (isSelected) Color.White else NovelColors.NovelText,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
  * 背景颜色控制组件
  */
 @Composable
@@ -338,7 +272,7 @@ private fun BackgroundColorControl(
                 tint = NovelColors.NovelTextGray,
                 modifier = Modifier.size(20.wdp)
             )
-            
+
             Text(
                 text = "背景颜色",
                 fontSize = 14.sp,
@@ -346,20 +280,20 @@ private fun BackgroundColorControl(
                 fontWeight = FontWeight.Medium
             )
         }
-        
+
         Spacer(modifier = Modifier.height(8.wdp))
-        
+
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
         ) {
             backgroundThemes.forEach { theme ->
                 val isSelected = currentBackgroundColor == theme.backgroundColor
-                
+
                 Card(
                     modifier = Modifier
                         .size(50.wdp)
-                        .clickable { 
+                        .clickable {
                             onThemeChange(theme.backgroundColor, theme.textColor)
                         },
                     colors = CardDefaults.cardColors(containerColor = theme.backgroundColor),
@@ -406,7 +340,7 @@ private fun PageFlipEffectControl(
                 tint = NovelColors.NovelTextGray,
                 modifier = Modifier.size(20.wdp)
             )
-            
+
             Text(
                 text = "翻页效果",
                 fontSize = 14.sp,
@@ -414,16 +348,16 @@ private fun PageFlipEffectControl(
                 fontWeight = FontWeight.Medium
             )
         }
-        
+
         Spacer(modifier = Modifier.height(8.wdp))
-        
+
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
         ) {
             PageFlipEffect.values().forEach { effect ->
                 val isSelected = currentEffect == effect
-                
+
                 Card(
                     modifier = Modifier
                         .wrapContentWidth()
