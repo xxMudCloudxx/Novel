@@ -105,102 +105,62 @@ fun ReaderSettingsPanel(
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize()
+    // 设置面板
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp),
+        colors = CardDefaults.cardColors(containerColor = NovelColors.NovelBackground)
     ) {
-        // 半透明遮罩，点击关闭
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(Color.Black.copy(alpha = 0.3f))
-                .clickable { onDismiss() }
-        )
-
-        // 设置面板
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp),
-            colors = CardDefaults.cardColors(containerColor = NovelColors.NovelBackground)
+        Column(
+            modifier = Modifier.padding(20.wdp),
+            verticalArrangement = Arrangement.spacedBy(20.wdp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.wdp),
-                verticalArrangement = Arrangement.spacedBy(20.wdp)
-            ) {
-                // 标题
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "阅读设置",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = NovelColors.NovelText
-                    )
-
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(24.wdp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "关闭",
-                            tint = NovelColors.NovelTextGray
-                        )
-                    }
+            // 第一行：亮度调节
+            BrightnessControl(
+                brightness = brightness,
+                onBrightnessChange = { raw ->
+                    // 同样把 raw 量化到最近的档位
+                    val stepCount = 10
+                    val stepSize = 1f / stepCount
+                    val stepped = (raw / stepSize).roundToInt() * stepSize
+                    val clamped = stepped.coerceIn(0f, 1f)
+                    // 把量化后的离散值直接存回外层 brightness
+                    brightness = clamped
+                    // 同步回传给 ReaderSettingsPanel 的 settings
+                    onSettingsChange(settings.copy(brightness = clamped))
                 }
+            )
 
-                // 第一行：亮度调节
-                BrightnessControl(
-                    brightness = brightness,
-                    onBrightnessChange = { raw ->
-                        // 同样把 raw 量化到最近的档位
-                        val stepCount = 10
-                        val stepSize = 1f / stepCount
-                        val stepped = (raw / stepSize).roundToInt() * stepSize
-                        val clamped = stepped.coerceIn(0f, 1f)
-                        // 把量化后的离散值直接存回外层 brightness
-                        brightness = clamped
-                        // 同步回传给 ReaderSettingsPanel 的 settings
-                        onSettingsChange(settings.copy(brightness = clamped))
-                    }
-                )
+            // 第二行：字体大小调节
+            FontSizeControl(
+                fontSize = settings.fontSize,
+                onFontSizeChange = { fontSize ->
+                    onSettingsChange(settings.copy(fontSize = fontSize))
+                }
+            )
 
-                // 第二行：字体大小调节
-                FontSizeControl(
-                    fontSize = settings.fontSize,
-                    onFontSizeChange = { fontSize ->
-                        onSettingsChange(settings.copy(fontSize = fontSize))
-                    }
-                )
-
-                // 第三行：背景颜色选择
-                BackgroundColorControl(
-                    backgroundThemes = backgroundThemes,
-                    currentBackgroundColor = settings.backgroundColor,
-                    currentTextColor = settings.textColor,
-                    onThemeChange = { backgroundColor, textColor ->
-                        onSettingsChange(
-                            settings.copy(
-                                backgroundColor = backgroundColor,
-                                textColor = textColor
-                            )
+            // 第三行：背景颜色选择
+            BackgroundColorControl(
+                backgroundThemes = backgroundThemes,
+                currentBackgroundColor = settings.backgroundColor,
+                onThemeChange = { backgroundColor->
+                    onSettingsChange(
+                        settings.copy(
+                            backgroundColor = backgroundColor
                         )
-                    }
-                )
+                    )
+                }
+            )
 
-                // 第四行：翻页效果选择
-                PageFlipEffectControl(
-                    currentEffect = settings.pageFlipEffect,
-                    onEffectChange = { effect ->
-                        onSettingsChange(settings.copy(pageFlipEffect = effect))
-                    }
-                )
-            }
+            // 第四行：翻页效果选择
+            PageFlipEffectControl(
+                currentEffect = settings.pageFlipEffect,
+                onEffectChange = { effect ->
+                    onSettingsChange(settings.copy(pageFlipEffect = effect))
+                }
+            )
         }
     }
 }
@@ -248,76 +208,6 @@ private fun BrightnessControlPreview() {
             brightness = 0.5f,
             onBrightnessChange = {}
         )
-    }
-}
-
-/**
- * 背景颜色控制组件
- */
-@Composable
-private fun BackgroundColorControl(
-    backgroundThemes: List<BackgroundTheme>,
-    currentBackgroundColor: Color,
-    currentTextColor: Color,
-    onThemeChange: (Color, Color) -> Unit
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.wdp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = "背景",
-                tint = NovelColors.NovelTextGray,
-                modifier = Modifier.size(20.wdp)
-            )
-
-            Text(
-                text = "背景颜色",
-                fontSize = 14.sp,
-                color = NovelColors.NovelText,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.wdp))
-
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            backgroundThemes.forEach { theme ->
-                val isSelected = currentBackgroundColor == theme.backgroundColor
-
-                Card(
-                    modifier = Modifier
-                        .size(50.wdp)
-                        .clickable {
-                            onThemeChange(theme.backgroundColor, theme.textColor)
-                        },
-                    colors = CardDefaults.cardColors(containerColor = theme.backgroundColor),
-                    shape = CircleShape,
-                    border = if (isSelected) {
-                        androidx.compose.foundation.BorderStroke(2.dp, NovelColors.NovelMain)
-                    } else null
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "已选择",
-                                tint = NovelColors.NovelMain,
-                                modifier = Modifier.size(20.wdp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
