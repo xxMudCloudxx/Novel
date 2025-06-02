@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.novel.page.MainPage
 import com.novel.page.login.LoginPage
 import com.novel.page.book.BookDetailPage
+import com.novel.page.book.ReaderPage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -44,7 +45,18 @@ fun NavigationSetup() {
             val fromRank = backStackEntry.arguments?.getString("fromRank")?.toBoolean() ?: false
             BookDetailPage(
                 bookId = bookId,
-                fromRank = fromRank
+                fromRank = fromRank,
+                onNavigateToReader = { bookId, chapterId ->
+                    NavViewModel.navigateToReader(bookId, chapterId)
+                }
+            )
+        }
+        composable("reader/{bookId}?chapterId={chapterId}") { backStackEntry ->
+            val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+            val chapterId = backStackEntry.arguments?.getString("chapterId")
+            ReaderPage(
+                bookId = bookId,
+                chapterId = chapterId
             )
         }
     }
@@ -85,6 +97,27 @@ object NavViewModel : ViewModel() {
         
         navController.value?.navigate("book_detail/$bookId?fromRank=$fromRank")
         Log.d("NavViewModel", "✅ 导航命令已发送")
+        Log.d("NavViewModel", "==============================")
+    }
+    
+    /**
+     * 导航到阅读器页面
+     * @param bookId 书籍ID
+     * @param chapterId 章节ID（可选）
+     */
+    fun navigateToReader(bookId: String, chapterId: String? = null) {
+        Log.d("NavViewModel", "===== 导航到阅读器页面 =====")
+        Log.d("NavViewModel", "bookId: $bookId")
+        Log.d("NavViewModel", "chapterId: $chapterId")
+        
+        val route = if (chapterId != null) {
+            "reader/$bookId?chapterId=$chapterId"
+        } else {
+            "reader/$bookId"
+        }
+        
+        navController.value?.navigate(route)
+        Log.d("NavViewModel", "✅ 导航到阅读器命令已发送")
         Log.d("NavViewModel", "==============================")
     }
     
