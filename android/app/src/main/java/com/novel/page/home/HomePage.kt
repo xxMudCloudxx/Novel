@@ -1,6 +1,5 @@
 package com.novel.page.home
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,14 +18,13 @@ import com.novel.page.home.viewmodel.HomeAction
 import com.novel.page.home.viewmodel.HomeEvent
 import com.novel.page.home.viewmodel.HomeViewModel
 import com.novel.page.component.rememberFlipBookAnimationController
-import com.novel.page.component.FlipBookTrigger
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
-import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.novel.page.component.FlipBookAnimationController
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 
 /**
  * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
@@ -44,6 +42,8 @@ fun HomePage(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
     
     // 使用传入的全局动画控制器，如果没有则创建本地控制器
     val flipBookController = globalFlipBookController ?: rememberFlipBookAnimationController()
@@ -53,43 +53,20 @@ fun HomePage(
         isRefreshing = uiState.isRefreshing
     )
     
-    // 监听从详情页返回的事件，触发倒放动画
-    LaunchedEffect(Unit) {
-        NavViewModel.backNavigationEvents.collect { event ->
-            Log.d("HomePage", "===== 收到返回事件 =====")
-            Log.d("HomePage", "fromRoute: ${event.fromRoute}")
-            Log.d("HomePage", "bookId: ${event.bookId}")  
-            Log.d("HomePage", "fromRank: ${event.fromRank}")
-            Log.d("HomePage", "===========================")
-            
-            if (event.fromRoute == "book_detail" && event.fromRank && event.bookId != null) {
-                // 触发倒放动画 - 查找对应书籍的图片URL
-                val book = uiState.rankBooks.find { it.id.toString() == event.bookId }
-                val imageUrl = book?.picUrl ?: ""
-                
-                Log.d("HomePage", "🔄 开始执行倒放动画")
-                Log.d("HomePage", "书籍ID: ${event.bookId}")
-                Log.d("HomePage", "图片URL: $imageUrl")
-                
-                try {
-                    flipBookController.startReverseAnimation(event.bookId, imageUrl)
-                    Log.d("HomePage", "✅ 倒放动画启动成功")
-                } catch (e: Exception) {
-                    Log.e("HomePage", "❌ 倒放动画启动失败: ${e.message}")
-                }
-            } else {
-                Log.d("HomePage", "⏭️ 不符合倒放条件，跳过动画")
-            }
-        }
+    // 优化：预计算屏幕尺寸，避免重复计算
+    val screenSize = remember(configuration, density) {
+        Pair(
+            configuration.screenWidthDp * density.density,
+            configuration.screenHeightDp * density.density
+        )
     }
     
-    // 监听事件
+    // 监听事件 - 移除书籍跳转，因为现在BookDetailPage在动画中显示
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is HomeEvent.NavigateToBook -> {
-                    // 推荐流点击使用普通导航（不触发翻书动画）
-                    NavViewModel.navigateToBookDetail(event.bookId.toString(), fromRank = false)
+                    // 不再跳转，书籍内容在动画中显示
                 }
                 is HomeEvent.NavigateToCategory -> onNavigateToCategory(event.categoryId)
                 is HomeEvent.NavigateToSearch -> onNavigateToSearch(event.query)
@@ -133,7 +110,7 @@ fun HomePage(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 1. 顶部搜索栏和分类按钮
-            item {
+            item(key = "top_bar") {
                 HomeTopBar(
                     searchQuery = uiState.searchQuery,
                     onSearchQueryChange = { viewModel.onAction(HomeAction.OnSearchQueryChange(it)) },
@@ -144,7 +121,7 @@ fun HomePage(
             }
             
             // 2. 分类筛选器
-            item {
+            item(key = "filter_bar") {
                 HomeFilterBar(
                     filters = uiState.categoryFilters,
                     selectedFilter = uiState.selectedCategoryFilter,
@@ -154,7 +131,7 @@ fun HomePage(
             
             // 3. 榜单面板 - 只在推荐模式下显示，支持3D翻书动画
             if (uiState.isRecommendMode) {
-                item {
+                item(key = "rank_panel") {
                     // 单个榜单面板，支持内部切换和翻书动画
                     Box(
                         modifier = Modifier
@@ -166,16 +143,19 @@ fun HomePage(
                             rankBooks = uiState.rankBooks,
                             selectedRankType = uiState.selectedRankType,
                             onRankTypeSelected = { viewModel.onAction(HomeAction.OnRankTypeSelected(it)) },
-                            onBookClick = { bookId,offest,size ->
+                            onBookClick = { bookId, offset, size ->
                                 // 榜单点击触发翻书动画
                                 coroutineScope.launch {
                                     // 查找对应的书籍信息
                                     val book = uiState.rankBooks.find { it.id == bookId }
+                                    
                                     flipBookController.startFlipAnimation(
                                         bookId = bookId.toString(),
                                         imageUrl = book?.picUrl ?: "",
-                                        originalPosition = offest, // 榜单大概位置
-                                        originalSize = size
+                                        originalPosition = offset,
+                                        originalSize = size,
+                                        screenWidth = screenSize.first,
+                                        screenHeight = screenSize.second
                                     )
                                 }
                             },
@@ -187,7 +167,7 @@ fun HomePage(
             }
             
             // 4. 推荐书籍瀑布流
-            item {
+            item(key = "recommend_grid") {
                 if (uiState.isRecommendMode) {
                     // 推荐模式：显示首页推荐数据
                     HomeRecommendGrid(
@@ -210,7 +190,7 @@ fun HomePage(
             }
             
             // 5. 加载更多指示器 - 根据模式显示不同状态
-            item {
+            item(key = "load_more_indicator") {
                 if (uiState.isRecommendMode) {
                     // 首页推荐模式
                     HomeRecommendLoadMoreIndicator(
@@ -230,7 +210,7 @@ fun HomePage(
             
             // 6. 全局加载状态
             if (uiState.isLoading) {
-                item {
+                item(key = "global_loading") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -246,7 +226,7 @@ fun HomePage(
             
             // 7. 错误提示
             uiState.error?.let { error ->
-                item {
+                item(key = "error_card") {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()

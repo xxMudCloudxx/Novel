@@ -36,9 +36,7 @@ import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 import kotlinx.coroutines.launch
-import com.novel.utils.NavViewModel
 import com.novel.page.component.rememberFlipBookAnimationController
-import com.novel.page.component.FlipBookTrigger
 import com.novel.page.component.GlobalFlipBookOverlay
 
 @Composable
@@ -115,14 +113,6 @@ fun MainPage() {
             controller = globalFlipBookController
         )
     }
-    
-    // 全局翻书动画触发器
-    FlipBookTrigger(
-        controller = globalFlipBookController,
-        onNavigate = { bookId ->
-            NavViewModel.navigateToBookDetail(bookId, fromRank = true)
-        }
-    )
 }
 
 @Composable

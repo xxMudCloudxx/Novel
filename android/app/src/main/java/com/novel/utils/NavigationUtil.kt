@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import android.util.Log
+import kotlinx.coroutines.DelicateCoroutinesApi
 
 /**
  * 导航设置 - 简化版本，翻书动画在HomePage内部处理
@@ -97,34 +98,8 @@ object NavViewModel : ViewModel() {
     /**
      * 返回
      */
+    @OptIn(DelicateCoroutinesApi::class)
     fun navigateBack() {
-        Log.d("NavViewModel", "===== navigateBack 被调用 =====")
-        Log.d("NavViewModel", "当前书籍信息: $currentBookInfo")
-        
-        val success = navController.value?.popBackStack() ?: false
-        Log.d("NavViewModel", "popBackStack 结果: $success")
-        
-        // 如果返回成功且当前有书籍信息，发送返回事件
-        if (success && currentBookInfo != null) {
-            val (bookId, fromRank) = currentBookInfo!!
-            Log.d("NavViewModel", "📤 准备发送返回事件")
-            Log.d("NavViewModel", "bookId: $bookId")
-            Log.d("NavViewModel", "fromRank: $fromRank")
-            
-            val event = BackNavigationEvent(
-                fromRoute = "book_detail",
-                bookId = bookId,
-                fromRank = fromRank
-            )
-            
-            val emitResult = _backNavigationEvents.tryEmit(event)
-            Log.d("NavViewModel", "事件发送结果: $emitResult")
-            
-            currentBookInfo = null
-            Log.d("NavViewModel", "✅ 返回事件处理完成")
-        } else {
-            Log.d("NavViewModel", "⏭️ 不发送返回事件 (success=$success, hasBookInfo=${currentBookInfo != null})")
-        }
-        Log.d("NavViewModel", "================================")
+        navController.value?.popBackStack()
     }
 }

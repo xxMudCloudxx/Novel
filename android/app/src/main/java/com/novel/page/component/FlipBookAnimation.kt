@@ -10,36 +10,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.novel.ui.theme.NovelColors
-import com.novel.page.component.NovelText
-import com.novel.page.component.NovelImageView
 import com.novel.utils.ssp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.util.Log
 import com.novel.utils.wdp
+import androidx.compose.ui.graphics.TransformOrigin
+import com.facebook.react.uimanager.PixelUtil.dpToPx
+import kotlinx.coroutines.coroutineScope
+import com.novel.page.book.BookDetailPage
 
 /**
  * 翻书动画状态
  */
+@Stable
 data class FlipBookState(
     val isAnimating: Boolean = false,
-    val progress: Float = 0f,
+    val isOpening: Boolean = true, // true: 打开书籍, false: 合上书籍
+    val coverRotationProgress: Float = 0f, // 封面旋转进度 [0f, 1f]
+    val scaleProgress: Float = 0f,    // 缩放进度 [0f, 1f]
     val bookId: String? = null,
     val originalImageUrl: String? = null,
     val originalPosition: Offset = Offset.Zero,
-    val originalSize: androidx.compose.ui.geometry.Size = androidx.compose.ui.geometry.Size.Zero
+    val originalSize: androidx.compose.ui.geometry.Size = androidx.compose.ui.geometry.Size.Zero,
+    val targetScale: Float = 1f,
+    val showContent: Boolean = false, // 是否显示书籍内容页
+    val hideOriginalImage: Boolean = false // 是否隐藏原始图片（用于共享元素动画）
 )
 
 /**
- * 翻书动画控制器
+ * 翻书动画控制器 - 真正的3D翻书效果，使用共享元素动画
  */
 @Composable
 fun rememberFlipBookAnimationController(): FlipBookAnimationController {
@@ -50,187 +55,201 @@ class FlipBookAnimationController {
     private var _animationState by mutableStateOf(FlipBookState())
     val animationState: FlipBookState get() = _animationState
 
-    private var onNavigate: ((String) -> Unit)? = null
+    // 动画完成回调
+    private var onAnimationComplete: (() -> Unit)? = null
 
-    fun setNavigationCallback(callback: (String) -> Unit) {
-        onNavigate = callback
-    }
-
+    /**
+     * 开始翻书动画（打开书籍）
+     * 使用共享元素动画：隐藏原始图片，在全局层显示动画
+     */
     suspend fun startFlipAnimation(
         bookId: String,
         imageUrl: String,
         originalPosition: Offset,
-        originalSize: androidx.compose.ui.geometry.Size
+        originalSize: androidx.compose.ui.geometry.Size,
+        screenWidth: Float = 1080f,
+        screenHeight: Float = 2400f
     ) {
-        Log.d(
-            "FlipBookAnimation",
-            "开始动画: bookId=$bookId, position=$originalPosition, size=$originalSize"
-        )
+        // 计算目标缩放比例
+        val horScale = screenWidth / originalSize.width
+        val verScale = screenHeight / originalSize.height
+        val targetScale = maxOf(horScale, verScale)
 
         _animationState = FlipBookState(
             isAnimating = true,
+            isOpening = true,
             bookId = bookId,
             originalImageUrl = imageUrl,
             originalPosition = originalPosition,
-            originalSize = originalSize
+            originalSize = originalSize,
+            targetScale = targetScale,
+            showContent = true,
+            hideOriginalImage = true // 隐藏原始图片，使用全局动画
         )
 
-        // 创建动画 - 使用更流畅的动画
-        val animatable = Animatable(0f)
-
-        // 启动一个协程来实时更新进度
-        val updateJob = kotlinx.coroutines.GlobalScope.launch {
-            while (animatable.isRunning) {
-                _animationState = _animationState.copy(progress = animatable.value)
-                kotlinx.coroutines.delay(16) // 约60fps更新
+        coroutineScope {
+            // 优化：使用单个动画状态对象减少状态更新
+            val animationState = object {
+                var coverRotation = 0f
+                var scale = 0f
             }
-        }
 
-        // 启动动画到80% - 使用更平滑的缓动
-        animatable.animateTo(
-            targetValue = 0.8f,
-            animationSpec = tween(
-                durationMillis = 600, // 减少时长让动画更快
-                easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f) // 更平滑的缓动
-            )
-        )
+            // 创建并行动画
+            val coverRotationAnimatable = Animatable(0f)
+            val scaleAnimatable = Animatable(0f)
 
-        // 当动画到达80%时触发页面跳转
-        Log.d("FlipBookAnimation", "动画到达80%，触发导航")
-        onNavigate?.invoke(bookId)
-
-        // 继续动画到100%
-        animatable.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = 150, // 缩短最后阶段
-                easing = LinearEasing
-            )
-        )
-
-        // 停止更新协程
-        updateJob.cancel()
-
-        _animationState = _animationState.copy(progress = 1f)
-        delay(50) // 大幅减少延迟
-        _animationState = FlipBookState()
-    }
-
-    suspend fun startReverseAnimation(bookId: String, imageUrl: String) {
-        Log.d("FlipBookAnimation", "开始倒放动画: bookId=$bookId")
-
-        // 倒放动画，从最终状态回到初始状态
-        _animationState = FlipBookState(
-            isAnimating = true,
-            progress = 1f,
-            bookId = bookId,
-            originalImageUrl = imageUrl,
-            originalPosition = Offset(0f, 300f), // 从屏幕左侧开始倒放
-            originalSize = androidx.compose.ui.geometry.Size(50f, 65f)
-        )
-
-        val animatable = Animatable(1f)
-
-        // 启动一个协程来实时更新进度
-        val updateJob = kotlinx.coroutines.GlobalScope.launch {
-            while (animatable.isRunning) {
-                _animationState = _animationState.copy(progress = animatable.value)
-                kotlinx.coroutines.delay(16) // 约60fps更新
-            }
-        }
-
-        // 倒放动画 - 使用快速平滑的缓动
-        animatable.animateTo(
-            targetValue = 0f,
-            animationSpec = tween(
-                durationMillis = 500, // 倒放更快
-                easing = CubicBezierEasing(0.4f, 0f, 0.6f, 1f) // 平滑缓动
-            )
-        )
-
-        // 停止更新协程
-        updateJob.cancel()
-
-        // 清理状态
-        _animationState = FlipBookState()
-    }
-}
-
-/**
- * 书籍动画位置追踪器
- * 追踪书籍在屏幕中的位置，供动画使用
- */
-@Composable
-fun BookPositionTracker(
-    controller: FlipBookAnimationController,
-    bookId: String,
-    imageUrl: String,
-    onBookClick: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    var bookPosition by remember { mutableStateOf(Offset.Zero) }
-    var bookSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
-    val coroutineScope = rememberCoroutineScope()
-
-    Box(
-        modifier = Modifier
-            .onGloballyPositioned { coordinates ->
-                val bounds = coordinates.boundsInWindow()
-                bookPosition = Offset(bounds.left, bounds.top)
-                bookSize = androidx.compose.ui.geometry.Size(bounds.width, bounds.height)
-            }
-    ) {
-        // 如果当前书籍正在动画中，隐藏原始图片
-        val isCurrentBookAnimating = controller.animationState.isAnimating &&
-                controller.animationState.bookId == bookId
-
-        Box(
-            modifier = Modifier
-                .then(
-                    if (isCurrentBookAnimating) {
-                        Modifier // 动画期间隐藏原始图片，或者设置为透明
-                    } else {
-                        Modifier
-                    }
+            // 启动并行动画
+            val coverRotationJob = launch {
+                coverRotationAnimatable.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 800,
+                        easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+                    )
                 )
-        ) {
-            content()
-        }
-
-        // 点击处理
-        LaunchedEffect(Unit) {
-            // 这里可以处理点击事件，但实际点击应该从外部传入
-        }
-    }
-
-    // 设置点击回调，传递位置信息
-    LaunchedEffect(bookPosition, bookSize) {
-        // 这个effect会在位置更新时触发，但我们需要在点击时才启动动画
-        // 所以这里先不做任何事，等待外部调用
-    }
-
-    // 提供一个函数供外部调用来启动动画
-    LaunchedEffect(controller) {
-        controller.setNavigationCallback { bookId ->
-            onBookClick()
-        }
-    }
-
-    // 暴露启动动画的方法
-    DisposableEffect(bookId) {
-        val startAnimation = {
-            coroutineScope.launch {
-                controller.startFlipAnimation(bookId, imageUrl, bookPosition, bookSize)
             }
-        }
 
-        onDispose { }
+            val scaleJob = launch {
+                scaleAnimatable.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 800,
+                        easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+                    )
+                )
+            }
+
+            // 优化：减少更新频率，只在值变化时更新
+            val updateJob = launch {
+                var lastRotation = -1f
+                var lastScale = -1f
+
+                while (coverRotationAnimatable.isRunning || scaleAnimatable.isRunning) {
+                    val currentRotation = coverRotationAnimatable.value
+                    val currentScale = scaleAnimatable.value
+
+                    // 只在值发生显著变化时更新状态（减少不必要的重组）
+                    if (kotlin.math.abs(currentRotation - lastRotation) > 0.001f ||
+                        kotlin.math.abs(currentScale - lastScale) > 0.001f
+                    ) {
+
+                        _animationState = _animationState.copy(
+                            coverRotationProgress = currentRotation,
+                            scaleProgress = currentScale
+                        )
+
+                        lastRotation = currentRotation
+                        lastScale = currentScale
+                    }
+
+                    delay(16) // 约60fps更新
+                }
+            }
+
+            // 等待动画完成
+            coverRotationJob.join()
+            scaleJob.join()
+            updateJob.cancel()
+
+            _animationState = _animationState.copy(
+                coverRotationProgress = 1f,
+                scaleProgress = 1f
+            )
+
+            onAnimationComplete?.invoke()
+        }
+    }
+
+    /**
+     * 开始倒放动画（合上书籍）
+     * 恢复原始图片显示，隐藏全局动画
+     */
+    private suspend fun startReverseAnimation(
+        bookId: String,
+    ) {
+        _animationState = _animationState.copy(
+            isOpening = false,
+            coverRotationProgress = 1f, // 封面从90度开始
+            scaleProgress = 1f, // 从全屏开始
+            hideOriginalImage = true // 继续隐藏原始图片直到动画结束
+        )
+
+        coroutineScope {
+            // 创建倒放动画
+            val coverRotationAnimatable = Animatable(1f) // 从90度回到0度
+            val scaleAnimatable = Animatable(1f) // 从全屏缩小到原始大小
+
+            // 启动并行倒放动画
+            val coverRotationJob = launch {
+                coverRotationAnimatable.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = 600,
+                        easing = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
+                    )
+                )
+            }
+
+            val scaleJob = launch {
+                scaleAnimatable.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = 600,
+                        easing = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)
+                    )
+                )
+            }
+
+            // 优化：减少更新频率
+            val updateJob = launch {
+                var lastRotation = -1f
+                var lastScale = -1f
+
+                while (coverRotationAnimatable.isRunning || scaleAnimatable.isRunning) {
+                    val currentRotation = coverRotationAnimatable.value
+                    val currentScale = scaleAnimatable.value
+
+                    if (kotlin.math.abs(currentRotation - lastRotation) > 0.001f ||
+                        kotlin.math.abs(currentScale - lastScale) > 0.001f
+                    ) {
+
+                        _animationState = _animationState.copy(
+                            coverRotationProgress = currentRotation,
+                            scaleProgress = currentScale
+                        )
+
+                        lastRotation = currentRotation
+                        lastScale = currentScale
+                    }
+
+                    delay(16)
+                }
+            }
+
+            // 等待动画完成
+            coverRotationJob.join()
+            scaleJob.join()
+            updateJob.cancel()
+
+            // 清理状态 - 恢复原始图片显示
+            _animationState = FlipBookState() // 完全重置状态，恢复原始图片
+        }
+    }
+
+    /**
+     * 触发倒放动画的便捷方法
+     */
+    suspend fun triggerReverseAnimation() {
+        if (_animationState.isAnimating) {
+            startReverseAnimation(
+                bookId = _animationState.bookId ?: "",
+            )
+        }
     }
 }
 
 /**
- * 全局翻书动画覆盖层
- * 在最顶层显示动画图片，可以突破所有组件边界
+ * 全局翻书动画覆盖层 - 真正的3D翻书效果，性能优化版本
  */
 @Composable
 fun GlobalFlipBookOverlay(
@@ -240,168 +259,182 @@ fun GlobalFlipBookOverlay(
     val animationState = controller.animationState
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val screenHeight = configuration.screenHeightDp.dp
 
-    // 添加独立的宽度动画
-    val widthAnimation = remember { Animatable(100f) }
-
-    // 当进度超过0.15时启动独立宽度动画
-    LaunchedEffect(animationState.progress) {
-        if (animationState.progress > 0.15f) {
-            widthAnimation.animateTo(
-                targetValue = 400f,
-                animationSpec = tween(
-                    durationMillis = 300,
-                    easing = LinearOutSlowInEasing
-                )
-            )
-        }
+    // 预计算屏幕尺寸，避免重复计算
+    val screenSize = remember(configuration) {
+        androidx.compose.ui.geometry.Size(
+            configuration.screenWidthDp.dp.value.dpToPx(),
+            configuration.screenHeightDp.dp.value.dpToPx()
+        )
     }
 
-    if (animationState.isAnimating &&
-        animationState.bookId != null
-    ) {
+    // 性能关键：只有在动画进行时才渲染，完全避免无效渲染
+    if (!animationState.isAnimating || animationState.bookId == null) {
+        return
+    }
 
-        Log.d("FlipBookAnimation", "显示全局覆盖层动画，进度: ${animationState.progress}")
-
-        // 尝试获取真实的图片URL，如果没有提供获取函数则使用默认URL
-        val imageUrl = getBookImageUrl?.invoke(animationState.bookId)
+    val imageUrl = remember(animationState.bookId, animationState.originalImageUrl) {
+        getBookImageUrl?.invoke(animationState.bookId)
             ?: animationState.originalImageUrl
-            ?: "https://via.placeholder.com/50x65" // 默认占位图
+            ?: ""
+    }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(1000f), // 确保在最顶层
-        ) {
-            // 动画中的书籍图片
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(1000f)
+    ) {
+        // 书籍内容视图 (BookDetailPage) - 直接放大动画
+        if (animationState.showContent) {
+            // 优化：预计算变换参数
+            val (currentScale, transformOrigin) = remember(
+                animationState.scaleProgress,
+                animationState.originalPosition,
+                screenSize
+            ) {
+                val progress = animationState.scaleProgress
+                val scale = if (progress <= 0.5f) {
+                    progress * 0.4f
+                } else {
+                    0.2f + (progress - 0.5f) * 1.6f
+                }
+
+                val origin = TransformOrigin(
+                    pivotFractionX = animationState.originalPosition.x / screenSize.width,
+                    pivotFractionY = animationState.originalPosition.y / screenSize.height
+                )
+
+                scale to origin
+            }
+
             Box(
                 modifier = Modifier
-                    .offset {
-                        val baseX = animationState.originalPosition.x
-                        val baseY = animationState.originalPosition.y
-
-                        // 简化位置计算 - 直接使用您的逻辑
-                        val progress = animationState.progress
-                        val targetX = 0f
-                        val targetY = (screenHeight.toPx() * 0.5f)
-
-                        IntOffset(
-                            x = (baseX * (1 - progress * 1.1)).toInt(),
-                            y = (baseY + ((targetY - baseY) * progress)).toInt()
-                        )
-                    }
+                    .fillMaxSize()
                     .graphicsLayer {
-                        val progress = animationState.progress
-                        val bookWidthDp = 50.wdp
-                        val bookHeightDp = 65.wdp
-                        val targetScaleX =
-                            (screenWidth.value * 0.8f - 40.wdp.value) / bookWidthDp.value // 屏幕80%
-                        val targetScaleY =
-                            (screenHeight.value - 40.wdp.value) / bookHeightDp.value // 屏幕100%
-
-                        // 简化3D变换计算
-                        cameraDistance = 8f * density.density // 减少透视距离
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-
-                        // 简化旋转 - 使用线性插值
-                        rotationY = -120f * progress // 减少旋转角度
-
-                        // 简化缩放 - 使用您调整后的参数
-                        scaleX = 1f + (targetScaleX - 1f) * animationState.progress
-                        scaleY = 1f + (targetScaleY - 1f) * animationState.progress
-
-                        // 边界检查
-                        if (scaleX > targetScaleX) scaleX = targetScaleX
-                        if (scaleY > targetScaleY) scaleY = targetScaleY
-
-                        // 保持透明度稳定，减少计算
-                        alpha = 1f
-
-                        // 简化阴影
-                        shadowElevation = (4 + 6 * progress).dp.toPx()
+                        scaleX = currentScale
+                        scaleY = currentScale
+                        alpha = if (animationState.scaleProgress > 0.3f) 1f else 0.3f
                     }
             ) {
-                if (animationState.progress > 0.15f) {
-                    Box(
-                        modifier = Modifier
-                            .height(65.wdp)
-                            .width(300.wdp)
-                            .clip(RoundedCornerShape(4.wdp))
-                            .background(NovelColors.NovelBookBackground)
-                    )
-                }
+                BookDetailPage(
+                    bookId = animationState.bookId,
+                    fromRank = true,
+                    flipBookController = controller
+                )
+            }
+        }
 
-                Box {
-                    // 翻书效果：背景的"下一页"方框
+        // 书籍封面视图 - 沿左边Y轴旋转90度，只有在需要显示封面时才渲染
+        if (animationState.hideOriginalImage) {
+            // 优化：预计算位置和变换参数
+            val (offsetX, offsetY, rotationY, scale) = remember(
+                animationState.scaleProgress,
+                animationState.coverRotationProgress,
+                animationState.originalPosition,
+                animationState.targetScale,
+                screenSize
+            ) {
+                val scaleProgress = animationState.scaleProgress
+                val rotationProgress = animationState.coverRotationProgress
+                val baseX = animationState.originalPosition.x
+                val baseY = animationState.originalPosition.y - 120.wdp.value
+                val targetY = screenSize.height * 0.5f
 
-                    // 书籍封面 - 使用图片URL重新渲染
-                    NovelImageView(
-                        imageUrl = imageUrl,
-                        modifier = Modifier
-                            .size(50.dp, 65.dp) // 固定尺寸
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(NovelColors.NovelMain),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        placeholderContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(NovelColors.NovelMain),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                NovelText(
-                                    text = "📖",
-                                    fontSize = 20.ssp,
-                                    color = androidx.compose.ui.graphics.Color.White
-                                )
-                            }
+                val offsetX = (baseX * (1 - scaleProgress)).toInt()
+                val offsetY = (baseY + ((targetY - baseY) * scaleProgress)).toInt()
+                val rotationY = -90f * rotationProgress
+                val scale = 1f + (animationState.targetScale - 1f) * scaleProgress
+
+                Tuple4(offsetX, offsetY, rotationY, scale)
+            }
+
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }
+                    .graphicsLayer {
+                        this.rotationY = rotationY.toFloat()
+                        scaleX = scale.toFloat()
+                        scaleY = scale.toFloat()
+                        cameraDistance = 12f * density.density
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        shadowElevation =
+                            if (animationState.coverRotationProgress > 0) 12.dp.toPx() else 0f
+                        alpha = 1f
+                    }
+            ) {
+                // 书籍封面图片
+                NovelImageView(
+                    imageUrl = imageUrl,
+                    modifier = Modifier
+                        .size(
+                            animationState.originalSize.width.wdp / density.density,
+                            animationState.originalSize.height.wdp / density.density
+                        )
+                        .clip(RoundedCornerShape(4.wdp))
+                        .background(NovelColors.NovelMain),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    placeholderContent = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(NovelColors.NovelMain),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            NovelText(
+                                text = "📖",
+                                fontSize = 20.ssp,
+                                color = androidx.compose.ui.graphics.Color.White
+                            )
                         }
-                    )
-                }
+                    }
+                )
             }
         }
     }
 }
 
+// 辅助数据类，用于减少对象创建
+private data class Tuple4<T>(val first: T, val second: T, val third: T, val fourth: T)
+
 /**
  * 简化的书籍点击处理器
- * 提供启动动画的接口
+ * 提供启动动画的接口，支持精确位置
  */
 @Composable
 fun rememberBookClickHandler(
     controller: FlipBookAnimationController,
     bookId: String,
-    imageUrl: String
+    imageUrl: String,
+    position: Offset = Offset.Zero,
+    size: androidx.compose.ui.geometry.Size = androidx.compose.ui.geometry.Size.Zero
 ): () -> Unit {
     val coroutineScope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
 
-    return remember(bookId) {
+    // 优化：预计算屏幕尺寸和默认值
+    return remember(bookId, position, size, configuration, density) {
+        val finalPosition = if (position != Offset.Zero) position else Offset(200f, 300f)
+        val finalSize = if (size != androidx.compose.ui.geometry.Size.Zero) {
+            size
+        } else {
+            androidx.compose.ui.geometry.Size(150f, 200f)
+        }
+
+        val screenWidthPx = configuration.screenWidthDp * density.density
+        val screenHeightPx = configuration.screenHeightDp * density.density
+
         {
             coroutineScope.launch {
-                // 使用默认位置启动动画，因为获取实际位置比较复杂
-                // 这里简化处理，使用屏幕中的一个位置
                 controller.startFlipAnimation(
                     bookId = bookId,
                     imageUrl = imageUrl,
-                    originalPosition = Offset(200f, 300f),
-                    originalSize = androidx.compose.ui.geometry.Size(50f, 65f)
+                    originalPosition = finalPosition,
+                    originalSize = finalSize,
+                    screenWidth = screenWidthPx,
+                    screenHeight = screenHeightPx
                 )
             }
         }
     }
 }
-
-/**
- * 翻书动画触发器
- */
-@Composable
-fun FlipBookTrigger(
-    controller: FlipBookAnimationController,
-    onNavigate: (String) -> Unit
-) {
-    LaunchedEffect(controller) {
-        controller.setNavigationCallback(onNavigate)
-    }
-} 

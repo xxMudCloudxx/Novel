@@ -1,7 +1,9 @@
 package com.novel.page.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
@@ -121,6 +123,7 @@ fun LoadingStateComponent(
 /**
  * 带自定义背景的LoadingStateComponent版本
  * 可以指定背景颜色来匹配不同的设计需求
+ * 支持3D翻书动画的侧滑返回处理
  */
 @Composable
 fun LoadingStateComponent(
@@ -131,25 +134,52 @@ fun LoadingStateComponent(
     loading: @Composable BoxScope.() -> Unit = LoadingStateComponentDefaults.instance.loading,
     error: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.error,
     empty: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.empty,
+    flipBookController: FlipBookAnimationController? = null, // 添加翻书动画控制器参数
     content: @Composable BoxScope.() -> Unit
 ) {
-    SwipeBackContainer(
-        modifier = modifier,
-        backgroundColor = backgroundColor
-    ) {
-        LoadingComponent(
-            component = component,
-            modifier = Modifier,
-            enabled = enabled,
-            loading = loading,
+    // 如果当前在3D翻书动画状态下，使用特殊的侧滑处理
+    if (flipBookController != null) {
+        // 在动画状态下，侧滑触发倒放动画
+        Box(
+            modifier = modifier
+                .background(backgroundColor)
+                .fillMaxSize()
         ) {
-            StateComponent(
+            LoadingComponent(
                 component = component,
                 modifier = Modifier,
-                error = error,
-                empty = empty,
-                content = content
-            )
+                enabled = enabled,
+                loading = loading,
+            ) {
+                StateComponent(
+                    component = component,
+                    modifier = Modifier,
+                    error = error,
+                    empty = empty,
+                    content = content
+                )
+            }
+        }
+    } else {
+        // 正常状态下，使用原有的侧滑返回逻辑
+        SwipeBackContainer(
+            modifier = modifier,
+            backgroundColor = backgroundColor
+        ) {
+            LoadingComponent(
+                component = component,
+                modifier = Modifier,
+                enabled = enabled,
+                loading = loading,
+            ) {
+                StateComponent(
+                    component = component,
+                    modifier = Modifier,
+                    error = error,
+                    empty = empty,
+                    content = content
+                )
+            }
         }
     }
 }

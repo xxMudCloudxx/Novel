@@ -1,7 +1,6 @@
 package com.novel.page.home.component
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
@@ -32,11 +31,7 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 import kotlinx.coroutines.launch
 import com.novel.page.component.rememberBookClickHandler
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.compose.ui.graphics.Color
 
 /**
  * 首页榜单面板组件 - 连续滚动但带精确距离控制，支持3D翻书动画
@@ -51,11 +46,14 @@ fun HomeRankPanel(
     // 翻书动画控制器
     flipBookController: FlipBookAnimationController? = null
 ) {
-    val rankTypes = listOf(
-        CategoryInfo(HomeRepository.RANK_TYPE_VISIT, "点击榜"),
-        CategoryInfo(HomeRepository.RANK_TYPE_UPDATE, "更新榜"),
-        CategoryInfo(HomeRepository.RANK_TYPE_NEWEST, "新书榜")
-    )
+    // 优化：预计算榜单类型，避免重复创建
+    val rankTypes = remember {
+        listOf(
+            CategoryInfo(HomeRepository.RANK_TYPE_VISIT, "点击榜"),
+            CategoryInfo(HomeRepository.RANK_TYPE_UPDATE, "更新榜"),
+            CategoryInfo(HomeRepository.RANK_TYPE_NEWEST, "新书榜")
+        )
+    }
 
     Card(
         modifier = modifier
@@ -79,7 +77,10 @@ fun HomeRankPanel(
             )
 
             // 榜单书籍连续滚动列表 - 最多16本书，每列4本
-            val limitedBooks = rankBooks.take(16)
+            // 优化：预计算限制后的书籍列表
+            val limitedBooks = remember(rankBooks) {
+                rankBooks.take(16)
+            }
 
             if (limitedBooks.isNotEmpty()) {
                 RankBooksScrollableGrid(
@@ -108,8 +109,8 @@ private fun RankBooksScrollableGrid(
     modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
-    // 将书籍按每列4本分组
-    val bookColumns = books.chunked(4)
+    // 优化：预计算书籍分组，避免重复计算
+    val bookColumns = remember(books) { books.chunked(4) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -129,13 +130,21 @@ private fun RankBooksScrollableGrid(
         horizontalArrangement = Arrangement.spacedBy(8.wdp),
         contentPadding = PaddingValues(horizontal = 4.wdp)
     ) {
-        items(bookColumns.size) { columnIndex ->
+        items(
+            count = bookColumns.size,
+            key = { columnIndex -> "column_$columnIndex" } // 优化：添加稳定的key
+        ) { columnIndex ->
+            // 优化：预计算列宽
+            val columnWidth = remember(columnIndex, bookColumns.size) {
+                if (columnIndex != bookColumns.size - 1) 200.wdp else 312.wdp
+            }
+            
             RankBookColumn(
                 books = bookColumns[columnIndex],
                 startRank = columnIndex * 4 + 1,
                 onBookClick = onBookClick,
                 flipBookController = flipBookController,
-                modifier = Modifier.width(if (columnIndex != bookColumns.size - 1) 200.wdp else 312.wdp)
+                modifier = Modifier.width(columnWidth)
             )
         }
     }
@@ -158,13 +167,16 @@ private fun RankBookColumn(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         books.forEachIndexed { index, book ->
-            RankBookGridItem(
-                book = book,
-                rank = startRank + index,
-                onClick = onBookClick,
-                flipBookController = flipBookController,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // 优化：使用稳定的key避免重组
+            key(book.id) {
+                RankBookGridItem(
+                    book = book,
+                    rank = startRank + index,
+                    onClick = onBookClick,
+                    flipBookController = flipBookController,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
@@ -184,11 +196,14 @@ private fun RankFilterBar(
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         rankTypes.forEach { rankType ->
-            RankFilterChip(
-                filter = rankType.name,
-                isSelected = rankType.name == selectedRankType,
-                onClick = { onRankTypeSelected(rankType.name) }
-            )
+            // 优化：使用稳定的key
+            key(rankType.name) {
+                RankFilterChip(
+                    filter = rankType.name,
+                    isSelected = rankType.name == selectedRankType,
+                    onClick = { onRankTypeSelected(rankType.name) }
+                )
+            }
         }
     }
 }
@@ -224,15 +239,19 @@ private fun RankBookGridItem(
     modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
-    var coverPosition by remember { mutableStateOf(Offset.Zero) }
-    var coverSizePx by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+    // 优化：使用单个状态存储位置和尺寸信息
+    var positionInfo by remember { 
+        mutableStateOf(Pair(Offset.Zero, Size.Zero)) 
+    }
 
     // 创建翻书动画点击处理器
     val bookClickHandler = if (flipBookController != null) {
         rememberBookClickHandler(
             controller = flipBookController,
             bookId = book.id.toString(),
-            imageUrl = book.picUrl
+            imageUrl = book.picUrl,
+            position = positionInfo.first,
+            size = positionInfo.second
         )
     } else null
 
@@ -241,33 +260,39 @@ private fun RankBookGridItem(
             .fillMaxWidth()
             .debounceClickable(onClick = {
                 // 先触发翻书动画，然后执行原有的点击逻辑
-                bookClickHandler?.invoke()
+//                bookClickHandler?.invoke()
                 onClick(
                     book.id,
-                    coverPosition,
-                    coverSizePx
+                    positionInfo.first,
+                    positionInfo.second
                 )
             })
             .padding(2.wdp),
         verticalAlignment = Alignment.Top
     ) {
-        // 书籍封面 - 直接显示，动画将在全局覆盖层进行
+        // 书籍封面 - 精确追踪位置和尺寸
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coordinates ->
-                    // boundsInWindow() 返回一个 Rect，单位默认是 px
+                    // 优化：减少频繁的位置更新，只在显著变化时更新
                     val windowRect = coordinates.boundsInWindow()
-                    coverPosition = Offset(
-                        windowRect.left,
-                        windowRect.top - 120.wdp.value // 去掉偏移调整，使用原始位置
-                    )
-                    coverSizePx = androidx.compose.ui.geometry.Size(
+                    val newPosition = Offset(windowRect.left, windowRect.top)
+                    val newSize = Size(
                         coordinates.size.width.toFloat(),
                         coordinates.size.height.toFloat()
                     )
-                    Log.d("RankPanel", "书籍位置: $coverPosition, 尺寸: $coverSizePx")
+                    
+                    val currentInfo = positionInfo
+                    if ((newPosition - currentInfo.first).getDistanceSquared() > 1f ||
+                        kotlin.math.abs(newSize.width - currentInfo.second.width) > 1f ||
+                        kotlin.math.abs(newSize.height - currentInfo.second.height) > 1f) {
+                        
+                        positionInfo = newPosition to newSize
+                    }
                 }
-        ) { BookCoverImage(book = book) }
+        ) { 
+            BookCoverImage(book = book, flipBookController = flipBookController) 
+        }
 
         Spacer(modifier = Modifier.width(4.wdp))
 
@@ -314,33 +339,53 @@ private fun RankBookGridItem(
 }
 
 /**
- * 书籍封面图片组件 - 提取为独立组件便于复用
+ * 书籍封面图片组件 - 支持共享元素动画，在动画进行时隐藏原始图片
  */
 @Composable
-private fun BookCoverImage(book: BookService.BookRank) {
-    NovelImageView(
-        imageUrl = book.picUrl,
+private fun BookCoverImage(
+    book: BookService.BookRank,
+    flipBookController: FlipBookAnimationController? = null
+) {
+    // 优化：检查是否当前书籍正在进行动画，减少重复计算
+    val isCurrentBookAnimating = remember(flipBookController?.animationState) {
+        flipBookController?.animationState?.let { animState ->
+            animState.isAnimating && 
+            animState.hideOriginalImage && 
+            animState.bookId == book.id.toString()
+        } ?: false
+    }
+
+    Box(
         modifier = Modifier
             .width(50.wdp)
             .height(65.wdp)
             .clip(RoundedCornerShape(4.wdp))
-            .background(NovelColors.NovelMain),
-        contentScale = ContentScale.Crop,
-        placeholderContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(NovelColors.NovelMain),
-                contentAlignment = Alignment.Center
-            ) {
-                NovelText(
-                    text = "暂无封面",
-                    fontSize = 6.ssp,
-                    color = androidx.compose.ui.graphics.Color.Gray
-                )
-            }
+            .background(if (isCurrentBookAnimating) Color.Transparent else NovelColors.NovelMain)
+    ) {
+        if (!isCurrentBookAnimating) {
+            // 正常状态：显示图片
+            NovelImageView(
+                imageUrl = book.picUrl,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                placeholderContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(NovelColors.NovelMain),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        NovelText(
+                            text = "暂无封面",
+                            fontSize = 6.ssp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            )
         }
-    )
+        // 优化：移除动画状态的log输出
+    }
 }
 
 /**

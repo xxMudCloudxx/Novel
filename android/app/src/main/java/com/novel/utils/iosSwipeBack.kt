@@ -2,16 +2,13 @@ package com.novel.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.util.Log
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -31,8 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -45,21 +39,18 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.navigation.NavController
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import com.novel.ui.theme.NovelColors
-import com.novel.utils.NavViewModel
 
 /**
  * 侧滑状态数据类 - 用于传递拖拽状态信息
  */
+@Stable
 data class SwipeBackState(
     val isDragging: Boolean = false,
     val offsetX: Float = 0f,
@@ -85,18 +76,23 @@ fun Modifier.iosSwipeBack(
 ): Modifier = composed {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    val widthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
-    val edgeWidthPx = with(density) { edgeWidthDp.toPx() }
+    
+    // 优化：预计算像素值，避免重复计算
+    val currenct = LocalConfiguration.current
+    val (widthPx, edgeWidthPx, firstThresholdPx, completeThresholdPx) = remember(density) {
+        val w = with(density) { currenct.screenWidthDp.dp.toPx() }
+        val e = with(density) { edgeWidthDp.toPx() }
+        val f = w * firstThreshold
+        val c = w * completeThreshold
+        listOf(w, e, f, c)
+    }
 
     // 性能优化：使用单个 Animatable 而不是多个状态
     val offsetX = remember { Animatable(0f) }
 
     // 拖拽状态管理，避免频繁状态更新
     var isDragging by remember { mutableStateOf(false) }
-
-    // 性能优化：预计算阈值像素值，避免重复计算
-    val firstThresholdPx = remember(widthPx, firstThreshold) { widthPx * firstThreshold }
-    val completeThresholdPx = remember(widthPx, completeThreshold) { widthPx * completeThreshold }
+    var justFinishedDrag by remember { mutableStateOf(false) }
 
     // 提示文字状态 - 使用 derivedStateOf 优化性能
     val hintText by remember {
@@ -129,11 +125,13 @@ fun Modifier.iosSwipeBack(
     }
 
     val context = LocalContext.current
+
+    // 优化：缓存震动器实例
     val vibrator = remember {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
-// 记录上次状态
+    // 记录上次状态，优化震动触发
     var prevOverThreshold by remember { mutableStateOf(false) }
 
     LaunchedEffect(isOverThreshold) {
@@ -147,17 +145,23 @@ fun Modifier.iosSwipeBack(
         }
         prevOverThreshold = isOverThreshold
     }
-    // 状态变化回调
-    remember(isDragging, offsetX.value, hintText, hintAlpha, isOverThreshold) {
-        onSwipeStateChange?.invoke(
-            SwipeBackState(
-                isDragging = isDragging,
-                offsetX = offsetX.value,
-                hintText = hintText,
-                hintAlpha = hintAlpha,
-                isOverThreshold = isOverThreshold
-            )
+
+    // 优化：减少状态变化回调频率，使用快照机制
+    LaunchedEffect(isDragging, offsetX.value, hintText, hintAlpha, isOverThreshold, justFinishedDrag) {
+        val currentState = SwipeBackState(
+            isDragging = isDragging,
+            offsetX = offsetX.value,
+            hintText = hintText,
+            hintAlpha = hintAlpha,
+            isOverThreshold = isOverThreshold
         )
+        
+        onSwipeStateChange?.invoke(currentState)
+        
+        // 如果刚完成拖拽且超过阈值，触发额外的完成回调
+        if (justFinishedDrag && isOverThreshold) {
+            justFinishedDrag = false
+        }
     }
 
     // 性能优化：NestedScroll 连接复用，避免重复创建
@@ -182,8 +186,9 @@ fun Modifier.iosSwipeBack(
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (isDragging) {
                     isDragging = false
+                    justFinishedDrag = true
                     NavViewModel.navController.value?.let {
-                        decideFinish(offsetX, completeThresholdPx, it)
+                        decideFinish(offsetX, completeThresholdPx)
                     }
                 }
                 return super.onPostFling(consumed, available)
@@ -198,6 +203,7 @@ fun Modifier.iosSwipeBack(
                 onDragStart = { pos ->
                     if (pos.x <= edgeWidthPx) {
                         isDragging = true
+                        justFinishedDrag = false
                     }
                 },
                 onHorizontalDrag = { _, dragAmount ->
@@ -209,9 +215,10 @@ fun Modifier.iosSwipeBack(
                 onDragEnd = {
                     if (isDragging) {
                         isDragging = false
+                        justFinishedDrag = true
                         scope.launch {
                             NavViewModel.navController.value?.let {
-                                decideFinish(offsetX, completeThresholdPx, it)
+                                decideFinish(offsetX, completeThresholdPx)
                             }
                         }
                     }
@@ -219,6 +226,7 @@ fun Modifier.iosSwipeBack(
                 onDragCancel = {
                     if (isDragging) {
                         isDragging = false
+                        justFinishedDrag = false
                         scope.launch {
                             offsetX.animateTo(
                                 0f,
@@ -276,6 +284,7 @@ fun SwipeBackIndicator(
  * @param firstThreshold 第一阶段阈值
  * @param completeThreshold 完成返回的阈值
  * @param backgroundColor 背景颜色
+ * @param onSwipeComplete 侧滑完成回调
  * @param content 子内容
  */
 @Composable
@@ -285,9 +294,11 @@ fun SwipeBackContainer(
     firstThreshold: Float = 0.05f,
     completeThreshold: Float = 0.3f,
     backgroundColor: Color = NovelColors.NovelBookBackground.copy(alpha = 0.7f), // 默认浅灰色背景
+    onSwipeComplete: (() -> Unit)? = null, // 侧滑完成回调
     content: @Composable BoxScope.() -> Unit
 ) {
     var swipeState by remember { mutableStateOf(SwipeBackState()) }
+    var hasTriggeredComplete by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -317,7 +328,21 @@ fun SwipeBackContainer(
                     edgeWidthDp = edgeWidthDp,
                     firstThreshold = firstThreshold,
                     completeThreshold = completeThreshold,
-                    onSwipeStateChange = { swipeState = it }
+                    onSwipeStateChange = { newState ->
+                        val prevState = swipeState
+                        swipeState = newState
+                        
+                        // 检测拖拽刚结束且超过阈值的情况
+                        if (prevState.isDragging && !newState.isDragging && newState.isOverThreshold && !hasTriggeredComplete) {
+                            hasTriggeredComplete = true
+                            onSwipeComplete?.invoke()
+                        }
+                        
+                        // 重置完成标志（当重新开始拖拽时）
+                        if (newState.isDragging && !prevState.isDragging) {
+                            hasTriggeredComplete = false
+                        }
+                    }
                 )
         ) {
             content()
@@ -345,14 +370,9 @@ fun Modifier.iosSwipeBackBasic(
 private suspend fun decideFinish(
     anim: Animatable<Float, AnimationVector1D>,
     thresholdPx: Float,
-    navController: NavController
 ) {
     if (anim.value >= thresholdPx) {
         // 快速完成动画并执行返回 - 使用NavViewModel来触发返回事件
-//        anim.animateTo(
-//            anim.upperBound ?: Float.MAX_VALUE,
-//            animationSpec = tween(10) // 更快的动画提升体验
-//        )
         NavViewModel.navigateBack() // 使用我们的NavViewModel来触发返回事件
     } else {
         // 弹性回弹动画

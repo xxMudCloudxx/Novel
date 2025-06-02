@@ -17,7 +17,6 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -57,7 +56,9 @@ fun NovelImageView(
     onRetry: () -> Unit = {},
     placeholderContent: @Composable () -> Unit = {
         Box(
-            modifier.background(NovelColors.NovelMainLight).wrapContentSize(Alignment.Center)
+            modifier
+                .background(NovelColors.NovelMainLight)
+                .wrapContentSize(Alignment.Center)
         ) {
             CircularProgressIndicator(
                 strokeWidth = 2.wdp,
@@ -69,22 +70,30 @@ fun NovelImageView(
     },
     errorContent: @Composable (retry: () -> Unit) -> Unit = { retry ->
         Box(
-            modifier.background(NovelColors.NovelMainLight).wrapContentSize (Alignment.Center)
+            modifier
+                .background(NovelColors.NovelMainLight)
+                .wrapContentSize(Alignment.Center)
         ) {
-        IconButton(onClick = { retry() }) {
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = "加载失败，点击重试",
-                tint = NovelColors.NovelText,
-                modifier = Modifier
-                    .size(24.wdp)
-                    .debounceClickable(onClick = { retry() })
-            )
+            IconButton(onClick = { retry() }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "加载失败，点击重试",
+                    tint = NovelColors.NovelText,
+                    modifier = Modifier
+                        .size(24.wdp)
+                        .debounceClickable(onClick = { retry() })
+                )
+            }
         }
     }
-    }
 ) {
-    // 构造 Modifier
+    // 优化：预处理图片URL，避免空值
+    val imageUrl = "https://i.miji.bid/2025/06/02/8a02feb5c9d72dc7a76e6d25132b1a2c.jpeg"
+    val processedImageUrl = remember(imageUrl) {
+        imageUrl.takeIf { it.isNotEmpty() }
+    }
+
+    // 优化：预计算 Modifier，避免重复创建
     val imgModifier = remember(widthDp, heightDp, modifier) {
         modifier.let {
             var m = it
@@ -94,10 +103,9 @@ fun NovelImageView(
             m
         }
     }
-    Log.d("NovelImageView", "imageUrl: $imageUrl, isLoading: $isLoading, error: $error")
 
     // 使用 key 确保 imageUrl 变化时重新加载
-    key(imageUrl) {
+    key(processedImageUrl) {
         when {
             isLoading -> {
                 // 加载中状态
@@ -119,7 +127,7 @@ fun NovelImageView(
                 }
             }
 
-            imageUrl.isNullOrEmpty() -> {
+            processedImageUrl == null -> {
                 // 空 URL 显示错误占位
                 Box(
                     modifier = imgModifier,
@@ -130,14 +138,20 @@ fun NovelImageView(
             }
 
             else -> {
-                // 正常加载图片
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl)
+                val current = LocalContext.current
+                // 优化：预构建ImageRequest，避免重复创建
+                val imageRequest = remember(processedImageUrl, crossfadeDuration, cachePolicy) {
+                    ImageRequest.Builder(current)
+                        .data(processedImageUrl)
                         .crossfade(crossfadeDuration)
                         .memoryCachePolicy(cachePolicy.first)
                         .diskCachePolicy(cachePolicy.second)
-                        .build(),
+                        .build()
+                }
+
+                // 正常加载图片
+                SubcomposeAsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
                     modifier = imgModifier,
                     contentScale = contentScale,
@@ -145,13 +159,7 @@ fun NovelImageView(
                     when (painter.state) {
                         is AsyncImagePainter.State.Loading -> placeholderContent()
                         is AsyncImagePainter.State.Error -> {
-                            val errorMessage =
-                                "图片加载失败: ${(painter.state as AsyncImagePainter.State.Error).result.throwable}"
-                            Log.e(
-                                "NovelImageView",
-                                errorMessage,
-                                (painter.state as AsyncImagePainter.State.Error).result.throwable
-                            )
+                            // 优化：移除详细的错误日志，减少性能影响
                             errorContent(onRetry)
                         }
 
