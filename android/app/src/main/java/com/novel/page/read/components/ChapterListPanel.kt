@@ -97,10 +97,10 @@ fun ChapterListPanel(
                         )
                     }
                 }
-                
-                Divider(
-                    color = NovelColors.NovelDivider,
-                    thickness = 1.dp
+
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = NovelColors.NovelDivider
                 )
                 
                 // 章节列表

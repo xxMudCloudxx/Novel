@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.Density
+import com.novel.page.read.components.PageFlipEffect
 import javax.inject.Inject
 
 /**
@@ -113,6 +114,10 @@ class ReaderViewModel @Inject constructor(
     private val chapterCache = mutableMapOf<String, ChapterCache>()
     private val maxCacheSize = 8
 
+    // 防重复触发机制
+    private var lastFlipTime = 0L
+    private val flipCooldownMs = 300L // 翻页冷却时间300ms
+
     init {
         // 初始化时加载保存的翻页方式
         loadSavedPageFlipEffect()
@@ -125,7 +130,7 @@ class ReaderViewModel @Inject constructor(
         try {
             val savedEffect = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
             if (savedEffect != null) {
-                val pageFlipEffect = com.novel.page.read.components.PageFlipEffect.values()
+                val pageFlipEffect = PageFlipEffect.entries
                     .find { it.name == savedEffect } ?: com.novel.page.read.components.PageFlipEffect.PAGECURL
                 
                 val currentSettings = _uiState.value.readerSettings
@@ -551,9 +556,16 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 处理页面翻页 - 修复翻页逻辑
+     * 处理页面翻页 - 修复翻页逻辑，添加防重复触发机制
      */
     private fun handlePageFlip(direction: FlipDirection) {
+        // 防重复触发检查
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastFlipTime < flipCooldownMs) {
+            return // 在冷却时间内，忽略翻页请求
+        }
+        lastFlipTime = currentTime
+
         val state = _uiState.value
         val pageData = state.currentPageData ?: return
         
@@ -610,9 +622,16 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 处理章节切换 - 优化版本，修复页面索引设置问题
+     * 处理章节切换 - 优化版本，修复页面索引设置问题，添加防重复触发
      */
     private fun handleChapterFlip(direction: FlipDirection) {
+        // 防重复触发检查
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastFlipTime < flipCooldownMs) {
+            return // 在冷却时间内，忽略章节切换请求
+        }
+        lastFlipTime = currentTime
+
         val state = _uiState.value
         val currentIndex = state.currentChapterIndex
         val chapterList = state.chapterList

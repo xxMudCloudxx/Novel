@@ -1,9 +1,7 @@
 package com.novel.page.book
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.*
@@ -14,12 +12,10 @@ import com.novel.page.book.components.*
 import com.novel.page.book.viewmodel.BookDetailUiState
 import com.novel.page.book.viewmodel.BookDetailViewModel
 import com.novel.page.component.*
-import com.novel.page.login.LoginPagePreview
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import kotlinx.coroutines.launch
 import com.novel.utils.SwipeBackContainer
-import kotlin.math.abs
 import androidx.compose.ui.geometry.Offset
 
 /**

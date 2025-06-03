@@ -25,7 +25,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * 覆盖翻页容器 - 优化版本，移除回弹动画
+ * 覆盖翻页容器 - 优化版本，修复边界处理
  */
 @Composable
 fun CoverFlipContainer(
@@ -49,17 +49,30 @@ fun CoverFlipContainer(
                 detectDragGestures(
                     onDragStart = { /* 不需要特殊处理 */ },
                     onDragEnd = {
-                        val threshold = size.width * 0.25f // 降低阈值，更容易触发
+                        val threshold = size.width * 0.2f // 降低阈值，更容易触发
 
                         if (abs(dragOffset) >= threshold) {
-                            // 直接处理页面切换，无额外动画
-                            handlePageFlip(
-                                currentPageIndex,
-                                pageData,
-                                flipDirection,
-                                onPageChange,
-                                onChapterChange,
-                            )
+                            // 优化的页面切换逻辑
+                            when (flipDirection) {
+                                FlipDirection.NEXT -> {
+                                    if (currentPageIndex < pageData.pages.size - 1) {
+                                        // 当前章节内还有下一页
+                                        onPageChange(FlipDirection.NEXT)
+                                    } else if (pageData.nextChapterData != null) {
+                                        // 切换到下一章
+                                        onChapterChange(FlipDirection.NEXT)
+                                    }
+                                }
+                                FlipDirection.PREVIOUS -> {
+                                    if (currentPageIndex > 0) {
+                                        // 当前章节内还有上一页
+                                        onPageChange(FlipDirection.PREVIOUS)
+                                    } else if (pageData.previousChapterData != null) {
+                                        // 切换到上一章
+                                        onChapterChange(FlipDirection.PREVIOUS)
+                                    }
+                                }
+                            }
                         }
 
                         // 立即重置状态，不使用动画
@@ -68,56 +81,69 @@ fun CoverFlipContainer(
                     onDrag = { _, dragAmount ->
                         val deltaX = dragAmount.x
                         val maxOffset = size.width * 0.8f // 限制最大拖拽距离
-
-                        dragOffset = (dragOffset + deltaX).coerceIn(-maxOffset, maxOffset)
-                        flipDirection = if (deltaX > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
+                        
+                        // 检查是否可以继续拖拽
+                        val canDragNext = currentPageIndex < pageData.pages.size - 1 || pageData.nextChapterData != null
+                        val canDragPrevious = currentPageIndex > 0 || pageData.previousChapterData != null
+                        
+                        val newDirection = if (deltaX > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
+                        val canDrag = when (newDirection) {
+                            FlipDirection.NEXT -> canDragNext
+                            FlipDirection.PREVIOUS -> canDragPrevious
+                        }
+                        
+                        if (canDrag) {
+                            dragOffset = (dragOffset + deltaX).coerceIn(-maxOffset, maxOffset)
+                            flipDirection = newDirection
+                        }
                     }
                 )
             }
             .clickable(enabled = !isDragging) { onClick() }
     ) {
-        // 背景页（目标页面内容）
-        val targetPageIndex = when {
-            dragOffset > 0 && currentPageIndex > 0 -> currentPageIndex - 1
-            dragOffset > 0 && currentPageIndex == 0 && pageData.previousChapterData != null ->
-                pageData.previousChapterData.pages.size - 1
-            dragOffset < 0 && currentPageIndex < pageData.pages.size - 1 -> currentPageIndex + 1
-            dragOffset < 0 && currentPageIndex == pageData.pages.size - 1 && pageData.nextChapterData != null -> 0
-            else -> currentPageIndex
-        }
-
-        val targetDirection = if (dragOffset > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
-        val hasTargetPage = when (targetDirection) {
-            FlipDirection.NEXT -> currentPageIndex < pageData.pages.size - 1 || pageData.nextChapterData != null
-            FlipDirection.PREVIOUS -> currentPageIndex > 0 || pageData.previousChapterData != null
-        }
-
-        // 显示背景页
-        if (hasTargetPage && abs(dragOffset) > 10f) {
-            val targetChapterData = when {
-                targetPageIndex in pageData.pages.indices -> pageData
-                targetDirection == FlipDirection.NEXT -> pageData.nextChapterData
-                targetDirection == FlipDirection.PREVIOUS -> pageData.previousChapterData
+        // 计算目标页面信息 - 优化版本
+        val targetPageInfo = remember(dragOffset, currentPageIndex, pageData) {
+            when {
+                dragOffset > 50f -> {
+                    // 向右拖拽，显示上一页/上一章
+                    when {
+                        currentPageIndex > 0 -> {
+                            TargetPageInfo(pageData, currentPageIndex - 1, FlipDirection.PREVIOUS)
+                        }
+                        pageData.previousChapterData != null -> {
+                            val lastPageIndex = pageData.previousChapterData.pages.size - 1
+                            TargetPageInfo(pageData.previousChapterData, lastPageIndex, FlipDirection.PREVIOUS)
+                        }
+                        else -> null
+                    }
+                }
+                dragOffset < -50f -> {
+                    // 向左拖拽，显示下一页/下一章
+                    when {
+                        currentPageIndex < pageData.pages.size - 1 -> {
+                            TargetPageInfo(pageData, currentPageIndex + 1, FlipDirection.NEXT)
+                        }
+                        pageData.nextChapterData != null -> {
+                            TargetPageInfo(pageData.nextChapterData, 0, FlipDirection.NEXT)
+                        }
+                        else -> null
+                    }
+                }
                 else -> null
             }
+        }
 
-            targetChapterData?.let { chapterData ->
-                val finalPageIndex = when {
-                    chapterData == pageData -> targetPageIndex
-                    targetDirection == FlipDirection.NEXT -> 0
-                    else -> chapterData.pages.size - 1
-                }
-
-                CurrentPageContent(
-                    pageData = chapterData,
-                    pageIndex = finalPageIndex,
-                    readerSettings = readerSettings,
-                    isFirstPage = finalPageIndex == 0,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zIndex(-1f)
-                )
-            }
+        // 显示背景页（目标页面）
+        targetPageInfo?.let { targetInfo ->
+            CurrentPageContent(
+                pageData = targetInfo.chapterData,
+                pageIndex = targetInfo.pageIndex,
+                readerSettings = readerSettings,
+                isFirstPage = targetInfo.pageIndex == 0,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(-1f)
+            )
         }
 
         // 当前页（覆盖效果）- 移除所有动画和阴影抖动
@@ -142,3 +168,12 @@ fun CoverFlipContainer(
         )
     }
 }
+
+/**
+ * 目标页面信息
+ */
+private data class TargetPageInfo(
+    val chapterData: PageData,
+    val pageIndex: Int,
+    val direction: FlipDirection
+)
