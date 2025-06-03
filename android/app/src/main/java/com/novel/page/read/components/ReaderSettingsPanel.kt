@@ -4,10 +4,8 @@ import android.annotation.SuppressLint
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -111,7 +109,7 @@ fun ReaderSettingsPanel(
             .fillMaxWidth()
             .wrapContentHeight(),
         shape = RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp),
-        colors = CardDefaults.cardColors(containerColor = NovelColors.NovelBackground)
+        colors = CardDefaults.cardColors(containerColor = settings.backgroundColor)
     ) {
         Column(
             modifier = Modifier.padding(20.wdp),
@@ -164,107 +162,3 @@ fun ReaderSettingsPanel(
         }
     }
 }
-
-/**
- * 亮度控制组件
- */
-@Composable
-private fun BrightnessControl(
-    brightness: Float,
-    onBrightnessChange: (Float) -> Unit
-) {
-    val stepCount = 10
-    val stepSize = 1f / stepCount
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(15.wdp)
-    ) {
-        NovelText("亮度", fontSize = 14.ssp)
-        SolidCircleSlider(
-            modifier = Modifier.weight(1f),
-            progress = brightness,
-            onValueChange = { rawValue ->
-                // 量化到最近的档位
-                val stepped = (rawValue / stepSize).roundToInt() * stepSize
-                onBrightnessChange(stepped.coerceIn(0f, 1f))
-            },
-            // 你可以自己设置 track 颜色、thumb 颜色等
-            trackColor = Color(0xFFCBC2AA),
-            progressColor = Color(0xFF88896C),
-            thumbColor = Color(0xFFF9F5E9),
-            trackHeightDp = 24.dp,
-            thumbRadiusDp = 16.dp
-        )
-        NovelText("护眼模式", fontSize = 14.ssp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Preview
-@Composable
-private fun BrightnessControlPreview() {
-    NovelTheme {
-        BrightnessControl(
-            brightness = 0.5f,
-            onBrightnessChange = {}
-        )
-    }
-}
-
-/**
- * 翻页效果控制组件
- */
-@Composable
-private fun PageFlipEffectControl(
-    currentEffect: PageFlipEffect,
-    onEffectChange: (PageFlipEffect) -> Unit
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.wdp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = "翻页效果",
-                tint = NovelColors.NovelTextGray,
-                modifier = Modifier.size(20.wdp)
-            )
-
-            Text(
-                text = "翻页效果",
-                fontSize = 14.sp,
-                color = NovelColors.NovelText,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.wdp))
-
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            PageFlipEffect.values().forEach { effect ->
-                val isSelected = currentEffect == effect
-
-                Card(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .clickable { onEffectChange(effect) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) NovelColors.NovelMain else NovelColors.NovelDivider
-                    ),
-                    shape = RoundedCornerShape(16.wdp)
-                ) {
-                    Text(
-                        text = effect.displayName,
-                        fontSize = 12.sp,
-                        color = if (isSelected) Color.White else NovelColors.NovelText,
-                        modifier = Modifier.padding(horizontal = 12.wdp, vertical = 6.wdp)
-                    )
-                }
-            }
-        }
-    }
-} 

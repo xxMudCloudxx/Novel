@@ -1,4 +1,4 @@
-package com.novel.page.read.components
+package com.novel.page.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
