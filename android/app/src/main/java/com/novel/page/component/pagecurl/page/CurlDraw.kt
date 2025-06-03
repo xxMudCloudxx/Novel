@@ -1,7 +1,7 @@
 package com.novel.page.component.pagecurl.page
 
-import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Paint as AndroidPaint
 import android.os.Build
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.CacheDrawScope
@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
@@ -30,7 +31,6 @@ import com.novel.page.component.pagecurl.utils.lineLineIntersection
 import com.novel.page.component.pagecurl.utils.rotate
 import java.lang.Float.max
 import kotlin.math.atan2
-import kotlin.math.sqrt
 import androidx.core.graphics.createBitmap
 
 /**
@@ -189,11 +189,19 @@ private fun CacheDrawScope.prepareCurl(
     // 计算翻页进度（0到1），用于动态效果
     val progress = ((bottomCurlOffset.x + topCurlOffset.x) * 0.5f) / size.width
 
-    // 准备阴影绘制lambda
+    // 创建折痕路径
+    val foldPath = Path().apply {
+        moveTo(topCurlOffset.x, topCurlOffset.y)
+        lineTo(bottomCurlOffset.x, bottomCurlOffset.y)
+    }
+
+    // 准备所有绘制层
     val drawShadow = prepareShadow(config, polygon, angle, progress)
-    
-    // 准备厚度条绘制lambda
+    val drawEdgeShadow = prepareEdgeShadow(config, foldPath, angle)
+    val drawSelfShadow = prepareSelfShadow(config, foldPath, angle, progress)
+    val drawAmbientFalloff = prepareAmbientFalloff(config, topCurlOffset, bottomCurlOffset, progress)
     val drawThickness = prepareThickness(config, polygon, angle)
+    val drawSpecular = prepareSpecular(config, foldPath, angle)
 
     return result@{
         withTransform({
@@ -202,10 +210,19 @@ private fun CacheDrawScope.prepareCurl(
             // 根据卷曲线旋转绘制
             rotateRad(angle, pivot = bottomCurlOffset)
         }) {
-            // 首先绘制阴影
+            // 1 - 深折痕阴影（窄且暗）
+            this@result.drawEdgeShadow()
+
+            // 2 - 自阴影（放在正面内容之上、背页之下）
+            this@result.drawSelfShadow()
+
+            // 3 - 现有的广泛阴影
             this@result.drawShadow()
 
-            // 然后绘制背页内容
+            // 4 - 环境衰减渐变
+            this@result.drawAmbientFalloff()
+
+            // 5 - 绘制背页内容
             clipPath(polygon.toPath()) {
                 this@result.drawContent()
 
@@ -230,6 +247,153 @@ private fun CacheDrawScope.prepareCurl(
             
             // 最后绘制厚度条（在背页之上）
             this@result.drawThickness()
+            
+            // 7 - 镜面边缘光（最顶层）
+            this@result.drawSpecular()
+        }
+    }
+}
+
+/**
+ * 准备边缘折痕阴影绘制
+ * 
+ * @param config PageCurl配置
+ * @param foldPath 折痕路径
+ * @param angle 角度
+ * @return 边缘阴影绘制方法
+ */
+@ExperimentalPageCurlApi
+private fun CacheDrawScope.prepareEdgeShadow(
+    config: PageCurlConfig,
+    foldPath: Path,
+    angle: Float
+): ContentDrawScope.() -> Unit {
+    if (config.shadowAlpha == 0f || config.creaseShadowStrength == 0f) {
+        return { /* 不需要折痕阴影 */ }
+    }
+
+    val radius = (config.shadowRadius * 0.4f * config.creaseShadowStrength).toPx()
+    val paint = Paint().apply {
+        asFrameworkPaint().setShadowLayer(
+            radius,
+            0f,
+            0f,
+            config.shadowColor.copy(
+                alpha = config.shadowAlpha * config.creaseShadowStrength * 1.2f
+            ).toArgb()
+        )
+        this.color = Color.Transparent  // 只显示阴影
+    }
+
+    return {
+        drawIntoCanvas {
+            it.nativeCanvas.drawPath(foldPath.asAndroidPath(), paint.asFrameworkPaint())
+        }
+    }
+}
+
+/**
+ * 准备自阴影绘制（卷曲起始处的内阴影）
+ * 
+ * @param config PageCurl配置
+ * @param foldPath 折痕路径
+ * @param angle 角度
+ * @param progress 翻页进度
+ * @return 自阴影绘制方法
+ */
+@ExperimentalPageCurlApi
+private fun CacheDrawScope.prepareSelfShadow(
+    config: PageCurlConfig,
+    foldPath: Path,
+    angle: Float,
+    progress: Float
+): ContentDrawScope.() -> Unit {
+    if (config.selfShadowStrength <= 0f) return { /* 不需要自阴影 */ }
+
+    // 宽度随进度放大，阴影色随 config.selfShadowStrength
+    val shadowW = lerp(8.dp.toPx(), 32.dp.toPx(), progress)
+    val brush = Brush.linearGradient(
+        0f to Color.Black.copy(alpha = config.selfShadowStrength),
+        1f to Color.Transparent,
+        start = Offset.Zero,
+        end = Offset(shadowW, 0f).rotate(angle)
+    )
+
+    return {
+        // 只对「未被卷起的可视区域」上色
+        clipPath(foldPath, ClipOp.Difference) {
+            drawRect(brush = brush, blendMode = BlendMode.Multiply)
+        }
+    }
+}
+
+/**
+ * 准备环境衰减渐变绘制
+ * 
+ * @param config PageCurl配置
+ * @param topCurlOffset 顶部卷曲偏移点
+ * @param bottomCurlOffset 底部卷曲偏移点
+ * @param progress 翻页进度
+ * @return 环境衰减绘制方法
+ */
+@ExperimentalPageCurlApi
+private fun CacheDrawScope.prepareAmbientFalloff(
+    config: PageCurlConfig,
+    topCurlOffset: Offset,
+    bottomCurlOffset: Offset,
+    progress: Float
+): ContentDrawScope.() -> Unit {
+    if (config.shadowAlpha == 0f) return { /* 不需要环境衰减 */ }
+
+    val center = (topCurlOffset + bottomCurlOffset) * 0.5f
+    val maxRadius = size.minDimension * 1.2f
+    val radius = lerp(maxRadius * 0.3f, maxRadius, progress)
+    
+    val ambientBrush = Brush.radialGradient(
+        colors = listOf(
+            config.shadowColor.copy(alpha = config.shadowAlpha * 0.6f),
+            config.shadowColor.copy(alpha = config.shadowAlpha * 0.3f),
+            Color.Transparent
+        ),
+        center = center,
+        radius = radius
+    )
+
+    return {
+        drawRect(brush = ambientBrush, blendMode = BlendMode.Multiply)
+    }
+}
+
+/**
+ * 准备镜面边缘光绘制
+ * 
+ * @param config PageCurl配置
+ * @param foldPath 折痕路径
+ * @param angle 角度
+ * @return 镜面光绘制方法
+ */
+@ExperimentalPageCurlApi
+private fun CacheDrawScope.prepareSpecular(
+    config: PageCurlConfig,
+    foldPath: Path,
+    angle: Float
+): ContentDrawScope.() -> Unit {
+    if (config.highlightStrength <= 0f) return { /* 不需要边缘光 */ }
+
+    // 线宽取决于DPI
+    val strokeW = config.rimLightWidth.toPx().coerceAtLeast(0.5f)
+    val paint = Paint().apply {
+        val frameworkPaint = asFrameworkPaint()
+        frameworkPaint.strokeWidth = strokeW
+        frameworkPaint.style = AndroidPaint.Style.STROKE
+        frameworkPaint.strokeCap = AndroidPaint.Cap.ROUND
+        this.blendMode = BlendMode.Screen   // 加法混合
+        this.color = Color.White.copy(alpha = config.highlightStrength)
+    }
+
+    return {
+        drawIntoCanvas { canvas ->
+            canvas.nativeCanvas.drawPath(foldPath.asAndroidPath(), paint.asFrameworkPaint())
         }
     }
 }

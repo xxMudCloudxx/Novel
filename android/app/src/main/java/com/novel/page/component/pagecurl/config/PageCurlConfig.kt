@@ -33,6 +33,9 @@ import com.novel.page.component.pagecurl.page.ExperimentalPageCurlApi
  * @param highlightStrength 高光效果的强度，0到1之间
  * @param perspectiveTiltDeg 透视倾斜角度，增加3D感
  * @param dynamicShadowEnabled 是否启用动态阴影（阴影大小随拖拽距离变化）
+ * @param creaseShadowStrength 折痕阴影强度，0到1之间
+ * @param rimLightWidth 边缘光宽度
+ * @param selfShadowStrength 卷曲正面朝里方向的自阴影强度，0到1之间
  * @param dragForwardEnabled 是否启用向前拖拽交互
  * @param dragBackwardEnabled 是否启用向后拖拽交互
  * @param tapForwardEnabled 是否启用向前点击交互
@@ -55,6 +58,9 @@ fun rememberPageCurlConfig(
     highlightStrength: Float = 0.3f,
     perspectiveTiltDeg: Float = 10f,
     dynamicShadowEnabled: Boolean = true,
+    creaseShadowStrength: Float = 0.6f,
+    rimLightWidth: Dp = 1.dp,
+    selfShadowStrength: Float = 0.15f,
     dragForwardEnabled: Boolean = true,
     dragBackwardEnabled: Boolean = true,
     tapForwardEnabled: Boolean = true,
@@ -103,6 +109,9 @@ fun rememberPageCurlConfig(
                     it.highlightStrength,
                     it.perspectiveTiltDeg,
                     it.dynamicShadowEnabled,
+                    it.creaseShadowStrength,
+                    it.rimLightWidth.value,
+                    it.selfShadowStrength,
                     it.dragForwardEnabled,
                     it.dragBackwardEnabled,
                     it.tapForwardEnabled,
@@ -128,6 +137,9 @@ fun rememberPageCurlConfig(
                     iterator.next() as Float,
                     iterator.next() as Float,
                     iterator.next() as Boolean,
+                    iterator.next() as Float,
+                    Dp(iterator.next() as Float),
+                    iterator.next() as Float,
                     iterator.next() as Boolean,
                     iterator.next() as Boolean,
                     iterator.next() as Boolean,
@@ -178,6 +190,9 @@ fun rememberPageCurlConfig(
             highlightStrength = highlightStrength,
             perspectiveTiltDeg = perspectiveTiltDeg,
             dynamicShadowEnabled = dynamicShadowEnabled,
+            creaseShadowStrength = creaseShadowStrength,
+            rimLightWidth = rimLightWidth,
+            selfShadowStrength = selfShadowStrength,
             dragForwardEnabled = dragForwardEnabled,
             dragBackwardEnabled = dragBackwardEnabled,
             tapForwardEnabled = tapForwardEnabled,
@@ -202,6 +217,9 @@ fun rememberPageCurlConfig(
  * @param highlightStrength 高光效果的强度，0到1之间
  * @param perspectiveTiltDeg 透视倾斜角度，增加3D感
  * @param dynamicShadowEnabled 是否启用动态阴影（阴影大小随拖拽距离变化）
+ * @param creaseShadowStrength 折痕阴影强度，0到1之间
+ * @param rimLightWidth 边缘光宽度
+ * @param selfShadowStrength 卷曲正面朝里方向的自阴影强度，0到1之间
  * @param dragForwardEnabled 是否启用向前拖拽交互
  * @param dragBackwardEnabled 是否启用向后拖拽交互
  * @param tapForwardEnabled 是否启用向前点击交互
@@ -223,6 +241,9 @@ class PageCurlConfig(
     highlightStrength: Float,
     perspectiveTiltDeg: Float,
     dynamicShadowEnabled: Boolean,
+    creaseShadowStrength: Float,
+    rimLightWidth: Dp,
+    selfShadowStrength: Float,
     dragForwardEnabled: Boolean,
     dragBackwardEnabled: Boolean,
     tapForwardEnabled: Boolean,
@@ -281,6 +302,21 @@ class PageCurlConfig(
      * 是否启用动态阴影（阴影大小随拖拽距离变化）
      */
     var dynamicShadowEnabled: Boolean by mutableStateOf(dynamicShadowEnabled)
+
+    /**
+     * 折痕阴影强度，0到1之间
+     */
+    var creaseShadowStrength: Float by mutableStateOf(creaseShadowStrength)
+
+    /**
+     * 边缘光宽度
+     */
+    var rimLightWidth: Dp by mutableStateOf(rimLightWidth)
+
+    /**
+     * 卷曲正面朝里方向的自阴影强度，0到1之间
+     */
+    var selfShadowStrength: Float by mutableStateOf(selfShadowStrength)
 
     /**
      * 是否启用向前拖拽交互
