@@ -1,7 +1,7 @@
-package com.novel.page.book.repository
+package com.novel.page.read.repository
 
-import com.novel.page.book.components.Chapter
-import com.novel.page.book.components.ReaderSettings
+import com.novel.page.read.components.Chapter
+import com.novel.page.read.components.ReaderSettings
 import com.novel.utils.network.ApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
 import javax.inject.Inject
@@ -58,6 +61,12 @@ class ReaderRepository @Inject constructor() {
     
     // 章节内容缓存
     private val chapterContentCache = mutableMapOf<String, ChapterContent>()
+    
+    // 预缓存队列 - 记录需要预加载的章节
+    private val preCacheQueue = mutableSetOf<String>()
+    
+    // 协程作用域用于预缓存
+    private val cacheScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
      * 获取章节列表
@@ -81,7 +90,7 @@ class ReaderRepository @Inject constructor() {
     }.flowOn(Dispatchers.IO)
 
     /**
-     * 获取章节内容
+     * 获取章节内容，支持预缓存
      */
     fun getChapterContent(chapterId: String): Flow<ApiResult<ChapterContent>> = flow {
         try {
@@ -102,6 +111,112 @@ class ReaderRepository @Inject constructor() {
     }.flowOn(Dispatchers.IO)
 
     /**
+     * 预缓存章节内容 - 异步加载，不影响主要流程
+     */
+    suspend fun preCacheChapterContent(chapterId: String, bookId: String) {
+        if (chapterId in preCacheQueue || chapterContentCache.containsKey(chapterId)) {
+            return // 已在队列中或已缓存，跳过
+        }
+        
+        preCacheQueue.add(chapterId)
+        
+        try {
+            val content = getChapterContentFromNetwork(chapterId)
+            chapterContentCache[chapterId] = content
+            
+            // 触发前后章节的递归预缓存
+            val chapterList = chapterListCache[bookId]
+            if (chapterList != null) {
+                val currentIndex = chapterList.indexOfFirst { it.id == chapterId }
+                if (currentIndex != -1) {
+                    // 预缓存前后各2个章节
+                    for (offset in listOf(-2, -1, 1, 2)) {
+                        val targetIndex = currentIndex + offset
+                        if (targetIndex in chapterList.indices) {
+                            val targetChapterId = chapterList[targetIndex].id
+                            if (!chapterContentCache.containsKey(targetChapterId) && targetChapterId !in preCacheQueue) {
+                                // 递归预缓存（但不触发更深层的预缓存）
+                                cacheScope.launch {
+                                    try {
+                                        preCacheQueue.add(targetChapterId)
+                                        val targetContent = getChapterContentFromNetwork(targetChapterId)
+                                        chapterContentCache[targetChapterId] = targetContent
+                                        preCacheQueue.remove(targetChapterId)
+                                    } catch (e: Exception) {
+                                        preCacheQueue.remove(targetChapterId)
+                                        // 预缓存失败不影响主流程，只记录日志
+                                        println("预缓存章节失败: $targetChapterId, ${e.message}")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // 预缓存失败不影响主流程
+            println("预缓存章节失败: $chapterId, ${e.message}")
+        } finally {
+            preCacheQueue.remove(chapterId)
+        }
+    }
+
+    /**
+     * 获取带有前后章节数据的章节内容
+     */
+    fun getChapterContentWithAdjacent(chapterId: String, bookId: String): Flow<ApiResult<ChapterContent>> = flow {
+        try {
+            // 先获取主章节内容
+            val mainContent = chapterContentCache[chapterId] ?: getChapterContentFromNetwork(chapterId)
+            chapterContentCache[chapterId] = mainContent
+            
+            // 获取章节列表以确定前后章节
+            val chapterList = chapterListCache[bookId] ?: getChapterListFromNetwork(bookId)
+            val currentIndex = chapterList.indexOfFirst { it.id == chapterId }
+            
+            if (currentIndex != -1) {
+                // 异步预缓存前后章节
+                cacheScope.launch {
+                    // 预缓存下一章
+                    if (currentIndex + 1 < chapterList.size) {
+                        preCacheChapterContent(chapterList[currentIndex + 1].id, bookId)
+                    }
+                    // 预缓存上一章
+                    if (currentIndex - 1 >= 0) {
+                        preCacheChapterContent(chapterList[currentIndex - 1].id, bookId)
+                    }
+                }
+            }
+            
+            emit(ApiResult.Success(mainContent))
+        } catch (e: Exception) {
+            emit(ApiResult.Error("获取章节内容失败: ${e.message}", e))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * 清理缓存 - 避免内存过度占用
+     */
+    fun clearOldCache(currentChapterId: String, bookId: String) {
+        val chapterList = chapterListCache[bookId] ?: return
+        val currentIndex = chapterList.indexOfFirst { it.id == currentChapterId }
+        
+        if (currentIndex != -1) {
+            // 只保留当前章节前后各5章的缓存
+            val keepRange = (currentIndex - 5)..(currentIndex + 5)
+            val chaptersToKeep = chapterList.filterIndexed { index, _ -> 
+                index in keepRange 
+            }.map { it.id }.toSet()
+            
+            // 移除不需要的缓存
+            val keysToRemove = chapterContentCache.keys - chaptersToKeep
+            keysToRemove.forEach { key ->
+                chapterContentCache.remove(key)
+            }
+        }
+    }
+
+    /**
      * 更新阅读器设置
      */
     suspend fun updateReaderSettings(settings: ReaderSettings) {
@@ -112,7 +227,7 @@ class ReaderRepository @Inject constructor() {
     /**
      * 从网络获取章节列表
      */
-    private suspend fun getChapterListFromNetwork(bookId: String): List<Chapter> = 
+    private suspend fun getChapterListFromNetwork(bookId: String): List<Chapter> =
         suspendCancellableCoroutine { continuation ->
             ApiService.get(
                 baseUrl = ApiService.BASE_URL_FRONT,
@@ -159,7 +274,7 @@ class ReaderRepository @Inject constructor() {
     /**
      * 从网络获取章节内容
      */
-    private suspend fun getChapterContentFromNetwork(chapterId: String): ChapterContent = 
+    private suspend fun getChapterContentFromNetwork(chapterId: String): ChapterContent =
         suspendCancellableCoroutine { continuation ->
             ApiService.get(
                 baseUrl = ApiService.BASE_URL_FRONT,

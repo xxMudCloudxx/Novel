@@ -40,7 +40,9 @@ import com.novel.utils.wdp
 @Composable
 fun BookDescriptionSection(
     description: String,
-    onToggleExpand: () -> Unit
+    bookId: String,
+    onToggleExpand: () -> Unit,
+    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
 ) {
     // 性能优化：使用remember缓存HTML清理结果
     val cleaned = remember(description) { 
@@ -142,7 +144,8 @@ fun BookDescriptionSection(
                             lineHeight = 14.ssp,
                             color = NovelColors.NovelMain,
                             modifier = Modifier.debounceClickable(onClick = {
-                                showBottomSheet = true
+//                                showBottomSheet = true
+                                onNavigateToReader?.invoke(bookId, null)
                             })
                         )
                     }

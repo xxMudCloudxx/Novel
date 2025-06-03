@@ -1,4 +1,4 @@
-package com.novel.page.book.components
+package com.novel.page.read.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
