@@ -73,13 +73,3 @@ internal fun Modifier.tapGesture(
         }
     }
 }
-
-/**
- * 点击处理修饰符（内部使用）
- *
- * @param onTap 点击处理函数
- * @return 修饰符
- */
-private fun Modifier.onTap(
-    onTap: (offset: androidx.compose.ui.geometry.Offset, size: androidx.compose.ui.unit.IntSize) -> Boolean
-): Modifier = this // 简化实现，实际使用中需要完整的点击检测逻辑

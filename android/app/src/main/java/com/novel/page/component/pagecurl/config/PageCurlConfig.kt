@@ -27,8 +27,12 @@ import com.novel.page.component.pagecurl.page.ExperimentalPageCurlApi
  * @param backPageContentAlpha 背页内容透明度，定义内容"透过"背页的可见程度。0（不可见）到1（完全可见）
  * @param shadowColor 阴影颜色。大多数情况下应设置为内容背景色的反色。应为纯色，使用shadowAlpha调整不透明度
  * @param shadowAlpha 阴影的透明度
- * @param shadowRadius 阴影大小
+ * @param shadowRadius 基础阴影大小
  * @param shadowOffset 阴影偏移。轻微的偏移可以增加真实感
+ * @param thicknessDp 页面厚度效果的大小
+ * @param highlightStrength 高光效果的强度，0到1之间
+ * @param perspectiveTiltDeg 透视倾斜角度，增加3D感
+ * @param dynamicShadowEnabled 是否启用动态阴影（阴影大小随拖拽距离变化）
  * @param dragForwardEnabled 是否启用向前拖拽交互
  * @param dragBackwardEnabled 是否启用向后拖拽交互
  * @param tapForwardEnabled 是否启用向前点击交互
@@ -40,13 +44,17 @@ import com.novel.page.component.pagecurl.page.ExperimentalPageCurlApi
  */
 @ExperimentalPageCurlApi
 @Composable
-public fun rememberPageCurlConfig(
+fun rememberPageCurlConfig(
     backPageColor: Color = Color.White,
     backPageContentAlpha: Float = 0.1f,
     shadowColor: Color = Color.Black,
     shadowAlpha: Float = 0.2f,
     shadowRadius: Dp = 15.dp,
     shadowOffset: DpOffset = DpOffset((-5).dp, 0.dp),
+    thicknessDp: Dp = 3.dp,
+    highlightStrength: Float = 0.3f,
+    perspectiveTiltDeg: Float = 10f,
+    dynamicShadowEnabled: Boolean = true,
     dragForwardEnabled: Boolean = true,
     dragBackwardEnabled: Boolean = true,
     tapForwardEnabled: Boolean = true,
@@ -91,6 +99,10 @@ public fun rememberPageCurlConfig(
                     it.shadowRadius.value,
                     it.shadowOffset.x.value,
                     it.shadowOffset.y.value,
+                    it.thicknessDp.value,
+                    it.highlightStrength,
+                    it.perspectiveTiltDeg,
+                    it.dynamicShadowEnabled,
                     it.dragForwardEnabled,
                     it.dragBackwardEnabled,
                     it.tapForwardEnabled,
@@ -112,6 +124,10 @@ public fun rememberPageCurlConfig(
                     iterator.next() as Float,
                     Dp(iterator.next() as Float),
                     DpOffset(Dp(iterator.next() as Float), Dp(iterator.next() as Float)),
+                    Dp(iterator.next() as Float),
+                    iterator.next() as Float,
+                    iterator.next() as Float,
+                    iterator.next() as Boolean,
                     iterator.next() as Boolean,
                     iterator.next() as Boolean,
                     iterator.next() as Boolean,
@@ -134,7 +150,7 @@ public fun rememberPageCurlConfig(
                             )
                         }
 
-                        else -> error("Unable to restore PageCurlConfig")
+                        else -> error("无法恢复PageCurlConfig")
                     },
                     when (iterator.next()) {
                         PageCurlConfig.TargetTapInteraction::class.java -> {
@@ -144,7 +160,7 @@ public fun rememberPageCurlConfig(
                             )
                         }
 
-                        else -> error("Unable to restore PageCurlConfig")
+                        else -> error("无法恢复PageCurlConfig")
                     },
                     onCustomTap
                 )
@@ -158,6 +174,10 @@ public fun rememberPageCurlConfig(
             shadowAlpha = shadowAlpha,
             shadowRadius = shadowRadius,
             shadowOffset = shadowOffset,
+            thicknessDp = thicknessDp,
+            highlightStrength = highlightStrength,
+            perspectiveTiltDeg = perspectiveTiltDeg,
+            dynamicShadowEnabled = dynamicShadowEnabled,
             dragForwardEnabled = dragForwardEnabled,
             dragBackwardEnabled = dragBackwardEnabled,
             tapForwardEnabled = tapForwardEnabled,
@@ -170,35 +190,39 @@ public fun rememberPageCurlConfig(
     }
 
 /**
- * The configuration for PageCurl.
+ * PageCurl组件的配置类
  *
- * @param backPageColor Color of the back-page. In majority of use-cases it should be set to the content background
- * color.
- * @param backPageContentAlpha The alpha which defines how content is "seen through" the back-page. From 0 (nothing
- * is visible) to 1 (everything is visible).
- * @param shadowColor The color of the shadow. In majority of use-cases it should be set to the inverted color to the
- * content background color. Should be a solid color, see [shadowAlpha] to adjust opacity.
- * @param shadowAlpha The alpha of the [shadowColor].
- * @param shadowRadius Defines how big the shadow is.
- * @param shadowOffset Defines how shadow is shifted from the page. A little shift may add more realism.
- * @param dragForwardEnabled True if forward drag interaction is enabled or not.
- * @param dragBackwardEnabled True if backward drag interaction is enabled or not.
- * @param tapForwardEnabled True if forward tap interaction is enabled or not.
- * @param tapBackwardEnabled True if backward tap interaction is enabled or not.
- * @param tapCustomEnabled True if custom tap interaction is enabled or not, see [onCustomTap].
- * @param dragInteraction The drag interaction setting.
- * @param tapInteraction The tap interaction setting.
- * @param onCustomTap The lambda to invoke to check if tap is handled by custom tap or not. Receives the density
- * scope, the PageCurl size and tap position. Returns true if tap is handled and false otherwise.
+ * @param backPageColor 背页颜色。大多数情况下应设置为内容背景色
+ * @param backPageContentAlpha 背页内容透明度，定义内容"透过"背页的可见程度。0（不可见）到1（完全可见）
+ * @param shadowColor 阴影颜色。大多数情况下应设置为内容背景色的反色。应为纯色，使用shadowAlpha调整不透明度
+ * @param shadowAlpha 阴影透明度
+ * @param shadowRadius 基础阴影大小
+ * @param shadowOffset 阴影偏移。轻微的偏移可以增加真实感
+ * @param thicknessDp 页面厚度效果的大小
+ * @param highlightStrength 高光效果的强度，0到1之间
+ * @param perspectiveTiltDeg 透视倾斜角度，增加3D感
+ * @param dynamicShadowEnabled 是否启用动态阴影（阴影大小随拖拽距离变化）
+ * @param dragForwardEnabled 是否启用向前拖拽交互
+ * @param dragBackwardEnabled 是否启用向后拖拽交互
+ * @param tapForwardEnabled 是否启用向前点击交互
+ * @param tapBackwardEnabled 是否启用向后点击交互
+ * @param tapCustomEnabled 是否启用自定义点击交互，参见onCustomTap
+ * @param dragInteraction 拖拽交互设置
+ * @param tapInteraction 点击交互设置
+ * @param onCustomTap 自定义点击处理lambda。接收密度作用域、PageCurl尺寸和点击位置。返回true表示点击已处理，false则使用默认处理
  */
 @ExperimentalPageCurlApi
-public class PageCurlConfig(
+class PageCurlConfig(
     backPageColor: Color,
     backPageContentAlpha: Float,
     shadowColor: Color,
     shadowAlpha: Float,
     shadowRadius: Dp,
     shadowOffset: DpOffset,
+    thicknessDp: Dp,
+    highlightStrength: Float,
+    perspectiveTiltDeg: Float,
+    dynamicShadowEnabled: Boolean,
     dragForwardEnabled: Boolean,
     dragBackwardEnabled: Boolean,
     tapForwardEnabled: Boolean,
@@ -206,188 +230,201 @@ public class PageCurlConfig(
     tapCustomEnabled: Boolean,
     dragInteraction: DragInteraction,
     tapInteraction: TapInteraction,
-    public val onCustomTap: Density.(IntSize, Offset) -> Boolean,
+    val onCustomTap: Density.(IntSize, Offset) -> Boolean,
 ) {
     /**
-     * The color of the back-page. In majority of use-cases it should be set to the content background color.
+     * 背页颜色。大多数情况下应设置为内容背景色
      */
-    public var backPageColor: Color by mutableStateOf(backPageColor)
+    var backPageColor: Color by mutableStateOf(backPageColor)
 
     /**
-     * The alpha which defines how content is "seen through" the back-page. From 0 (nothing is visible) to
-     * 1 (everything is visible).
+     * 背页内容透明度，定义内容"透过"背页的可见程度。0（不可见）到1（完全可见）
      */
-    public var backPageContentAlpha: Float by mutableStateOf(backPageContentAlpha)
+    var backPageContentAlpha: Float by mutableStateOf(backPageContentAlpha)
 
     /**
-     * The color of the shadow. In majority of use-cases it should be set to the inverted color to the content
-     * background color. Should be a solid color, see [shadowAlpha] to adjust opacity.
+     * 阴影颜色。大多数情况下应设置为内容背景色的反色。应为纯色，使用shadowAlpha调整不透明度
      */
-    public var shadowColor: Color by mutableStateOf(shadowColor)
+    var shadowColor: Color by mutableStateOf(shadowColor)
 
     /**
-     * The alpha of the [shadowColor].
+     * 阴影透明度
      */
-    public var shadowAlpha: Float by mutableStateOf(shadowAlpha)
+    var shadowAlpha: Float by mutableStateOf(shadowAlpha)
 
     /**
-     * Defines how big the shadow is.
+     * 基础阴影大小
      */
-    public var shadowRadius: Dp by mutableStateOf(shadowRadius)
+    var shadowRadius: Dp by mutableStateOf(shadowRadius)
 
     /**
-     * Defines how shadow is shifted from the page. A little shift may add more realism.
+     * 阴影偏移。轻微的偏移可以增加真实感
      */
-    public var shadowOffset: DpOffset by mutableStateOf(shadowOffset)
+    var shadowOffset: DpOffset by mutableStateOf(shadowOffset)
 
     /**
-     * True if forward drag interaction is enabled or not.
+     * 页面厚度效果的大小
      */
-    public var dragForwardEnabled: Boolean by mutableStateOf(dragForwardEnabled)
+    var thicknessDp: Dp by mutableStateOf(thicknessDp)
 
     /**
-     * True if backward drag interaction is enabled or not.
+     * 高光效果的强度，0到1之间
      */
-    public var dragBackwardEnabled: Boolean by mutableStateOf(dragBackwardEnabled)
+    var highlightStrength: Float by mutableStateOf(highlightStrength)
 
     /**
-     * True if forward tap interaction is enabled or not.
+     * 透视倾斜角度，增加3D感
      */
-    public var tapForwardEnabled: Boolean by mutableStateOf(tapForwardEnabled)
+    var perspectiveTiltDeg: Float by mutableStateOf(perspectiveTiltDeg)
 
     /**
-     * True if backward tap interaction is enabled or not.
+     * 是否启用动态阴影（阴影大小随拖拽距离变化）
      */
-    public var tapBackwardEnabled: Boolean by mutableStateOf(tapBackwardEnabled)
+    var dynamicShadowEnabled: Boolean by mutableStateOf(dynamicShadowEnabled)
 
     /**
-     * True if custom tap interaction is enabled or not, see [onCustomTap].
+     * 是否启用向前拖拽交互
      */
-    public var tapCustomEnabled: Boolean by mutableStateOf(tapCustomEnabled)
+    var dragForwardEnabled: Boolean by mutableStateOf(dragForwardEnabled)
 
     /**
-     * The drag interaction setting.
+     * 是否启用向后拖拽交互
      */
-    public var dragInteraction: DragInteraction by mutableStateOf(dragInteraction)
+    var dragBackwardEnabled: Boolean by mutableStateOf(dragBackwardEnabled)
 
     /**
-     * The tap interaction setting.
+     * 是否启用向前点击交互
      */
-    public var tapInteraction: TapInteraction by mutableStateOf(tapInteraction)
+    var tapForwardEnabled: Boolean by mutableStateOf(tapForwardEnabled)
 
     /**
-     * The drag interaction setting.
+     * 是否启用向后点击交互
      */
-    public sealed interface DragInteraction {
+    var tapBackwardEnabled: Boolean by mutableStateOf(tapBackwardEnabled)
+
+    /**
+     * 是否启用自定义点击交互，参见onCustomTap
+     */
+    var tapCustomEnabled: Boolean by mutableStateOf(tapCustomEnabled)
+
+    /**
+     * 拖拽交互设置
+     */
+    var dragInteraction: DragInteraction by mutableStateOf(dragInteraction)
+
+    /**
+     * 点击交互设置
+     */
+    var tapInteraction: TapInteraction by mutableStateOf(tapInteraction)
+
+    /**
+     * 拖拽交互设置接口
+     */
+    sealed interface DragInteraction {
 
         /**
-         * The pointer behavior during drag interaction.
+         * 拖拽过程中的指针行为
          */
-        public val pointerBehavior: PointerBehavior
+        val pointerBehavior: PointerBehavior
 
         /**
-         * The enumeration of available pointer behaviors.
+         * 可用指针行为的枚举
          */
-        public enum class PointerBehavior {
+        enum class PointerBehavior {
             /**
-             * The default behavior is an original one, where "page flip" is anchored to the user's finger.
-             * The "page flip" in this sense is a line which divides the back page of the current page and the front
-             * page of the next page. This means that when finger is dragged to the left edge, the next page is fully
-             * visible.
+             * 默认行为是原始行为，其中"翻页"锚定到用户的手指。
+             * 这里的"翻页"是指分隔当前页背面和下一页正面的线。
+             * 这意味着当手指拖到左边缘时，下一页完全可见。
              */
             Default,
 
             /**
-             * In the page-edge behavior the right edge of the current page is anchored to the user's finger.
-             * This means that when finger is dragged to the left edge, the next page is half visible.
+             * 在页面边缘行为中，当前页面的右边缘锚定到用户的手指。
+             * 这意味着当手指拖到左边缘时，下一页只有一半可见。
              */
             PageEdge;
         }
     }
 
     /**
-     * The drag interaction setting based on where user start and end drag gesture inside the PageCurl.
+     * 基于用户在PageCurl内开始和结束拖拽手势位置的拖拽交互设置
      *
-     * @property pointerBehavior The pointer behavior during drag interaction.
-     * @property forward The forward tap configuration.
-     * @property backward The backward tap configuration.
+     * @property pointerBehavior 拖拽过程中的指针行为
+     * @property forward 向前点击配置
+     * @property backward 向后点击配置
      */
-    public data class StartEndDragInteraction(
+    data class StartEndDragInteraction(
         override val pointerBehavior: DragInteraction.PointerBehavior = DragInteraction.PointerBehavior.Default,
         val forward: Config = Config(start = rightHalf(), end = leftHalf()),
         val backward: Config = Config(start = leftHalf(), end = rightHalf())
     ) : DragInteraction {
 
         /**
-         * The drag interaction configuration for forward or backward drag.
+         * 前进或后退拖拽的交互配置
          *
-         * @property start Defines a rectangle where interaction should start. The rectangle coordinates are relative
-         * (from 0 to 1) and then scaled to the PageCurl bounds.
-         * @property end Defines a rectangle where interaction should end. The rectangle coordinates are relative
-         * (from 0 to 1) and then scaled to the PageCurl bounds.
+         * @property start 定义交互应该开始的矩形。矩形坐标是相对的（从0到1），然后缩放到PageCurl边界
+         * @property end 定义交互应该结束的矩形。矩形坐标是相对的（从0到1），然后缩放到PageCurl边界
          */
-        public data class Config(val start: Rect, val end: Rect)
+        data class Config(val start: Rect, val end: Rect)
     }
 
     /**
-     * The drag interaction setting based on the direction where drag has been started.
+     * 基于拖拽开始方向的拖拽交互设置
      *
-     * @property pointerBehavior The pointer behavior during drag interaction.
-     * @property forward The forward tap configuration.
-     * @property backward The backward tap configuration.
+     * @property pointerBehavior 拖拽过程中的指针行为
+     * @property forward 向前点击配置
+     * @property backward 向后点击配置
      */
-    public data class GestureDragInteraction(
+    data class GestureDragInteraction(
         override val pointerBehavior: DragInteraction.PointerBehavior = DragInteraction.PointerBehavior.Default,
         val forward: Config = Config(target = full()),
         val backward: Config = Config(target = full()),
     ) : DragInteraction {
 
         /**
-         * The drag interaction configuration for forward or backward drag.
+         * 前进或后退拖拽的交互配置
          *
-         * @property target Defines a rectangle where interaction captured. The rectangle coordinates are relative
-         * (from 0 to 1) and then scaled to the PageCurl bounds.
+         * @property target 定义捕获交互的矩形。矩形坐标是相对的（从0到1），然后缩放到PageCurl边界
          */
-        public data class Config(val target: Rect)
+        data class Config(val target: Rect)
     }
 
     /**
-     * The tap interaction setting.
+     * 点击交互设置接口
      */
-    public sealed interface TapInteraction
+    sealed interface TapInteraction
 
     /**
-     * The tap interaction setting based on where user taps inside the PageCurl.
+     * 基于用户在PageCurl内点击位置的点击交互设置
      *
-     * @property forward The forward tap configuration.
-     * @property backward The backward tap configuration.
+     * @property forward 向前点击配置
+     * @property backward 向后点击配置
      */
-    public data class TargetTapInteraction(
+    data class TargetTapInteraction(
         val forward: Config = Config(target = rightHalf()),
         val backward: Config = Config(target = leftHalf())
     ) : TapInteraction {
 
         /**
-         * The tap interaction configuration for forward or backward tap.
+         * 前进或后退点击的交互配置
          *
-         * @property target Defines a rectangle where interaction captured. The rectangle coordinates are relative
-         * (from 0 to 1) and then scaled to the PageCurl bounds.
+         * @property target 定义捕获交互的矩形。矩形坐标是相对的（从0到1），然后缩放到PageCurl边界
          */
-        public data class Config(val target: Rect)
+        data class Config(val target: Rect)
     }
 }
 
 /**
- * The full size of the PageCurl.
+ * PageCurl的完整尺寸
  */
 private fun full(): Rect = Rect(0.0f, 0.0f, 1.0f, 1.0f)
 
 /**
- * The left half of the PageCurl.
+ * PageCurl的左半部分
  */
 private fun leftHalf(): Rect = Rect(0.0f, 0.0f, 0.5f, 1.0f)
 
 /**
- * The right half of the PageCurl.
+ * PageCurl的右半部分
  */
 private fun rightHalf(): Rect = Rect(0.5f, 0.0f, 1.0f, 1.0f)

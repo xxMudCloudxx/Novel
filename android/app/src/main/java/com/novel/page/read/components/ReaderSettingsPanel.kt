@@ -4,26 +4,13 @@ import android.annotation.SuppressLint
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
-import com.novel.page.component.NovelText
-import com.novel.ui.theme.NovelTheme
-import com.novel.utils.ssp
 import kotlin.math.roundToInt
 
 /**
@@ -34,14 +21,14 @@ data class ReaderSettings(
     val fontSize: Int = 16,                // 字体大小
     val backgroundColor: Color = Color(0xFFF5F5DC),  // 背景颜色
     val textColor: Color = Color.Black,    // 文字颜色
-    val pageFlipEffect: PageFlipEffect = PageFlipEffect.SLIDE  // 翻页效果
+    val pageFlipEffect: PageFlipEffect = PageFlipEffect.PAGECURL  // 翻页效果
 )
 
 /**
  * 翻页效果枚举
  */
 enum class PageFlipEffect(val displayName: String) {
-    REALISTIC("仿真"),
+    PAGECURL("书卷"),
     COVER("覆盖"),
     SLIDE("平移"),
     VERTICAL("上下"),
@@ -62,13 +49,14 @@ data class BackgroundTheme(
  * @param settings 当前设置
  * @param onSettingsChange 设置变更回调
  * @param onDismiss 关闭面板回调
+ * @param modifier 自定义修饰符
  */
 @SuppressLint("ContextCastToActivity")
 @Composable
 fun ReaderSettingsPanel(
     settings: ReaderSettings,
     onSettingsChange: (ReaderSettings) -> Unit,
-    onDismiss: () -> Unit
+    modifier: Modifier = Modifier
 ) {
     // 背景主题定义移到Composable函数内
     val backgroundThemes = listOf(
@@ -90,13 +78,6 @@ fun ReaderSettingsPanel(
         }
     }
 
-    // 2. 用 animateFloatAsState 让 slider 的 thumb 在跳动时有一个小过渡
-    //    我们把步长控制交给 onValueChange，brightness 本身只有 11 个可能值（0.0, 0.1, 0.2 ...）
-    val animatedProgress by animateFloatAsState(
-        targetValue = brightness,
-        animationSpec = tween(durationMillis = 100) // 100ms 的快速过渡
-    )
-
     LaunchedEffect(brightness) {
         window?.attributes = window?.attributes?.apply {
             screenBrightness = brightness.coerceIn(0f, 1f)
@@ -105,10 +86,9 @@ fun ReaderSettingsPanel(
 
     // 设置面板
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight(),
-        shape = RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp),
         colors = CardDefaults.cardColors(containerColor = settings.backgroundColor)
     ) {
         Column(

@@ -1,5 +1,6 @@
 package com.novel.page.component
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -252,6 +253,7 @@ class FlipBookAnimationController {
 /**
  * 全局翻书动画覆盖层 - 真正的3D翻书效果，性能优化版本
  */
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun GlobalFlipBookOverlay(
     controller: FlipBookAnimationController,
@@ -404,6 +406,7 @@ private data class Tuple4<T>(val first: T, val second: T, val third: T, val four
  * 简化的书籍点击处理器
  * 提供启动动画的接口，支持精确位置
  */
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun rememberBookClickHandler(
     controller: FlipBookAnimationController,

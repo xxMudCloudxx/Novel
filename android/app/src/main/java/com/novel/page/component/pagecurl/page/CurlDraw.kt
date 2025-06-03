@@ -9,6 +9,9 @@ import androidx.compose.ui.draw.DrawResult
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.toRect
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
@@ -20,17 +23,21 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import com.novel.page.component.pagecurl.config.PageCurlConfig
 import com.novel.page.component.pagecurl.utils.Polygon
 import com.novel.page.component.pagecurl.utils.lineLineIntersection
 import com.novel.page.component.pagecurl.utils.rotate
 import java.lang.Float.max
 import kotlin.math.atan2
+import kotlin.math.sqrt
+import androidx.core.graphics.createBitmap
 
 /**
  * 绘制卷曲效果的修饰符
  * 
  * 这是PageCurl组件的核心绘制逻辑，实现真实的书页卷曲视觉效果
+ * 包含动态阴影、页面厚度和高光效果
  *
  * @param config PageCurl配置
  * @param posA 卷曲线的起始点（顶部）
@@ -128,7 +135,7 @@ private fun CacheDrawScope.prepareClippedContent(
 }
 
 /**
- * 准备卷曲效果（背页和阴影）的绘制方法
+ * 准备卷曲效果（背页、阴影、厚度和高光）的绘制方法
  * 
  * @param config PageCurl配置
  * @param topCurlOffset 顶部卷曲偏移点
@@ -141,13 +148,13 @@ private fun CacheDrawScope.prepareCurl(
     topCurlOffset: Offset,
     bottomCurlOffset: Offset,
 ): ContentDrawScope.() -> Unit {
-    // Build a quadrilateral of the part of the page which should be mirrored as the back-page
-    // In all cases polygon should have 4 points, even when back-page is only a small "corner" (with 3 points) due to
-    // the shadow rendering, otherwise it will create a visual artifact when switching between 3 and 4 points polygon
+    // 构建要作为背页镜像的页面部分的四边形
+    // 在所有情况下，多边形应该有4个点，即使背页只是一个小"角落"（有3个点）
+    // 由于阴影渲染，否则在3点和4点多边形之间切换时会产生视觉伪影
     val polygon = Polygon(
         sequence {
-            // Find the intersection of the curl line and right side
-            // If intersection is found adds to the polygon points list
+            // 查找卷曲线与右侧的交点
+            // 如果找到交点，添加到多边形点列表
             suspend fun SequenceScope<Offset>.yieldEndSideInterception() {
                 val offset = lineLineIntersection(
                     topCurlOffset, bottomCurlOffset,
@@ -157,8 +164,7 @@ private fun CacheDrawScope.prepareCurl(
                 yield(offset)
             }
 
-            // In case top intersection lays in the bounds of the page curl, take 2 points from the top side, otherwise
-            // take the interception with a right side
+            // 如果顶部交点在页面卷曲边界内，从顶部取2个点，否则从右侧取交点
             if (topCurlOffset.x < size.width) {
                 yield(topCurlOffset)
                 yield(Offset(size.width, topCurlOffset.y))
@@ -166,8 +172,7 @@ private fun CacheDrawScope.prepareCurl(
                 yieldEndSideInterception()
             }
 
-            // In case bottom intersection lays in the bounds of the page curl, take 2 points from the bottom side,
-            // otherwise take the interception with a right side
+            // 如果底部交点在页面卷曲边界内，从底部取2个点，否则从右侧取交点
             if (bottomCurlOffset.x < size.width) {
                 yield(Offset(size.width, size.height))
                 yield(bottomCurlOffset)
@@ -177,67 +182,106 @@ private fun CacheDrawScope.prepareCurl(
         }.toList()
     )
 
-    // Calculate the angle in radians between X axis and the curl line, this is used to rotate mirrored content to the
-    // right position of the curled back-page
+    // 计算X轴与卷曲线之间的弧度角，用于将镜像内容旋转到卷曲背页的正确位置
     val lineVector = topCurlOffset - bottomCurlOffset
     val angle = Math.PI.toFloat() - atan2(lineVector.y, lineVector.x) * 2
 
-    // Prepare a lambda to draw the shadow of the back-page
-    val drawShadow = prepareShadow(config, polygon, angle)
+    // 计算翻页进度（0到1），用于动态效果
+    val progress = ((bottomCurlOffset.x + topCurlOffset.x) * 0.5f) / size.width
+
+    // 准备阴影绘制lambda
+    val drawShadow = prepareShadow(config, polygon, angle, progress)
+    
+    // 准备厚度条绘制lambda
+    val drawThickness = prepareThickness(config, polygon, angle)
 
     return result@{
         withTransform({
-            // Mirror in X axis the drawing as back-page should be mirrored
+            // 在X轴上镜像绘制，因为背页应该被镜像
             scale(-1f, 1f, pivot = bottomCurlOffset)
-            // Rotate the drawing according to the curl line
+            // 根据卷曲线旋转绘制
             rotateRad(angle, pivot = bottomCurlOffset)
         }) {
-            // Draw shadow first
+            // 首先绘制阴影
             this@result.drawShadow()
 
-            // And finally draw the back-page with an overlay with alpha
+            // 然后绘制背页内容
             clipPath(polygon.toPath()) {
                 this@result.drawContent()
 
                 val overlayAlpha = 1f - config.backPageContentAlpha
                 drawRect(config.backPageColor.copy(alpha = overlayAlpha))
+                
+                // 添加径向高光效果
+                if (config.highlightStrength > 0f) {
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = config.highlightStrength * 0.8f),
+                                Color.Transparent
+                            ),
+                            center = bottomCurlOffset,
+                            radius = size.minDimension * 0.4f
+                        ),
+                        blendMode = BlendMode.Softlight
+                    )
+                }
             }
+            
+            // 最后绘制厚度条（在背页之上）
+            this@result.drawThickness()
         }
     }
 }
 
+/**
+ * 准备动态阴影绘制
+ * 
+ * @param config PageCurl配置
+ * @param polygon 多边形
+ * @param angle 角度
+ * @param progress 翻页进度
+ * @return 阴影绘制方法
+ */
 @ExperimentalPageCurlApi
 private fun CacheDrawScope.prepareShadow(
     config: PageCurlConfig,
     polygon: Polygon,
-    angle: Float
+    angle: Float,
+    progress: Float
 ): ContentDrawScope.() -> Unit {
-    // Quick exit if no shadow is requested
+    // 如果不需要阴影则快速退出
     if (config.shadowAlpha == 0f || config.shadowRadius == 0.dp) {
-        return { /* No shadow is requested */ }
+        return { /* 不需要阴影 */ }
     }
 
-    // Prepare shadow parameters
-    val radius = config.shadowRadius.toPx()
+    // 准备阴影参数 - 动态阴影大小
+    val baseRadius = config.shadowRadius.toPx()
+    val radius = if (config.dynamicShadowEnabled) {
+        lerp(6.dp.toPx(), baseRadius * 1.5f, progress)
+    } else {
+        baseRadius
+    }
+    
     val shadowColor = config.shadowColor.copy(alpha = config.shadowAlpha).toArgb()
     val transparent = config.shadowColor.copy(alpha = 0f).toArgb()
     val shadowOffset = Offset(-config.shadowOffset.x.toPx(), config.shadowOffset.y.toPx())
         .rotate(angle = 2 * Math.PI.toFloat() - angle)
 
-    // Prepare shadow paint with a shadow layer
+    // 准备带阴影层的阴影画笔
     val paint = Paint().apply {
         val frameworkPaint = asFrameworkPaint()
         frameworkPaint.color = transparent
         frameworkPaint.setShadowLayer(
-            config.shadowRadius.toPx(),
+            radius,
             shadowOffset.x,
             shadowOffset.y,
             shadowColor
         )
     }
 
-    // Hardware acceleration supports setShadowLayer() only on API 28 and above, thus to support previous API versions
-    // draw a shadow to the bitmap instead
+    // 硬件加速仅在API 28及以上版本支持setShadowLayer()
+    // 因此为了支持之前的API版本，需要在位图上绘制阴影
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         prepareShadowApi28(radius, paint, polygon)
     } else {
@@ -245,6 +289,53 @@ private fun CacheDrawScope.prepareShadow(
     }
 }
 
+/**
+ * 准备页面厚度效果
+ * 
+ * @param config PageCurl配置
+ * @param polygon 多边形
+ * @param angle 角度
+ * @return 厚度绘制方法
+ */
+@ExperimentalPageCurlApi
+private fun CacheDrawScope.prepareThickness(
+    config: PageCurlConfig,
+    polygon: Polygon,
+    angle: Float
+): ContentDrawScope.() -> Unit {
+    if (config.thicknessDp == 0.dp) {
+        return { /* 不需要厚度效果 */ }
+    }
+
+    val thickness = config.thicknessDp.toPx()
+    
+    // 计算厚度条的偏移向量（沿卷曲线法向量）
+    val normalVector = Offset(-kotlin.math.sin(angle), kotlin.math.cos(angle))
+    val thicknessOffset = normalVector * thickness
+    
+    // 创建厚度条多边形
+    val thicknessPolygon = polygon.translate(thicknessOffset)
+    
+    // 创建厚度颜色渐变（从背页颜色到稍暗的颜色）
+    val thicknessBrush = Brush.linearGradient(
+        colors = listOf(
+            config.backPageColor,
+            config.backPageColor.copy(alpha = 0.7f)
+        ),
+        start = Offset.Zero,
+        end = thicknessOffset
+    )
+
+    return {
+        clipPath(thicknessPolygon.toPath()) {
+            drawRect(brush = thicknessBrush)
+        }
+    }
+}
+
+/**
+ * API 28+ 阴影绘制
+ */
 private fun prepareShadowApi28(
     radius: Float,
     paint: Paint,
@@ -260,21 +351,20 @@ private fun prepareShadowApi28(
     }
 }
 
+/**
+ * API 28以下阴影绘制（使用位图）
+ */
 private fun CacheDrawScope.prepareShadowImage(
     radius: Float,
     paint: Paint,
     polygon: Polygon,
 ): ContentDrawScope.() -> Unit {
-    // Increase the size a little bit so that shadow is not clipped
-    val bitmap = Bitmap.createBitmap(
-        (size.width + radius * 4).toInt(),
-        (size.height + radius * 4).toInt(),
-        Bitmap.Config.ARGB_8888
-    )
+    // 稍微增加大小以确保阴影不被裁剪
+    val bitmap = createBitmap((size.width + radius * 4).toInt(), (size.height + radius * 4).toInt())
     Canvas(bitmap).apply {
         drawPath(
             polygon
-                // As bitmap size is increased we should translate the polygon so that shadow remains in center
+                // 由于位图大小增加，应该平移多边形以使阴影保持在中心
                 .translate(Offset(2 * radius, 2 * radius))
                 .offset(radius).toPath()
                 .asAndroidPath(),
@@ -284,7 +374,7 @@ private fun CacheDrawScope.prepareShadowImage(
 
     return {
         drawIntoCanvas {
-            // As bitmap size is increased we should shift the drawing so that shadow remains in center
+            // 由于位图大小增加，应该移动绘制以使阴影保持在中心
             it.nativeCanvas.drawBitmap(bitmap, -2 * radius, -2 * radius, null)
         }
     }

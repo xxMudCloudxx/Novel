@@ -27,7 +27,7 @@ import com.novel.page.component.pagecurl.config.rememberPageCurlConfig
  */
 @ExperimentalPageCurlApi
 @Composable
-public fun PageCurl(
+fun PageCurl(
     count: Int,
     modifier: Modifier = Modifier,
     state: PageCurlState = rememberPageCurlState(),
@@ -105,72 +105,4 @@ public fun PageCurl(
             }
         }
     }
-}
-
-/**
- * 带稳定key的PageCurl组件
- * 
- * 用于在当前页面前添加和删除项目时提供稳定的key
- *
- * @param count 页面总数
- * @param key 为每个项目提供稳定key的lambda函数
- * @param modifier 修饰符
- * @param state PageCurl状态
- * @param config PageCurl配置
- * @param content 内容lambda
- */
-@ExperimentalPageCurlApi
-@Composable
-public fun PageCurl(
-    count: Int,
-    key: (Int) -> Any,
-    modifier: Modifier = Modifier,
-    state: PageCurlState = rememberPageCurlState(),
-    config: PageCurlConfig = rememberPageCurlConfig(),
-    content: @Composable (Int) -> Unit
-) {
-    // 记录最后一个key值，用于检测变化
-    var lastKey by remember(state.current) { mutableStateOf(if (count > 0) key(state.current) else null) }
-
-    // 当count变化时，检查key是否变化，如果变化则更新当前页面索引
-    remember(count) {
-        val newKey = if (count > 0) key(state.current) else null
-        if (newKey != lastKey) {
-            val index = List(count, key).indexOf(lastKey).coerceIn(0, count - 1)
-            lastKey = newKey
-            state.current = index
-        }
-        count
-    }
-
-    PageCurl(
-        count = count,
-        state = state,
-        config = config,
-        content = content,
-        modifier = modifier,
-    )
-}
-
-/**
- * 旧版本兼容API（已弃用）
- * 
- * @param state PageCurl状态
- * @param modifier 修饰符
- * @param content 内容lambda
- */
-@ExperimentalPageCurlApi
-@Composable
-@Deprecated("请在PageCurl组件中指定'count'参数来替代'max'")
-public fun PageCurl(
-    state: PageCurlState,
-    modifier: Modifier = Modifier,
-    content: @Composable (Int) -> Unit
-) {
-    PageCurl(
-        count = state.max,
-        state = state,
-        modifier = modifier,
-        content = content,
-    )
 }

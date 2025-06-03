@@ -2,8 +2,6 @@ package com.novel.page.component.pagecurl.utils
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * 多边形工具类

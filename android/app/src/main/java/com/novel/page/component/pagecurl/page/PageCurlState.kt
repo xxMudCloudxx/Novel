@@ -15,8 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Constraints
-import com.novel.page.component.pagecurl.config.PageCurlConfig
-import com.novel.page.component.pagecurl.config.rememberPageCurlConfig
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
@@ -33,7 +31,7 @@ import kotlinx.coroutines.withContext
  */
 @ExperimentalPageCurlApi
 @Composable
-public fun rememberPageCurlState(
+fun rememberPageCurlState(
     initialCurrent: Int = 0,
 ): PageCurlState =
     rememberSaveable(
@@ -45,74 +43,6 @@ public fun rememberPageCurlState(
     ) {
         PageCurlState(
             initialCurrent = initialCurrent,
-        )
-    }
-
-/**
- * 已弃用：请在PageCurl组件中指定config参数
- * 
- * @param initialCurrent 初始当前页面
- * @param config PageCurl配置
- * @return PageCurlState实例
- */
-@ExperimentalPageCurlApi
-@Composable
-@Deprecated(
-    message = "请在PageCurl组件中指定'config'参数",
-    level = DeprecationLevel.ERROR,
-)
-@Suppress("UnusedPrivateMember")
-public fun rememberPageCurlState(
-    initialCurrent: Int = 0,
-    config: PageCurlConfig,
-): PageCurlState =
-    rememberSaveable(
-        initialCurrent,
-        saver = Saver(
-            save = { it.current },
-            restore = { PageCurlState(initialCurrent = it) }
-        )
-    ) {
-        PageCurlState(
-            initialCurrent = initialCurrent,
-        )
-    }
-
-/**
- * 已弃用：请在PageCurl组件中指定参数
- * 
- * @param max 最大页面数
- * @param initialCurrent 初始当前页面
- * @param config PageCurl配置
- * @return PageCurlState实例
- */
-@ExperimentalPageCurlApi
-@Composable
-@Deprecated(
-    message = "请在PageCurl组件中指定'count'和'config'参数",
-    level = DeprecationLevel.ERROR,
-)
-@Suppress("UnusedPrivateMember")
-public fun rememberPageCurlState(
-    max: Int,
-    initialCurrent: Int = 0,
-    config: PageCurlConfig = rememberPageCurlConfig()
-): PageCurlState =
-    rememberSaveable(
-        max, initialCurrent,
-        saver = Saver(
-            save = { it.current },
-            restore = {
-                PageCurlState(
-                    initialCurrent = it,
-                    initialMax = max,
-                )
-            }
-        )
-    ) {
-        PageCurlState(
-            initialCurrent = initialCurrent,
-            initialMax = max,
         )
     }
 
@@ -125,21 +55,21 @@ public fun rememberPageCurlState(
  * @param initialCurrent 初始当前页面索引
  */
 @ExperimentalPageCurlApi
-public class PageCurlState(
+class PageCurlState(
     initialMax: Int = 0,
     initialCurrent: Int = 0,
 ) {
     /**
      * 可观察的当前页面索引
      */
-    public var current: Int by mutableStateOf(initialCurrent)
+    var current: Int by mutableStateOf(initialCurrent)
         internal set
 
     /**
      * 可观察的翻页进度
      * 向前翻页时从0变化到1，向后翻页时从0变化到-1
      */
-    public val progress: Float get() = internalState?.progress ?: 0f
+    val progress: Float get() = internalState?.progress ?: 0f
 
     /**
      * 页面总数（内部使用）
@@ -189,7 +119,7 @@ public class PageCurlState(
      *
      * @param value 目标页面索引
      */
-    public suspend fun snapTo(value: Int) {
+    suspend fun snapTo(value: Int) {
         current = value.coerceIn(0, max - 1)
         internalState?.reset()
     }
@@ -199,7 +129,7 @@ public class PageCurlState(
      *
      * @param block 动画控制块
      */
-    public suspend fun next(block: suspend Animatable<Edge, AnimationVector4D>.(Size) -> Unit = DefaultNext) {
+    suspend fun next(block: suspend Animatable<Edge, AnimationVector4D>.(Size) -> Unit = DefaultNext) {
         internalState?.animateTo(
             target = { current + 1 },
             animate = { forward.block(it) }
@@ -211,13 +141,18 @@ public class PageCurlState(
      *
      * @param block 动画控制块
      */
-    public suspend fun prev(block: suspend Animatable<Edge, AnimationVector4D>.(Size) -> Unit = DefaultPrev) {
+    suspend fun prev(block: suspend Animatable<Edge, AnimationVector4D>.(Size) -> Unit = DefaultPrev) {
         internalState?.animateTo(
             target = { current - 1 },
             animate = { backward.block(it) }
         )
     }
 
+    /**
+     * 内部状态类
+     * 
+     * 管理动画状态和进度计算
+     */
     internal inner class InternalState(
         val constraints: Constraints,
         val leftEdge: Edge,
@@ -271,9 +206,9 @@ public class PageCurlState(
 }
 
 /**
- * The wrapper to represent a line with 2 points: [top] and [bottom].
+ * 表示具有2个点的线的包装器：[top]和[bottom]
  */
-public data class Edge(val top: Offset, val bottom: Offset) {
+data class Edge(val top: Offset, val bottom: Offset) {
 
     internal val centerX: Float = (top.x + bottom.x) * 0.5f
 
@@ -289,6 +224,9 @@ public data class Edge(val top: Offset, val bottom: Offset) {
     }
 }
 
+/**
+ * 默认向前翻页动画
+ */
 private val DefaultNext: suspend Animatable<Edge, AnimationVector4D>.(Size) -> Unit = { size ->
     animateTo(
         targetValue = size.start,
@@ -300,6 +238,9 @@ private val DefaultNext: suspend Animatable<Edge, AnimationVector4D>.(Size) -> U
     )
 }
 
+/**
+ * 默认向后翻页动画
+ */
 private val DefaultPrev: suspend Animatable<Edge, AnimationVector4D>.(Size) -> Unit = { size ->
     animateTo(
         targetValue = size.end,

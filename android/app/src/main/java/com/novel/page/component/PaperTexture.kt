@@ -12,7 +12,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -36,7 +35,7 @@ fun PaperTexture(
     seed: Long = 42L,
     content: @Composable () -> Unit
 ) {
-    val localDensity = LocalDensity.current
+    LocalDensity.current
     
     // 记住纹理点，避免重复计算
     val texturePoints = remember(seed, density) {
@@ -79,7 +78,7 @@ private fun generateTexturePoints(seed: Long, density: Float): List<TexturePoint
                 y = random.nextFloat(),
                 size = random.nextFloat() * 2f + 0.5f,
                 brightness = random.nextFloat() * 0.8f + 0.2f,
-                type = TextureType.values().random(random)
+                type = TextureType.entries.toTypedArray().random(random)
             )
         )
     }
