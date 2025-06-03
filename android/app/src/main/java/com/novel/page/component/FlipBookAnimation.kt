@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import com.facebook.react.uimanager.PixelUtil.dpToPx
 import kotlinx.coroutines.coroutineScope
 import com.novel.page.book.BookDetailPage
+import com.novel.utils.NavViewModel
 
 /**
  * 翻书动画状态
@@ -319,7 +320,10 @@ fun GlobalFlipBookOverlay(
                 BookDetailPage(
                     bookId = animationState.bookId,
                     fromRank = true,
-                    flipBookController = controller
+                    flipBookController = controller,
+                    onNavigateToReader = { bookId, chapterId ->
+                        NavViewModel.navigateToReader(bookId, chapterId)
+                    }
                 )
             }
         }

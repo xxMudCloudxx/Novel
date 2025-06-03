@@ -1,6 +1,5 @@
 package com.novel.page.read.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
@@ -93,9 +91,10 @@ fun FontSizeControl(
             modifier = Modifier
                 .size(width = 48.wdp, height = 32.wdp)
                 .debounceClickable(
-                    enabled = canIncrease,
+                    intervalMillis = 200,
+                    enabled = canDecrease,
                     onClick = {
-                        if (canIncrease) {
+                        if (canDecrease) {
                             val newSize = fontSizes[currentIndex - 1]
                             onFontSizeChange(newSize)
                         }
@@ -133,6 +132,7 @@ fun FontSizeControl(
             modifier = Modifier
                 .size(width = 48.wdp, height = 32.wdp)
                 .debounceClickable(
+                    intervalMillis = 200,
                     enabled = canIncrease,
                     onClick = {
                         if (canIncrease) {

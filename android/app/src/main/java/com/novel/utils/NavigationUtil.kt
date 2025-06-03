@@ -11,7 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.novel.page.MainPage
 import com.novel.page.login.LoginPage
 import com.novel.page.book.BookDetailPage
-import com.novel.page.book.ReaderPage
+import com.novel.page.read.ReaderPage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

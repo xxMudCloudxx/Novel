@@ -1,11 +1,8 @@
 package com.novel.page.read.utils
 
-import android.graphics.Paint
 import android.text.TextPaint
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.novel.page.read.components.ReaderSettings
@@ -119,7 +116,7 @@ class PageSplitter {
 
             // 11. 按“每页最大行数”组装分页
             val pages = mutableListOf<String>()
-            var currentPageLines = mutableListOf<String>()
+            val currentPageLines = mutableListOf<String>()
             var currentLineCount = 0
             var isFirstPage = true
             var lineIndex = 0
