@@ -38,7 +38,7 @@ fun PageContentDisplay(
             .fillMaxSize()
             .background(readerSettings.backgroundColor)
             .clickable { onClick() }
-            .padding(16.wdp)
+            .padding(horizontal = 16.wdp, vertical = 10.wdp),
     ) {
         Column {
             // 只在第一页显示章节标题

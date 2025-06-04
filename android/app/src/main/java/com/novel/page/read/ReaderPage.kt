@@ -124,21 +124,6 @@ fun ReaderPage(
                                         }
                                     }
                             )
-
-                            // 左上角导航信息
-                            ReaderNavigationInfo(
-                                currentChapter = uiState.currentChapter,
-                                currentPageIndex = uiState.currentPageIndex,
-                                totalPages = uiState.currentPageData?.pages?.size ?: 0,
-                                onBackToHome = { /* 返回首页 */ },
-                                onShowChapterList = {
-                                    showChapterList = true
-                                    showControls = false
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(16.wdp)
-                            )
                         }
                     } else {
                         // 兼容旧的显示方式，当分页数据还未准备好时
@@ -171,7 +156,7 @@ fun ReaderPage(
                     }
 
                     AnimatedVisibility(
-                        visible = showChapterList && !showSettings,
+                        visible = showChapterList && !showSettings && showControls,
                         enter = slideInVertically(initialOffsetY = { it }),
                         exit = slideOutVertically(targetOffsetY = { it })
                     ) {
@@ -197,7 +182,7 @@ fun ReaderPage(
 
                     // —— 再绘制“设置”面板（如果 showSettings == true）——
                     AnimatedVisibility(
-                        visible = showSettings && !showChapterList,
+                        visible = showSettings && !showChapterList && showControls,
                         enter = slideInVertically(initialOffsetY = { it }),
                         exit = slideOutVertically(targetOffsetY = { it })
                     ) {
@@ -524,108 +509,3 @@ private fun ErrorContent(
         }
     }
 }
-
-/**
- * 阅读器导航信息组件
- * 显示在左上角的章节信息和导航按钮
- */
-@Composable
-private fun ReaderNavigationInfo(
-    currentChapter: Chapter?,
-    currentPageIndex: Int,
-    totalPages: Int,
-    onBackToHome: () -> Unit,
-    onShowChapterList: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // 显示/隐藏状态
-    var isVisible by remember { mutableStateOf(true) }
-
-    // 自动隐藏逻辑：3秒后自动隐藏
-    LaunchedEffect(currentPageIndex) {
-        isVisible = true
-        kotlinx.coroutines.delay(3000)
-        isVisible = false
-    }
-
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
-        modifier = modifier
-    ) {
-        Card(
-            modifier = Modifier
-                .wrapContentSize()
-                .clickable { isVisible = !isVisible }, // 点击切换显示状态
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Black.copy(alpha = 0.6f)
-            ),
-            shape = RoundedCornerShape(8.wdp)
-        ) {
-            Row(
-                modifier = Modifier.padding(8.wdp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.wdp)
-            ) {
-                // 返回首页按钮
-                IconButton(
-                    onClick = onBackToHome,
-                    modifier = Modifier.size(24.wdp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = "返回首页",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.wdp)
-                    )
-                }
-
-                // 分隔线
-                Box(
-                    modifier = Modifier
-                        .width(1.wdp)
-                        .height(20.wdp)
-                        .background(Color.White.copy(alpha = 0.3f))
-                )
-
-                // 章节目录按钮
-                IconButton(
-                    onClick = onShowChapterList,
-                    modifier = Modifier.size(24.wdp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.List,
-                        contentDescription = "章节目录",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.wdp)
-                    )
-                }
-
-                // 章节信息
-                Column(
-                    modifier = Modifier.widthIn(max = 200.wdp)
-                ) {
-                    // 章节标题
-                    Text(
-                        text = currentChapter?.chapterName ?: "加载中...",
-                        color = Color.White,
-                        fontSize = 12.ssp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    // 页面进度
-                    if (totalPages > 0) {
-                        Text(
-                            text = "${currentPageIndex + 1}/$totalPages",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 10.ssp
-                        )
-                    }
-                }
-            }
-        }
-    }
-} 

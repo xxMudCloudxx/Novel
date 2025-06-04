@@ -60,7 +60,7 @@ fun VerticalScrollContainer(
                 .fillMaxSize()
                 .background(readerSettings.backgroundColor)
                 .clickable { onClick() }
-                .padding(horizontal = 16.wdp, vertical = 20.wdp),
+                .padding(horizontal = 16.wdp, vertical = 10.wdp),
             verticalArrangement = Arrangement.spacedBy(8.wdp)
         ) {
             // 上一章内容（如果有）
