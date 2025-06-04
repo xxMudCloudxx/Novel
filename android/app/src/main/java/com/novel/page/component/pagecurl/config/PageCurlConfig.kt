@@ -53,7 +53,7 @@ fun rememberPageCurlConfig(
     shadowColor: Color = Color.Black,
     shadowAlpha: Float = 0.2f,
     shadowRadius: Dp = 15.dp,
-    shadowOffset: DpOffset = DpOffset((-5).dp, 0.dp),
+    shadowOffset: DpOffset = DpOffset((-10).dp, 10.dp),
     thicknessDp: Dp = 3.dp,
     highlightStrength: Float = 0.3f,
     perspectiveTiltDeg: Float = 10f,
@@ -92,7 +92,10 @@ fun rememberPageCurlConfig(
                     }
 
                 fun PageCurlConfig.DragInteraction.forSave(): List<Any> =
-                    listOf(this::class.java, pointerBehavior.name) + getRectList().flatMap(Rect::forSave)
+                    listOf(
+                        this::class.java,
+                        pointerBehavior.name
+                    ) + getRectList().flatMap(Rect::forSave)
 
                 fun PageCurlConfig.TapInteraction.forSave(): List<Any> =
                     listOf(this::class.java) + getRectList().flatMap(Rect::forSave)
@@ -157,8 +160,14 @@ fun rememberPageCurlConfig(
                         PageCurlConfig.StartEndDragInteraction::class.java -> {
                             PageCurlConfig.StartEndDragInteraction(
                                 PageCurlConfig.DragInteraction.PointerBehavior.valueOf(iterator.next() as String),
-                                PageCurlConfig.StartEndDragInteraction.Config(iterator.nextRect(), iterator.nextRect()),
-                                PageCurlConfig.StartEndDragInteraction.Config(iterator.nextRect(), iterator.nextRect()),
+                                PageCurlConfig.StartEndDragInteraction.Config(
+                                    iterator.nextRect(),
+                                    iterator.nextRect()
+                                ),
+                                PageCurlConfig.StartEndDragInteraction.Config(
+                                    iterator.nextRect(),
+                                    iterator.nextRect()
+                                ),
                             )
                         }
 

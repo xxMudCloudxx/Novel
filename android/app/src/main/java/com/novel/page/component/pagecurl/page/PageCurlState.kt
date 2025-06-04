@@ -263,3 +263,4 @@ private val Size.middle: Edge
 
 private val Size.end: Edge
     get() = Edge(Offset(width, height), Offset(width, height))
+

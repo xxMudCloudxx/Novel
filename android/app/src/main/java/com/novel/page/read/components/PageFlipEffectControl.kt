@@ -36,6 +36,7 @@ import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.Color
 
 /**
  * ItemInfoDp 用于存储按钮位置的几何信息：
@@ -65,6 +66,7 @@ private data class ItemInfoDp(
 @Composable
 fun PageFlipEffectControl(
     currentEffect: PageFlipEffect,
+    backgroundColor: Color,
     onEffectChange: (PageFlipEffect) -> Unit
 ) {
     // Density 用于 px ↔ dp 转换
@@ -123,11 +125,11 @@ fun PageFlipEffectControl(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.wdp),  // 整行高度
+            .height(32.wdp),  // 整行高度
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(15.wdp)
     ) {
-        // 左侧“翻页”文字，不在轨道背景内
+        // 左侧"翻页"文字，不在轨道背景内
         NovelText(
             text = "翻页",
             fontSize = 14.ssp,
@@ -146,7 +148,7 @@ fun PageFlipEffectControl(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
-                        color = NovelColors.NovelTextGray,
+                        color = Color.Gray.copy(alpha = 0.1f),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.wdp)
                     )
                     .padding(horizontal = 6.wdp)  // 与按钮左右间距一致
@@ -160,7 +162,7 @@ fun PageFlipEffectControl(
                     .height(32.wdp)
                     .padding(1.wdp)
                     .background(
-                        color = NovelColors.NovelMain,
+                        color = backgroundColor,
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.wdp)
                     )
             )

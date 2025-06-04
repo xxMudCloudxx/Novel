@@ -46,7 +46,6 @@ data class BackgroundTheme(
  * 阅读器设置面板
  * @param settings 当前设置
  * @param onSettingsChange 设置变更回调
- * @param onDismiss 关闭面板回调
  * @param modifier 自定义修饰符
  */
 @SuppressLint("ContextCastToActivity")
@@ -96,6 +95,7 @@ fun ReaderSettingsPanel(
             // 第一行：亮度调节
             BrightnessControl(
                 brightness = brightness,
+                backgroundColor = settings.backgroundColor,
                 onBrightnessChange = { raw ->
                     // 同样把 raw 量化到最近的档位
                     val stepCount = 10
@@ -133,6 +133,7 @@ fun ReaderSettingsPanel(
             // 第四行：翻页效果选择
             PageFlipEffectControl(
                 currentEffect = settings.pageFlipEffect,
+                backgroundColor = settings.backgroundColor,
                 onEffectChange = { effect ->
                     onSettingsChange(settings.copy(pageFlipEffect = effect))
                 }

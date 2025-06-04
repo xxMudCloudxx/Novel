@@ -39,7 +39,7 @@ fun BackgroundColorControl(
             Card(
                 modifier = Modifier
                     .padding(end = 15.wdp)
-                    .size(28.wdp)
+                    .size(32.wdp)
                     .clickable {
                         onThemeChange(theme.backgroundColor)
                     },

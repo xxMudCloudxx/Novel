@@ -20,6 +20,7 @@ import kotlin.math.roundToInt
 @Composable
 fun BrightnessControl(
     brightness: Float,
+    backgroundColor: Color,
     onBrightnessChange: (Float) -> Unit
 ) {
     val stepCount = 10
@@ -38,10 +39,10 @@ fun BrightnessControl(
                 val stepped = (rawValue / stepSize).roundToInt() * stepSize
                 onBrightnessChange(stepped.coerceIn(0f, 1f))
             },
-            // 你可以自己设置 track 颜色、thumb 颜色等
-            trackColor = Color(0xFFCBC2AA),
-            progressColor = Color(0xFF88896C),
-            thumbColor = Color(0xFFF9F5E9),
+            // 使用0.3透明的灰色
+            trackColor = Color.Gray.copy(alpha = 0.1f),
+            progressColor = Color.Gray.copy(alpha = 0.5f),
+            thumbColor = backgroundColor,
             trackHeightDp = 24.dp,
             thumbRadiusDp = 16.dp
         )

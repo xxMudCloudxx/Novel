@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -137,6 +138,7 @@ fun SolidCircleSlider(
                     )
                 }
                 .size(thumbRadiusDp * 2f) // Thumb 的直径 = 半径 * 2
+                .shadow(elevation = 8.dp, shape = CircleShape, clip = true)
                 .background(color = thumbColor, shape = CircleShape)
         )
     }

@@ -36,15 +36,19 @@ data class Chapter(
  * 章节列表侧滑面板
  * @param chapters 章节列表
  * @param currentChapterId 当前章节ID
+ * @param backgroundColor 背景颜色
  * @param onChapterSelected 章节选择回调
  * @param onDismiss 关闭面板回调
+ * @param modifier 修饰符
  */
 @Composable
 fun ChapterListPanel(
     chapters: List<Chapter>,
     currentChapterId: String,
+    backgroundColor: Color,
     onChapterSelected: (Chapter) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
     
@@ -56,77 +60,65 @@ fun ChapterListPanel(
         }
     }
     
-    Row(
-        modifier = Modifier.fillMaxSize()
+    // 改为从下方弹起的布局
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.75f) // 占据屏幕高度的75%
+            .background(
+                backgroundColor,
+                RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp)
+            )
+            .clip(RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp))
     ) {
-        // 章节列表面板
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.75f)
-                .fillMaxHeight()
-                .background(
-                    NovelColors.NovelBackground,
-                    RoundedCornerShape(topEnd = 16.wdp, bottomEnd = 16.wdp)
-                )
-                .clip(RoundedCornerShape(topEnd = 16.wdp, bottomEnd = 16.wdp))
-        ) {
-            Column {
-                // 标题栏
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.wdp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "目录",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = NovelColors.NovelText
-                    )
-                    
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(24.wdp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "关闭",
-                            tint = NovelColors.NovelTextGray
-                        )
-                    }
-                }
-
-                HorizontalDivider(
-                    thickness = 1.dp,
-                    color = NovelColors.NovelDivider
+        Column {
+            // 标题栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.wdp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "目录",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NovelColors.NovelText
                 )
                 
-                // 章节列表
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.wdp)
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(24.wdp)
                 ) {
-                    items(chapters) { chapter ->
-                        ChapterItem(
-                            chapter = chapter,
-                            isSelected = chapter.id == currentChapterId,
-                            onClick = { onChapterSelected(chapter) }
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "关闭",
+                        tint = Color.Gray.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = Color.Gray.copy(alpha = 0.3f)
+            )
+            
+            // 章节列表
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.wdp)
+            ) {
+                items(chapters) { chapter ->
+                    ChapterItem(
+                        chapter = chapter,
+                        isSelected = chapter.id == currentChapterId,
+                        onClick = { onChapterSelected(chapter) }
+                    )
                 }
             }
         }
-        
-        // 半透明遮罩区域，点击关闭
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
-                .clickable { onDismiss() }
-        )
     }
 }
 

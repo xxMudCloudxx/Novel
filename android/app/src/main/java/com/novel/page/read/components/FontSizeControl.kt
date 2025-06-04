@@ -66,7 +66,7 @@ fun FontSizeControl(
     )
 
     // 找到当前 fontSize 在 fontSizes 列表里的索引
-    // 如果传进来的 fontSize 不在列表里，就把索引当作 -1（之后会把它视作“可以递增到第一个”）
+    // 如果传进来的 fontSize 不在列表里，就把索引当作 -1（之后会把它视作"可以递增到第一个"）
     val currentIndex = fontSizes.indexOf(fontSize).coerceAtLeast(0)
 
     // 是否能减小（大于最小一档）
@@ -79,7 +79,7 @@ fun FontSizeControl(
         horizontalArrangement = Arrangement.spacedBy(12.wdp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // 左侧“字号”标签
+        // 左侧"字号"标签
         NovelText(
             text = "字号",
             fontSize = 14.ssp,
@@ -102,7 +102,7 @@ fun FontSizeControl(
                 ),
             shape = RoundedCornerShape(16.wdp),
             colors = CardDefaults.cardColors(
-                containerColor = if (canDecrease) NovelColors.NovelMain else NovelColors.NovelDivider
+                containerColor = if (canDecrease) Color.Gray.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.1f)
             )
         ) {
             Box(
@@ -112,7 +112,7 @@ fun FontSizeControl(
                 NovelText(
                     text = "A－",
                     fontSize = 14.ssp,
-                    color = if (canDecrease) Color.White else NovelColors.NovelTextGray,
+                    color = if (canDecrease) Color.Black else NovelColors.NovelTextGray.copy(alpha = 0.3f),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -143,7 +143,7 @@ fun FontSizeControl(
                 ),
             shape = RoundedCornerShape(16.wdp),
             colors = CardDefaults.cardColors(
-                containerColor = if (canIncrease) NovelColors.NovelMain else NovelColors.NovelDivider
+                containerColor = if (canIncrease) Color.Gray.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.1f)
             )
         ) {
             Box(
@@ -153,7 +153,7 @@ fun FontSizeControl(
                 NovelText(
                     text = "A＋",
                     fontSize = 14.ssp,
-                    color = if (canIncrease) Color.White else NovelColors.NovelTextGray,
+                    color = if (canIncrease) Color.Black else NovelColors.NovelTextGray.copy(alpha = 0.3f),
                     fontWeight = FontWeight.Bold
                 )
             }
