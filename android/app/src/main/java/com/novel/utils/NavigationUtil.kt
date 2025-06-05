@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import android.util.Log
 import kotlinx.coroutines.DelicateCoroutinesApi
+import com.novel.page.component.FlipBookAnimationController
 
 /**
  * 导航设置 - 简化版本，翻书动画在HomePage内部处理
@@ -80,6 +81,14 @@ object NavViewModel : ViewModel() {
     
     // 当前书籍信息（用于返回动画）
     private var currentBookInfo: Pair<String, Boolean>? = null
+    
+    /** 供 BookDetailPage 与 ReaderPage 共享的临时动画控制器 */
+    var flipBookController: FlipBookAnimationController? = null
+        private set
+
+    fun setFlipBookController(controller: FlipBookAnimationController?) {
+        flipBookController = controller
+    }
     
     /**
      * 导航到书籍详情页

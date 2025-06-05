@@ -66,13 +66,15 @@ data class SwipeBackState(
  * @param firstThreshold 第一阶段阈值（屏宽百分比）- 显示"右滑退出阅读器"
  * @param completeThreshold 完成返回的阈值（屏宽百分比）- 显示"松开退出阅读器"
  * @param onSwipeStateChange 拖拽状态变化回调
+ * @param onLeftSwipeToReader 左滑进入阅读器的回调（可选）
  */
 @SuppressLint("RememberReturnType")
 fun Modifier.iosSwipeBack(
     edgeWidthDp: Dp = 300.wdp,
     firstThreshold: Float = 0.15f,
     completeThreshold: Float = 0.33f,
-    onSwipeStateChange: ((SwipeBackState) -> Unit)? = null
+    onSwipeStateChange: ((SwipeBackState) -> Unit)? = null,
+    onLeftSwipeToReader: (() -> Unit)? = null
 ): Modifier = composed {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -93,6 +95,11 @@ fun Modifier.iosSwipeBack(
     // 拖拽状态管理，避免频繁状态更新
     var isDragging by remember { mutableStateOf(false) }
     var justFinishedDrag by remember { mutableStateOf(false) }
+    
+    // 左滑手势状态
+    var isLeftSwipeGesture by remember { mutableStateOf(false) }
+    var leftSwipeDistance by remember { mutableStateOf(0f) }
+    var leftSwipeStartTime by remember { mutableStateOf(0L) }
 
     // 提示文字状态 - 使用 derivedStateOf 优化性能
     val hintText by remember {
@@ -198,22 +205,42 @@ fun Modifier.iosSwipeBack(
 
     this
         .pointerInput(Unit) {
-            // 性能优化：只在边缘检测时才开启拖拽监听
+            // 性能优化：集成的手势检测，处理两种手势
             detectHorizontalDragGestures(
                 onDragStart = { pos ->
+                    // 检测右滑返回手势（从左边缘开始）
                     if (pos.x <= edgeWidthPx) {
                         isDragging = true
+                        isLeftSwipeGesture = false
                         justFinishedDrag = false
+                    }
+                    // 检测左滑进入阅读器手势（从右半部分开始）
+                    else if (onLeftSwipeToReader != null && pos.x > widthPx * 0.4f) {
+                        isLeftSwipeGesture = true
+                        leftSwipeDistance = 0f
+                        leftSwipeStartTime = System.currentTimeMillis()
+                        isDragging = false // 这不是右滑返回手势
                     }
                 },
                 onHorizontalDrag = { _, dragAmount ->
-                    if (isDragging) {
+                    if (isDragging && !isLeftSwipeGesture) {
+                        // 处理右滑返回手势
                         val newOffset = (offsetX.value + dragAmount).coerceIn(0f, widthPx)
                         scope.launch { offsetX.snapTo(newOffset) }
+                    } else if (isLeftSwipeGesture && onLeftSwipeToReader != null) {
+                        // 处理左滑进入阅读器手势
+                        if (dragAmount < 0) {
+                            leftSwipeDistance += dragAmount
+                        }
+                        // 如果开始向右滑动，取消左滑手势
+                        if (dragAmount > 10f && leftSwipeDistance > -50f) {
+                            isLeftSwipeGesture = false
+                        }
                     }
                 },
                 onDragEnd = {
-                    if (isDragging) {
+                    if (isDragging && !isLeftSwipeGesture) {
+                        // 处理右滑返回手势结束
                         isDragging = false
                         justFinishedDrag = true
                         scope.launch {
@@ -221,6 +248,22 @@ fun Modifier.iosSwipeBack(
                                 decideFinish(offsetX, completeThresholdPx)
                             }
                         }
+                    } else if (isLeftSwipeGesture && onLeftSwipeToReader != null) {
+                        // 处理左滑进入阅读器手势结束
+                        val dragDuration = System.currentTimeMillis() - leftSwipeStartTime
+                        
+                        // 验证左滑手势有效性
+                        val isValidLeftSwipe = leftSwipeDistance < -120f && // 向左滑动至少120像素
+                            dragDuration < 800L && // 滑动时间不超过800ms
+                            dragDuration > 100L // 滑动时间至少100ms
+                        
+                        if (isValidLeftSwipe) {
+                            onLeftSwipeToReader.invoke()
+                        }
+                        
+                        // 重置左滑状态
+                        isLeftSwipeGesture = false
+                        leftSwipeDistance = 0f
                     }
                 },
                 onDragCancel = {
@@ -237,6 +280,9 @@ fun Modifier.iosSwipeBack(
                             )
                         }
                     }
+                    // 重置左滑状态
+                    isLeftSwipeGesture = false
+                    leftSwipeDistance = 0f
                 }
             )
         }
@@ -285,6 +331,7 @@ fun SwipeBackIndicator(
  * @param completeThreshold 完成返回的阈值
  * @param backgroundColor 背景颜色
  * @param onSwipeComplete 侧滑完成回调
+ * @param onLeftSwipeToReader 左滑进入阅读器回调（可选）
  * @param content 子内容
  */
 @Composable
@@ -295,6 +342,7 @@ fun SwipeBackContainer(
     completeThreshold: Float = 0.3f,
     backgroundColor: Color = NovelColors.NovelBookBackground.copy(alpha = 0.7f), // 默认浅灰色背景
     onSwipeComplete: (() -> Unit)? = null, // 侧滑完成回调
+    onLeftSwipeToReader: (() -> Unit)? = null, // 左滑进入阅读器回调
     content: @Composable BoxScope.() -> Unit
 ) {
     var swipeState by remember { mutableStateOf(SwipeBackState()) }
@@ -342,7 +390,8 @@ fun SwipeBackContainer(
                         if (newState.isDragging && !prevState.isDragging) {
                             hasTriggeredComplete = false
                         }
-                    }
+                    },
+                    onLeftSwipeToReader = onLeftSwipeToReader
                 )
         ) {
             content()

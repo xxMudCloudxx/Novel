@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.novel.utils.SwipeBackContainer
 import com.novel.utils.iosSwipeBackBasic
 import com.novel.ui.theme.NovelColors
+import com.novel.utils.wdp
+import kotlinx.coroutines.launch
 
 @Stable
 interface LoadingStateComponent : LoadingComponent, StateComponent
@@ -135,15 +138,32 @@ fun LoadingStateComponent(
     error: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.error,
     empty: @Composable (BoxScope.() -> Unit)? = LoadingStateComponentDefaults.instance.empty,
     flipBookController: FlipBookAnimationController? = null, // 添加翻书动画控制器参数
+    onLeftSwipeToReader: (() -> Unit)? = null, // 添加左滑进入阅读器回调
     content: @Composable BoxScope.() -> Unit
 ) {
-    // 如果当前在3D翻书动画状态下，使用特殊的侧滑处理
-    if (flipBookController != null) {
+    val coroutineScope = rememberCoroutineScope()
+    
+    // 如果当前在动画状态下，使用特殊的侧滑处理
+    if (flipBookController != null && flipBookController.animationState.isAnimating) {
         // 在动画状态下，侧滑触发倒放动画
-        Box(
-            modifier = modifier
-                .background(backgroundColor)
-                .fillMaxSize()
+        SwipeBackContainer(
+            modifier = modifier,
+            backgroundColor = backgroundColor,
+            edgeWidthDp = 300.wdp,
+            firstThreshold = 0.05f,
+            completeThreshold = 0.25f, // 降低阈值，更容易触发
+            onSwipeComplete = {
+                // 侧滑完成时触发倒放动画
+                coroutineScope.launch {
+                    try {
+                        flipBookController.triggerReverseAnimation()
+                    } catch (e: Exception) {
+                        // 即使动画失败，也应该回到首页或上一页
+                        com.novel.utils.NavViewModel.navigateBack()
+                    }
+                }
+            },
+            onLeftSwipeToReader = onLeftSwipeToReader
         ) {
             LoadingComponent(
                 component = component,
@@ -164,7 +184,8 @@ fun LoadingStateComponent(
         // 正常状态下，使用原有的侧滑返回逻辑
         SwipeBackContainer(
             modifier = modifier,
-            backgroundColor = backgroundColor
+            backgroundColor = backgroundColor,
+            onLeftSwipeToReader = onLeftSwipeToReader
         ) {
             LoadingComponent(
                 component = component,

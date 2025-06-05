@@ -169,22 +169,56 @@ fun HomePage(
             // 4. 推荐书籍瀑布流
             item(key = "recommend_grid") {
                 if (uiState.isRecommendMode) {
-                    // 推荐模式：显示首页推荐数据
+                    // 推荐模式：显示首页推荐数据 - 使用放大透明动画
                     HomeRecommendGrid(
                         homeBooks = uiState.homeRecommendBooks,
                         onBookClick = { viewModel.onAction(HomeAction.OnRecommendBookClick(it)) },
+                        onBookClickWithPosition = { bookId, offset, size ->
+                            // 推荐流点击触发放大透明动画
+                            coroutineScope.launch {
+                                // 查找对应书籍的图片URL
+                                val book = uiState.homeRecommendBooks.find { it.bookId == bookId }
+                                
+                                flipBookController.startScaleFadeAnimation(
+                                    bookId = bookId.toString(),
+                                    imageUrl = book?.picUrl ?: "",
+                                    originalPosition = offset,
+                                    originalSize = size,
+                                    screenWidth = screenSize.first,
+                                    screenHeight = screenSize.second
+                                )
+                            }
+                        },
                         onLoadMore = { /* 由上拉监听处理 */ },
                         modifier = Modifier.fillMaxWidth(),
-                        fixedHeight = true  // 在 LazyColumn 中使用固定高度版本
+                        fixedHeight = true,  // 在 LazyColumn 中使用固定高度版本
+                        flipBookController = flipBookController  // 传递动画控制器
                     )
                 } else {
-                    // 分类模式：显示搜索结果数据
+                    // 分类模式：显示搜索结果数据 - 使用放大透明动画
                     HomeRecommendGrid(
                         books = uiState.recommendBooks,
                         onBookClick = { viewModel.onAction(HomeAction.OnRecommendBookClick(it)) },
+                        onBookClickWithPosition = { bookId, offset, size ->
+                            // 分类推荐点击触发放大透明动画
+                            coroutineScope.launch {
+                                // 查找对应书籍的图片URL
+                                val book = uiState.recommendBooks.find { it.id == bookId }
+                                
+                                flipBookController.startScaleFadeAnimation(
+                                    bookId = bookId.toString(),
+                                    imageUrl = book?.picUrl ?: "",
+                                    originalPosition = offset,
+                                    originalSize = size,
+                                    screenWidth = screenSize.first,
+                                    screenHeight = screenSize.second
+                                )
+                            }
+                        },
                         onLoadMore = { /* 由上拉监听处理 */ },
                         modifier = Modifier.fillMaxWidth(),
-                        fixedHeight = true  // 在 LazyColumn 中使用固定高度版本
+                        fixedHeight = true,  // 在 LazyColumn 中使用固定高度版本
+                        flipBookController = flipBookController  // 传递动画控制器
                     )
                 }
             }

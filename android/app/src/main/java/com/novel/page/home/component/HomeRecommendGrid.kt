@@ -15,8 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.geometry.Offset
 import com.novel.page.component.NovelDivider
 import com.novel.page.component.NovelText
 import com.novel.page.component.NovelImageView
@@ -28,6 +31,8 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 import com.novel.utils.HtmlTextUtil
 import com.novel.utils.debounceClickable
+import com.novel.page.component.FlipBookAnimationController
+import androidx.compose.ui.graphics.Color
 
 /**
  * 首页推荐书籍瀑布流网格组件 - 真正的参差不齐瀑布流布局
@@ -37,9 +42,11 @@ fun HomeRecommendGrid(
     books: List<SearchService.BookInfo> = emptyList(),
     homeBooks: List<HomeService.HomeBook> = emptyList(),
     onBookClick: (Long) -> Unit,
+    onBookClickWithPosition: ((Long, Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     onLoadMore: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
-    fixedHeight: Boolean = false  // 新增参数，用于在 LazyColumn 中使用
+    fixedHeight: Boolean = false,  // 新增参数，用于在 LazyColumn 中使用
+    flipBookController: FlipBookAnimationController? = null  // 添加动画控制器参数
 ) {
     if (fixedHeight) {
         // 在 LazyColumn 中使用的固定高度版本
@@ -47,8 +54,10 @@ fun HomeRecommendGrid(
             books = books,
             homeBooks = homeBooks,
             onBookClick = onBookClick,
+            onBookClickWithPosition = onBookClickWithPosition,
             onLoadMore = onLoadMore,
-            modifier = modifier
+            modifier = modifier,
+            flipBookController = flipBookController
         )
     } else {
         // 独立使用的完整瀑布流版本
@@ -56,8 +65,10 @@ fun HomeRecommendGrid(
             books = books,
             homeBooks = homeBooks,
             onBookClick = onBookClick,
+            onBookClickWithPosition = onBookClickWithPosition,
             onLoadMore = onLoadMore,
-            modifier = modifier
+            modifier = modifier,
+            flipBookController = flipBookController
         )
     }
 }
@@ -70,8 +81,10 @@ private fun FullHeightHomeRecommendGrid(
     books: List<SearchService.BookInfo>,
     homeBooks: List<HomeService.HomeBook>,
     onBookClick: (Long) -> Unit,
+    onBookClickWithPosition: ((Long, Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    flipBookController: FlipBookAnimationController? = null
 ) {
     val staggeredGridState = rememberLazyStaggeredGridState()
 
@@ -101,14 +114,21 @@ private fun FullHeightHomeRecommendGrid(
             items(homeBooks, key = { it.bookId }) { book ->
                 HomeBookStaggeredItem(
                     book = book,
-                    onClick = { onBookClick(book.bookId) }
+                    onClick = { onBookClick(book.bookId) },
+                    onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                        { offset, size -> callback(book.bookId, offset, size) }
+                    },
+                    flipBookController = flipBookController
                 )
             }
         } else {
             items(books, key = { it.id }) { book ->
                 SearchBookStaggeredItem(
                     book = book,
-                    onClick = { onBookClick(book.id) }
+                    onClick = { onBookClick(book.id) },
+                    onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                        { offset, size -> callback(book.id, offset, size) }
+                    }
                 )
             }
         }
@@ -123,8 +143,10 @@ private fun FixedHeightHomeRecommendGrid(
     books: List<SearchService.BookInfo>,
     homeBooks: List<HomeService.HomeBook>,
     onBookClick: (Long) -> Unit,
+    onBookClickWithPosition: ((Long, Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    flipBookController: FlipBookAnimationController? = null
 ) {
     // 当前显示的总数量
     val totalItems = if (homeBooks.isNotEmpty()) homeBooks.size else books.size
@@ -146,7 +168,11 @@ private fun FixedHeightHomeRecommendGrid(
                 leftColumnBooks.forEach { book ->
                     HomeBookStaggeredItem(
                         book = book,
-                        onClick = { onBookClick(book.bookId) }
+                        onClick = { onBookClick(book.bookId) },
+                        onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                            { offset, size -> callback(book.bookId, offset, size) }
+                        },
+                        flipBookController = flipBookController
                     )
                 }
             }
@@ -159,7 +185,11 @@ private fun FixedHeightHomeRecommendGrid(
                 rightColumnBooks.forEach { book ->
                     HomeBookStaggeredItem(
                         book = book,
-                        onClick = { onBookClick(book.bookId) }
+                        onClick = { onBookClick(book.bookId) },
+                        onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                            { offset, size -> callback(book.bookId, offset, size) }
+                        },
+                        flipBookController = flipBookController
                     )
                 }
             }
@@ -176,7 +206,10 @@ private fun FixedHeightHomeRecommendGrid(
                 leftColumnBooks.forEach { book ->
                     SearchBookStaggeredItem(
                         book = book,
-                        onClick = { onBookClick(book.id) }
+                        onClick = { onBookClick(book.id) },
+                        onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                            { offset, size -> callback(book.id, offset, size) }
+                        }
                     )
                 }
             }
@@ -189,7 +222,10 @@ private fun FixedHeightHomeRecommendGrid(
                 rightColumnBooks.forEach { book ->
                     SearchBookStaggeredItem(
                         book = book,
-                        onClick = { onBookClick(book.id) }
+                        onClick = { onBookClick(book.id) },
+                        onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                            { offset, size -> callback(book.id, offset, size) }
+                        }
                     )
                 }
             }
@@ -211,7 +247,9 @@ private fun FixedHeightHomeRecommendGrid(
 private fun HomeBookStaggeredItem(
     book: HomeService.HomeBook,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClickWithPosition: ((Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    flipBookController: FlipBookAnimationController? = null
 ) {
     // 使用缓存的自适应高度，增加变化范围
     val imageHeight = HomePerformanceOptimizer.getOptimizedImageHeight(
@@ -229,36 +267,82 @@ private fun HomeBookStaggeredItem(
         }
     }
 
+    // 位置追踪状态
+    var positionInfo by remember {
+        mutableStateOf(Pair(Offset.Zero, androidx.compose.ui.geometry.Size.Zero))
+    }
+    
+    // 优化：检查是否当前书籍正在进行动画，减少重复计算
+    val isCurrentBookAnimating = remember(flipBookController?.animationState) {
+        flipBookController?.animationState?.let { animState ->
+            animState.isAnimating && 
+            animState.hideOriginalImage && 
+            animState.bookId == book.bookId.toString()
+        } ?: false
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(NovelColors.NovelBackground, RoundedCornerShape(8.wdp))
-            .debounceClickable(onClick = onClick)
+            .debounceClickable(onClick = {
+                // 如果有位置回调，先调用位置回调，否则调用常规点击
+                if (onClickWithPosition != null) {
+                    onClickWithPosition(positionInfo.first, positionInfo.second)
+                } else {
+                    onClick()
+                }
+            })
             .clip(RoundedCornerShape(8.wdp))
     ) {
-        // 书籍封面 - 自适应高度
-        NovelImageView(
-            imageUrl = book.picUrl,
+        // 书籍封面 - 自适应高度，支持动画状态隐藏
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(imageHeight)
-                .background(NovelColors.NovelMain),
-            contentScale = ContentScale.Crop,
-            placeholderContent = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(androidx.compose.ui.graphics.Color(0xFFE0E0E0)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    NovelText(
-                        text = "暂无封面",
-                        fontSize = 12.ssp,
-                        color = androidx.compose.ui.graphics.Color.Gray
+                .background(if (isCurrentBookAnimating) Color.Transparent else NovelColors.NovelMain)
+                .onGloballyPositioned { coordinates ->
+                    // 追踪位置和尺寸
+                    val windowRect = coordinates.boundsInWindow()
+                    val newPosition = Offset(windowRect.left, windowRect.top)
+                    val newSize = androidx.compose.ui.geometry.Size(
+                        coordinates.size.width.toFloat(),
+                        coordinates.size.height.toFloat()
                     )
+
+                    val currentInfo = positionInfo
+                    if ((newPosition - currentInfo.first).getDistanceSquared() > 1f ||
+                        kotlin.math.abs(newSize.width - currentInfo.second.width) > 1f ||
+                        kotlin.math.abs(newSize.height - currentInfo.second.height) > 1f
+                    ) {
+
+                        positionInfo = newPosition to newSize
+                    }
                 }
+        ) {
+            if (!isCurrentBookAnimating) {
+                // 正常状态：显示图片
+                NovelImageView(
+                    imageUrl = book.picUrl,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholderContent = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color(0xFFE0E0E0)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            NovelText(
+                                text = "暂无封面",
+                                fontSize = 12.ssp,
+                                color = androidx.compose.ui.graphics.Color.Gray
+                            )
+                        }
+                    }
+                )
             }
-        )
+        }
 
         // 书籍信息 - 动态高度
         Column(
@@ -306,6 +390,7 @@ private fun HomeBookStaggeredItem(
 private fun SearchBookStaggeredItem(
     book: SearchService.BookInfo,
     onClick: () -> Unit,
+    onClickWithPosition: ((Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // 使用缓存的自适应高度，增加变化范围
@@ -320,12 +405,24 @@ private fun SearchBookStaggeredItem(
         if (book.bookName.length > 12) 2 else 1
     }
 
+    // 位置追踪状态
+    var positionInfo by remember {
+        mutableStateOf(Pair(Offset.Zero, androidx.compose.ui.geometry.Size.Zero))
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(NovelColors.NovelBackground, RoundedCornerShape(8.wdp))
-            .debounceClickable(onClick = onClick)
-            .clip(RoundedCornerShape(8.wdp))
+            .debounceClickable(onClick = {
+                // 如果有位置回调，先调用位置回调，否则调用常规点击
+                if (onClickWithPosition != null) {
+                    onClickWithPosition(positionInfo.first, positionInfo.second)
+                } else {
+                    onClick()
+                }
+            })
+            .clip(RoundedCornerShape(8.wdp)),
     ) {
         // 书籍封面 - 自适应高度
         NovelImageView(
@@ -333,7 +430,25 @@ private fun SearchBookStaggeredItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(imageHeight)
-                .background(NovelColors.NovelMain),
+                .background(NovelColors.NovelMain)
+                .onGloballyPositioned { coordinates ->
+                    // 追踪位置和尺寸
+                    val windowRect = coordinates.boundsInWindow()
+                    val newPosition = Offset(windowRect.left, windowRect.top)
+                    val newSize = androidx.compose.ui.geometry.Size(
+                        coordinates.size.width.toFloat(),
+                        coordinates.size.height.toFloat()
+                    )
+
+                    val currentInfo = positionInfo
+                    if ((newPosition - currentInfo.first).getDistanceSquared() > 1f ||
+                        kotlin.math.abs(newSize.width - currentInfo.second.width) > 1f ||
+                        kotlin.math.abs(newSize.height - currentInfo.second.height) > 1f
+                    ) {
+
+                        positionInfo = newPosition to newSize
+                    }
+                },
             contentScale = ContentScale.Crop,
             placeholderContent = {
                 Box(
