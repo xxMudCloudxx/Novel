@@ -16,13 +16,14 @@ import androidx.compose.ui.composed
 fun Modifier.debounceClickable(
     intervalMillis: Long = 500L,
     onClick: () -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
 ): Modifier = composed {
     var lastTime by remember { mutableLongStateOf(0L) }
     clickable(
         enabled = enabled,
         indication = null,
-        interactionSource = remember { MutableInteractionSource() }
+        interactionSource = interactionSource
     ) {
         val now = SystemClock.elapsedRealtime()
         if (now - lastTime > intervalMillis) {

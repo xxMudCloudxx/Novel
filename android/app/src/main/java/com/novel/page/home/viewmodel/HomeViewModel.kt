@@ -133,6 +133,21 @@ class HomeViewModel @Inject constructor(
     // 缓存全量首页推荐数据
     private var cachedHomeBooks: List<HomeService.HomeBook> = emptyList()
     
+    // 预加载缓存 - 分类筛选器数据缓存
+    private val categoryRecommendCache = mutableMapOf<String, List<SearchService.BookInfo>>()
+    private val categoryLoadingSet = mutableSetOf<String>()
+    
+    // 预加载缓存 - 榜单数据缓存  
+    private val rankBooksCache = mutableMapOf<String, List<BookService.BookRank>>()
+    private val rankLoadingSet = mutableSetOf<String>()
+    
+    // 榜单类型列表，用于确定前一页和后一页
+    private val rankTypes = listOf(
+        HomeRepository.RANK_TYPE_VISIT,
+        HomeRepository.RANK_TYPE_UPDATE, 
+        HomeRepository.RANK_TYPE_NEWEST
+    )
+    
     init {
         // 初始化时加载数据
         onAction(HomeAction.LoadInitialData)
@@ -197,6 +212,13 @@ class HomeViewModel @Inject constructor(
                 launch { loadBooks() }
                 launch { loadRankBooks(currentState.selectedRankType) }
                 launch { loadHomeRecommendBooks() }
+                
+                // 延迟触发预加载，避免初始加载时网络压力过大
+                launch {
+                    delay(1000) // 等待主要数据加载完成
+                    preloadAdjacentRankTypes(currentState.selectedRankType)
+                    preloadAdjacentCategories(currentState.selectedCategoryFilter)
+                }
                 
                 updateState { it.copy(isLoading = false) }
             } catch (e: Exception) {
@@ -357,6 +379,10 @@ class HomeViewModel @Inject constructor(
                 
                 if (response.ok == true && response.data != null) {
                     val hasMore = response.data.list.size >= RECOMMEND_PAGE_SIZE
+                    
+                    // 更新缓存
+                    categoryRecommendCache[categoryName] = response.data.list
+                    
                     updateState { 
                         it.copy(
                             recommendBooks = response.data.list,
@@ -454,6 +480,9 @@ class HomeViewModel @Inject constructor(
                         }
                     }
                     .collect { rankBooks ->
+                        // 更新缓存
+                        rankBooksCache[rankType] = rankBooks
+                        
                         updateState { 
                             it.copy(
                                 rankBooks = rankBooks,
@@ -475,23 +504,29 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 选择分类筛选器
+     * 选择分类筛选器 - 支持预加载
      */
     private fun selectCategoryFilter(filter: String) {
         if (filter == currentState.selectedCategoryFilter) return
         
         updateState { it.copy(selectedCategoryFilter = filter) }
-        loadRecommendByCategory(filter)
+        loadRecommendByCategoryFromCacheOrNetwork(filter)
+        
+        // 触发相邻分类的预加载
+        preloadAdjacentCategories(filter)
     }
     
     /**
-     * 选择榜单类型
+     * 选择榜单类型 - 支持预加载
      */
     private fun selectRankType(rankType: String) {
         if (rankType == currentState.selectedRankType) return
         
         updateState { it.copy(selectedRankType = rankType) }
-        loadRankBooks(rankType)
+        loadRankBooksFromCacheOrNetwork(rankType)
+        
+        // 触发相邻榜单的预加载
+        preloadAdjacentRankTypes(rankType)
     }
     
     /**
@@ -502,6 +537,9 @@ class HomeViewModel @Inject constructor(
             updateState { it.copy(isRefreshing = true, error = null) }
             
             try {
+                // 清理过期缓存
+                clearOldCaches()
+                
                 // 强制刷新所有数据
                 homeRepository.refreshAllData()
                 
@@ -720,11 +758,198 @@ class HomeViewModel @Inject constructor(
                             hasMoreRecommend = true
                         ) 
                     }
-                    loadRecommendByCategory(currentState.selectedCategoryFilter)
+                    loadRecommendByCategoryFromCacheOrNetwork(currentState.selectedCategoryFilter)
                 }
             } finally {
                 updateState { it.copy(isRefreshing = false) }
             }
         }
     }
+    
+    // region 预加载相关方法
+    
+    /**
+     * 预加载相邻分类的数据
+     */
+    private fun preloadAdjacentCategories(currentFilter: String) {
+        viewModelScope.launch {
+            val filters = currentState.categoryFilters
+            val currentIndex = filters.indexOfFirst { it.name == currentFilter }
+            
+            if (currentIndex == -1) return@launch
+            
+            // 预加载前一个分类
+            if (currentIndex > 0) {
+                val prevFilter = filters[currentIndex - 1].name
+                preloadCategoryData(prevFilter)
+            }
+            
+            // 预加载后一个分类
+            if (currentIndex < filters.size - 1) {
+                val nextFilter = filters[currentIndex + 1].name
+                preloadCategoryData(nextFilter)
+            }
+        }
+    }
+    
+    /**
+     * 预加载指定分类的数据
+     */
+    private fun preloadCategoryData(categoryName: String) {
+        // 如果是推荐分类或已经在加载中或已有缓存，则跳过
+        if (categoryName == "推荐" || 
+            categoryLoadingSet.contains(categoryName) ||
+            categoryRecommendCache.containsKey(categoryName)) {
+            return
+        }
+        
+        viewModelScope.launch {
+            categoryLoadingSet.add(categoryName)
+            
+            try {
+                val categoryId = currentState.categoryFilters
+                    .find { it.name == categoryName }?.id?.toIntOrNull() ?: 1
+                
+                val response = searchService.searchBooksBlocking(
+                    SearchService.SearchRequest(
+                        categoryId = categoryId,
+                        pageNum = 1,
+                        pageSize = RECOMMEND_PAGE_SIZE
+                    )
+                )
+                
+                if (response.ok == true && response.data != null) {
+                    categoryRecommendCache[categoryName] = response.data.list
+                    Log.d(TAG, "预加载分类 $categoryName 数据成功，共${response.data.list.size}本书")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "预加载分类 $categoryName 数据失败", e)
+            } finally {
+                categoryLoadingSet.remove(categoryName)
+            }
+        }
+    }
+    
+    /**
+     * 预加载相邻榜单类型的数据
+     */
+    private fun preloadAdjacentRankTypes(currentRankType: String) {
+        viewModelScope.launch {
+            val currentIndex = rankTypes.indexOf(currentRankType)
+            
+            if (currentIndex == -1) return@launch
+            
+            // 预加载前一个榜单
+            if (currentIndex > 0) {
+                val prevRankType = rankTypes[currentIndex - 1]
+                preloadRankData(prevRankType)
+            }
+            
+            // 预加载后一个榜单
+            if (currentIndex < rankTypes.size - 1) {
+                val nextRankType = rankTypes[currentIndex + 1]
+                preloadRankData(nextRankType)
+            }
+        }
+    }
+    
+    /**
+     * 预加载指定榜单类型的数据
+     */
+    private fun preloadRankData(rankType: String) {
+        // 如果已经在加载中或已有缓存，则跳过
+        if (rankLoadingSet.contains(rankType) || rankBooksCache.containsKey(rankType)) {
+            return
+        }
+        
+        viewModelScope.launch {
+            rankLoadingSet.add(rankType)
+            
+            try {
+                homeRepository.getRankBooks(rankType)
+                    .catch { e ->
+                        Log.e(TAG, "预加载榜单 $rankType 数据失败", e)
+                    }
+                    .collect { rankBooks ->
+                        rankBooksCache[rankType] = rankBooks
+                        Log.d(TAG, "预加载榜单 $rankType 数据成功，共${rankBooks.size}本书")
+                    }
+            } finally {
+                rankLoadingSet.remove(rankType)
+            }
+        }
+    }
+    
+    /**
+     * 从缓存或网络加载榜单数据
+     */
+    private fun loadRankBooksFromCacheOrNetwork(rankType: String) {
+        // 如果缓存中有数据，立即使用
+        rankBooksCache[rankType]?.let { cachedBooks ->
+            updateState { 
+                it.copy(
+                    rankBooks = cachedBooks,
+                    rankLoading = false,
+                    selectedRankType = rankType
+                ) 
+            }
+            Log.d(TAG, "使用缓存的榜单数据：$rankType，共${cachedBooks.size}本书")
+            return
+        }
+        
+        // 缓存中没有数据，从网络加载
+        loadRankBooks(rankType)
+    }
+    
+    /**
+     * 从缓存或网络加载分类推荐数据
+     */
+    private fun loadRecommendByCategoryFromCacheOrNetwork(categoryName: String) {
+        if (categoryName == "推荐") {
+            updateState { 
+                it.copy(
+                    isRecommendMode = true,
+                    recommendBooks = emptyList(),
+                    recommendPage = 1
+                ) 
+            }
+            loadHomeRecommendBooks()
+            return
+        }
+        
+        // 如果缓存中有数据，立即使用
+        categoryRecommendCache[categoryName]?.let { cachedBooks ->
+            updateState { 
+                it.copy(
+                    recommendBooks = cachedBooks,
+                    recommendLoading = false,
+                    isRecommendMode = false,
+                    recommendPage = 1,
+                    hasMoreRecommend = cachedBooks.size >= RECOMMEND_PAGE_SIZE,
+                    isRefreshing = false
+                ) 
+            }
+            Log.d(TAG, "使用缓存的分类数据：$categoryName，共${cachedBooks.size}本书")
+            return
+        }
+        
+        // 缓存中没有数据，从网络加载
+        loadRecommendByCategory(categoryName)
+    }
+    
+    /**
+     * 清理过期的缓存数据
+     */
+    private fun clearOldCaches() {
+        // 限制分类缓存数量，保留最近使用的10个
+        if (categoryRecommendCache.size > 4) {
+            val keysToRemove = categoryRecommendCache.keys.take(categoryRecommendCache.size - 4)
+            keysToRemove.forEach { categoryRecommendCache.remove(it) }
+        }
+        
+        // 榜单缓存相对较少，暂不清理
+        Log.d(TAG, "缓存清理完成，分类缓存剩余：${categoryRecommendCache.size}个")
+    }
+    
+    // endregion
 } 

@@ -193,6 +193,7 @@ private fun RankFilterBar(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         rankTypes.forEach { rankType ->
@@ -219,7 +220,7 @@ private fun RankFilterChip(
 ) {
     NovelText(
         text = filter,
-        fontSize = 14.ssp,
+        fontSize = if (isSelected) 16.ssp else 14.ssp,
         modifier = Modifier
             .debounceClickable(onClick = onClick)
             .padding(vertical = 8.wdp, horizontal = 12.wdp),

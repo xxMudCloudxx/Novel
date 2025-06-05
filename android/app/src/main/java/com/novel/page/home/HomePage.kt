@@ -1,5 +1,6 @@
 package com.novel.page.home
 
+import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.platform.LocalDensity
 /**
  * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
  */
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun HomePage(
     viewModel: HomeViewModel = hiltViewModel(),
