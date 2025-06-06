@@ -47,7 +47,7 @@ class PageSplitter {
 
             // 3. 计算可用宽度与高度（剔除左右/上下 padding）
             val horizontalPadding = with(density) { 32.wdp.toPx() }   // 左右各16dp
-            val verticalPadding   = with(density) { 10.wdp.toPx() }   // 上下各20dp
+            val verticalPadding   = with(density) { 5.wdp.toPx() }   // 上下各20dp
             val availableWidth = containerSize.width - horizontalPadding
             val availableHeight = containerSize.height - verticalPadding
 

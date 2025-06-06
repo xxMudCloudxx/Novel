@@ -27,8 +27,36 @@ data class PageData(
     val isLastPage: Boolean = false, // 是否是章节最后一页
     val isFirstPage: Boolean = false, // 是否是章节第一页
     val nextChapterData: PageData? = null, // 下一章数据
-    val previousChapterData: PageData? = null // 上一章数据
-)
+    val previousChapterData: PageData? = null, // 上一章数据
+    val bookInfo: BookInfo? = null, // 书籍信息，用于第0页显示书籍详情
+    val hasBookDetailPage: Boolean = false // 是否包含书籍详情页（第0页）
+) {
+    /**
+     * 书籍信息数据类，用于第0页的书籍详情显示
+     */
+    data class BookInfo(
+        val bookId: String,
+        val bookName: String,
+        val authorName: String,
+        val bookDesc: String,
+        val picUrl: String,
+        val visitCount: Long,
+        val wordCount: Int,
+        val categoryName: String
+    )
+    
+    /**
+     * 获取实际页面总数（包含书籍详情页）
+     */
+    val totalPageCount: Int 
+        get() = pages.size + if (hasBookDetailPage) 1 else 0
+    
+    /**
+     * 获取实际内容页面数量（不包含书籍详情页）
+     */
+    val contentPageCount: Int
+        get() = pages.size
+}
 
 /**
  * 翻页状态
@@ -210,7 +238,14 @@ class ReaderViewModel @Inject constructor(
         handleIntent(ReaderIntent.UpdateContainerSize(size, density))
 
     /**
-     * 初始化阅读器
+     * 从书籍详情页导航到第一页内容
+     */
+    fun navigateToContent() {
+        _uiState.value = _uiState.value.copy(currentPageIndex = 0)
+    }
+
+    /**
+     * 初始化阅读器 - 支持书籍详情页
      */
     private fun initReaderInternal(bookId: String, chapterId: String?) {
         viewModelScope.launchWithLoading {
@@ -227,6 +262,15 @@ class ReaderViewModel @Inject constructor(
                 // 如果指定了章节ID，加载该章节；否则加载第一章
                 val targetChapterId = chapterId ?: _uiState.value.chapterList.firstOrNull()?.id
                 if (targetChapterId != null) {
+                    // 如果是第一章且没有指定章节ID，从书籍详情页开始
+                    val isFirstChapter = _uiState.value.chapterList.firstOrNull()?.id == targetChapterId
+                    val shouldStartFromBookDetail = isFirstChapter && chapterId == null
+                    
+                    if (shouldStartFromBookDetail) {
+                        // 设置为书籍详情页（索引-1）
+                        _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+                    }
+                    
                     loadChapterContentInternal(targetChapterId)
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -297,7 +341,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 加载章节内容内部方法 - 修复页面索引设置
+     * 加载章节内容内部方法 - 修复页面索引设置，支持书籍详情页
      */
     private suspend fun loadChapterContentInternal(chapterId: String, flipDirection: FlipDirection? = null) {
         // 先检查缓存
@@ -349,9 +393,34 @@ class ReaderViewModel @Inject constructor(
             )
         }
     }
+    
+    /**
+     * 加载书籍信息用于第0页显示
+     */
+    private suspend fun loadBookInfo(bookId: String): PageData.BookInfo? {
+        return try {
+            val bookResponse = bookService.getBookByIdBlocking(bookId.toLong())
+            if (bookResponse.ok == true && bookResponse.data != null) {
+                PageData.BookInfo(
+                    bookId = bookResponse.data.id.toString(),
+                    bookName = bookResponse.data.bookName,
+                    authorName = bookResponse.data.authorName,
+                    bookDesc = bookResponse.data.bookDesc,
+                    picUrl = bookResponse.data.picUrl,
+                    visitCount = bookResponse.data.visitCount,
+                    wordCount = bookResponse.data.wordCount,
+                    categoryName = bookResponse.data.categoryName
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     /**
-     * 更新当前章节信息 - 修复页面索引设置逻辑
+     * 更新当前章节信息 - 修复页面索引设置逻辑，支持书籍详情页
      */
     private fun updateCurrentChapter(chapterCache: ChapterCache, flipDirection: FlipDirection? = null) {
         val currentIndex =
@@ -361,7 +430,15 @@ class ReaderViewModel @Inject constructor(
         val initialPageIndex = when (flipDirection) {
             FlipDirection.PREVIOUS -> -1 // 标记为需要设置到最后一页，在分页完成后设置
             FlipDirection.NEXT -> 0     // 下一章从第一页开始
-            else -> _uiState.value.currentPageIndex.coerceAtLeast(0) // 保持当前页面或默认第一页
+            else -> {
+                // 如果是第一章且当前页面索引为-1，保持在书籍详情页
+                val isFirstChapter = currentIndex == 0
+                if (isFirstChapter && _uiState.value.currentPageIndex == -1) {
+                    -1 // 保持在书籍详情页
+                } else {
+                    _uiState.value.currentPageIndex.coerceAtLeast(0) // 保持当前页面或默认第一页
+                }
+            }
         }
 
         _uiState.value = _uiState.value.copy(
@@ -370,7 +447,7 @@ class ReaderViewModel @Inject constructor(
             currentChapter = chapterCache.chapter,
             currentChapterIndex = if (currentIndex >= 0) currentIndex else 0,
             bookContent = chapterCache.content,
-            readingProgress = 0f,
+            readingProgress = if (initialPageIndex == -1) 0f else 0f, // 书籍详情页或重新开始的进度都是0
             currentPageIndex = initialPageIndex
         )
 
@@ -382,7 +459,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 分页处理 - 优化章节衔接和相邻章节数据获取
+     * 分页处理 - 优化章节衔接和相邻章节数据获取，支持书籍详情页
      */
     private fun splitContent() {
         val state = _uiState.value
@@ -400,6 +477,10 @@ class ReaderViewModel @Inject constructor(
                 readerSettings = state.readerSettings,
                 density = state.density
             )
+
+            // 判断是否是第一章且需要添加书籍详情页
+            val isFirstChapter = currentIndex == 0
+            val hasBookDetailPage = isFirstChapter
 
             // 准备相邻章节数据（用于PageCurl和Slide模式）
             val nextChapterData = if (currentIndex + 1 < chapterList.size) {
@@ -458,33 +539,54 @@ class ReaderViewModel @Inject constructor(
                 }
             } else null
 
-            // 确保当前页面索引在有效范围内
+            // 确保当前页面索引在有效范围内，考虑书籍详情页
+            val totalPages = finalPages.size + (if (hasBookDetailPage) 1 else 0)
             val safeCurrentPageIndex = when {
-                state.currentPageIndex == -1 -> finalPages.size - 1 // 切换到上一章时跳转到最后一页
-                else -> state.currentPageIndex.coerceIn(0, finalPages.size - 1)
+                state.currentPageIndex == -1 -> {
+                    if (hasBookDetailPage) {
+                        -1 // 保持在书籍详情页
+                    } else {
+                        totalPages - 1 // 切换到上一章时跳转到最后一页
+                    }
+                }
+                else -> state.currentPageIndex.coerceIn(0, finalPages.size - 1) // 限制在实际内容页面范围内
             }
 
-            val pageData = PageData(
-                chapterId = chapter.id,
-                chapterName = chapter.chapterName,
-                content = content,
-                pages = finalPages,
-                isFirstPage = safeCurrentPageIndex == 0,
-                isLastPage = safeCurrentPageIndex == finalPages.size - 1,
-                nextChapterData = nextChapterData,
-                previousChapterData = previousChapterData
-            )
+            // 异步加载书籍信息（仅在第一章且需要时）
+            viewModelScope.launch {
+                val bookInfo = if (hasBookDetailPage) {
+                    loadBookInfo(state.bookId)
+                } else null
 
-            _uiState.value = _uiState.value.copy(
-                currentPageData = pageData,
-                currentPageIndex = safeCurrentPageIndex, // 确保页面索引有效
-                readingProgress = if (finalPages.isNotEmpty()) safeCurrentPageIndex.toFloat() / finalPages.size.toFloat() else 0f
-            )
+                val pageData = PageData(
+                    chapterId = chapter.id,
+                    chapterName = chapter.chapterName,
+                    content = content,
+                    pages = finalPages,
+                    isFirstPage = safeCurrentPageIndex == 0,
+                    isLastPage = safeCurrentPageIndex == totalPages - 1,
+                    nextChapterData = nextChapterData,
+                    previousChapterData = previousChapterData,
+                    bookInfo = bookInfo,
+                    hasBookDetailPage = hasBookDetailPage
+                )
 
-            // 更新缓存中的分页数据
-            val cachedChapter = chapterCache[chapter.id]
-            if (cachedChapter != null) {
-                chapterCache[chapter.id] = cachedChapter.copy(pageData = pageData)
+                _uiState.value = _uiState.value.copy(
+                    currentPageData = pageData,
+                    currentPageIndex = safeCurrentPageIndex, // 确保页面索引有效
+                    readingProgress = when {
+                        safeCurrentPageIndex == -1 -> 0f // 书籍详情页进度为0
+                        totalPages > 0 && hasBookDetailPage -> (safeCurrentPageIndex + 1).toFloat() / totalPages.toFloat()
+                        totalPages > 0 -> safeCurrentPageIndex.toFloat() / totalPages.toFloat()
+                        else -> 0f
+                    }
+                )
+
+                // 更新缓存中的分页数据
+                val cachedChapter = chapterCache[chapter.id]
+                if (cachedChapter != null) {
+                    chapterCache[chapter.id] = cachedChapter.copy(pageData = pageData)
+                }
             }
         }
     }
@@ -556,7 +658,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 处理页面翻页 - 修复翻页逻辑，添加防重复触发机制
+     * 处理页面翻页 - 修复翻页逻辑，添加防重复触发机制，支持书籍详情页
      */
     private fun handlePageFlip(direction: FlipDirection) {
         // 防重复触发检查
@@ -569,9 +671,12 @@ class ReaderViewModel @Inject constructor(
         val state = _uiState.value
         val pageData = state.currentPageData ?: return
         
+        // 计算总页数（包含书籍详情页）
+        val totalPages = pageData.totalPageCount
+        
         // 确保页面数据有效
-        if (pageData.pages.isEmpty()) {
-            // 如果没有分页数据，直接切换章节
+        if (totalPages == 0) {
+            // 如果没有页面数据，直接切换章节
             handleChapterFlip(direction)
             return
         }
@@ -579,7 +684,26 @@ class ReaderViewModel @Inject constructor(
         when (direction) {
             FlipDirection.NEXT -> {
                 val currentIndex = state.currentPageIndex
-                if (currentIndex < pageData.pages.size - 1) {
+                if (currentIndex == -1) {
+                    // 从书籍详情页翻到第一章第一页
+                    if (pageData.pages.isNotEmpty()) {
+                        val newIndex = 0
+                        val newPageData = pageData.copy(
+                            isFirstPage = true,
+                            isLastPage = newIndex == pageData.pages.size - 1
+                        )
+                        
+                        _uiState.value = state.copy(
+                            currentPageIndex = newIndex,
+                            currentPageData = newPageData,
+                            readingProgress = if (pageData.hasBookDetailPage) {
+                                (newIndex + 1).toFloat() / totalPages.toFloat()
+                            } else {
+                                newIndex.toFloat() / totalPages.toFloat()
+                            }
+                        )
+                    }
+                } else if (currentIndex < pageData.pages.size - 1) {
                     // 还有下一页，执行页面翻页
                     val newIndex = currentIndex + 1
                     val newPageData = pageData.copy(
@@ -590,7 +714,11 @@ class ReaderViewModel @Inject constructor(
                     _uiState.value = state.copy(
                         currentPageIndex = newIndex,
                         currentPageData = newPageData,
-                        readingProgress = newIndex.toFloat() / pageData.pages.size.toFloat()
+                        readingProgress = if (pageData.hasBookDetailPage) {
+                            (newIndex + 1).toFloat() / totalPages.toFloat()
+                        } else {
+                            newIndex.toFloat() / totalPages.toFloat()
+                        }
                     )
                 } else {
                     // 已经是章节最后一页，切换到下一章
@@ -611,10 +739,27 @@ class ReaderViewModel @Inject constructor(
                     _uiState.value = state.copy(
                         currentPageIndex = newIndex,
                         currentPageData = newPageData,
-                        readingProgress = newIndex.toFloat() / pageData.pages.size.toFloat()
+                        readingProgress = if (pageData.hasBookDetailPage) {
+                            (newIndex + 1).toFloat() / totalPages.toFloat()
+                        } else {
+                            newIndex.toFloat() / totalPages.toFloat()
+                        }
+                    )
+                } else if (currentIndex == 0 && pageData.hasBookDetailPage) {
+                    // 从第一页翻到书籍详情页
+                    val newIndex = -1
+                    val newPageData = pageData.copy(
+                        isFirstPage = false,
+                        isLastPage = false
+                    )
+                    
+                    _uiState.value = state.copy(
+                        currentPageIndex = newIndex,
+                        currentPageData = newPageData,
+                        readingProgress = 0f // 书籍详情页进度为0
                     )
                 } else {
-                    // 已经是章节第一页，切换到上一章
+                    // 已经是章节第一页且没有书籍详情页，切换到上一章
                     handleChapterFlip(FlipDirection.PREVIOUS)
                 }
             }

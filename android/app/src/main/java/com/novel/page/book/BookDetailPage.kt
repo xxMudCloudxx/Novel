@@ -109,8 +109,7 @@ fun BookDetailPage(
             if (uiState.isSuccess) {
                 BookDetailContent(
                     uiState = uiState.data,
-                    onToggleDescription = { viewModel.toggleDescriptionExpanded() },
-                    onNavigateToReader = onNavigateToReader
+                    onToggleDescription = { viewModel.toggleDescriptionExpanded() }
                 )
             }
         }
@@ -121,47 +120,33 @@ fun BookDetailPage(
  * 书籍详情内容组件 - 分离内容渲染逻辑以提升性能
  */
 @Composable
-private fun BookDetailContent(
+fun BookDetailContent(
     uiState: BookDetailUiState,
-    onToggleDescription: () -> Unit,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
+    onToggleDescription: () -> Unit
 ) {
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(15.wdp),
         verticalArrangement = Arrangement.spacedBy(16.wdp)
     ) {
-        item(key = "cover") {
-            BookCoverSection(bookInfo = uiState.bookInfo)
-        }
+        BookCoverSection(bookInfo = uiState.bookInfo)
 
-        item(key = "title") {
-            BookTitleSection(bookInfo = uiState.bookInfo)
-        }
+        BookTitleSection(bookInfo = uiState.bookInfo)
 
-        item(key = "author") {
-            AuthorSection(bookInfo = uiState.bookInfo)
-        }
+        AuthorSection(bookInfo = uiState.bookInfo)
 
-        item(key = "stats") {
-            BookStatsSection(
-                bookInfo = uiState.bookInfo,
-                lastChapter = uiState.lastChapter
-            )
-        }
+        BookStatsSection(
+            bookInfo = uiState.bookInfo,
+            lastChapter = uiState.lastChapter
+        )
 
-        item(key = "description") {
-            BookDescriptionSection(
-                description = uiState.bookInfo?.bookDesc ?: "",
-                onToggleExpand = onToggleDescription,
-                bookId =  uiState.bookInfo?.id?: "",
-                onNavigateToReader = onNavigateToReader
-            )
-        }
+        BookDescriptionSection(
+            description = uiState.bookInfo?.bookDesc ?: "",
+            onToggleExpand = onToggleDescription,
+            bookId = uiState.bookInfo?.id ?: ""
+        )
 
-        item(key = "reviews") {
-            BookReviewsSection(reviews = uiState.reviews)
-        }
+        BookReviewsSection(reviews = uiState.reviews)
     }
 }

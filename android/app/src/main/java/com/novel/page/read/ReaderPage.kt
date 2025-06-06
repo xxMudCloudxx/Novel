@@ -1,5 +1,6 @@
 package com.novel.page.read
 
+import android.util.Log
 import androidx.collection.emptyLongSet
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -29,8 +30,13 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.compose.BackHandler
+import com.novel.page.component.FlipBookAnimationController
+import com.novel.page.component.LoadingStateComponent
+import kotlinx.coroutines.launch
 import com.novel.page.component.NovelText
 import com.novel.page.component.SolidCircleSlider
+import com.novel.page.component.ViewState
 import com.novel.page.read.components.*
 import com.novel.page.read.viewmodel.ReaderViewModel
 import com.novel.page.read.viewmodel.ReaderUiState
@@ -39,6 +45,7 @@ import com.novel.ui.theme.NovelTheme
 import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 import com.novel.utils.ssp
+import com.novel.utils.NavViewModel
 import kotlin.math.roundToInt
 
 /**
@@ -49,12 +56,40 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun ReaderPage(
+    flipBookController: FlipBookAnimationController? = null,
     bookId: String,
     chapterId: String? = null,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val density = LocalDensity.current
+    
+    // 获取从BookDetailPage传递的FlipBookController
+//    val flipController = remember { NavViewModel.flipBookController }
+    val coroutineScope = rememberCoroutineScope()
+
+    // 定义返回函数，供多处调用
+    val performBack = remember {
+        {
+            coroutineScope.launch {
+                flipBookController?.triggerReverseAnimation()
+            }
+            NavViewModel.setFlipBookController(null)
+        }
+//        {
+//            coroutineScope.launch {
+//                flipBookController?.triggerReverseAnimation()
+//            }
+//            NavViewModel.navigateBack()
+//            // 清理，避免下次误用
+//            NavViewModel.setFlipBookController(null)
+//        }
+    }
+
+    // 系统返回键处理
+    BackHandler {
+        performBack()
+    }
 
     // 控制面板显示状态
     var showControls by remember { mutableStateOf(false) }
@@ -69,7 +104,59 @@ fun ReaderPage(
         viewModel.initReader(bookId, chapterId)
     }
 
-    NovelTheme {
+    // 清理controller的DisposableEffect
+    DisposableEffect(Unit) {
+        onDispose { NavViewModel.setFlipBookController(null) }
+    }
+
+    // 优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
+    val loadingStateComponent = remember(
+        uiState.hasError,
+        uiState.isEmpty,
+        uiState.error,
+        uiState.isLoading,
+        bookId
+    ) {
+        object : LoadingStateComponent {
+            override val loading: Boolean get() = uiState.isLoading
+            override val containsCancelable: Boolean get() = false
+            override val viewState: ViewState
+                get() = when {
+                    uiState.hasError -> ViewState.Error(Exception(uiState.error))
+                    uiState.isEmpty -> ViewState.Empty
+                    else -> ViewState.Idle
+                }
+
+            override fun showLoading(show: Boolean) {
+                // 状态由ViewModel管理，无需实现
+            }
+
+            override fun cancelLoading() {
+                // 无需实现
+            }
+
+            override fun showViewState(viewState: ViewState) {
+                // 状态由ViewModel管理，无需实现
+            }
+
+            override fun retry() {
+            }
+        }
+    }
+
+    // 左滑进入阅读器的回调函数
+    val handleLeftSwipeToReader: () -> Unit = {
+        Log.d("BookDetailPage", "左滑进入阅读器: bookId=$bookId")
+        // 把当前的 FlipBookAnimationController 暂存到全局
+        NavViewModel.setFlipBookController(flipBookController)
+    }
+    LoadingStateComponent(
+        component = loadingStateComponent,
+        modifier = Modifier.fillMaxSize(),
+        backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f),
+        flipBookController = flipBookController,
+        onLeftSwipeToReader = handleLeftSwipeToReader
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -102,15 +189,36 @@ fun ReaderPage(
                                 flipEffect = uiState.readerSettings.pageFlipEffect,
                                 readerSettings = uiState.readerSettings,
                                 onPageChange = { direction ->
-                                    viewModel.onPageChange(direction)
+                                    // 翻页时关闭所有设置栏
+                                    if (showSettings || showChapterList) {
+                                        showSettings = false
+                                        showChapterList = false
+                                    } else {
+                                        viewModel.onPageChange(direction)
+                                    }
                                 },
                                 onChapterChange = { direction ->
-                                    viewModel.onChapterChange(direction)
+                                    // 章节切换时关闭所有设置栏
+                                    if (showSettings || showChapterList) {
+                                        showSettings = false
+                                        showChapterList = false
+                                    } else {
+                                        viewModel.onChapterChange(direction)
+                                    }
+                                },
+                                onNavigateToReader = { bookId, chapterId ->
+                                    // 从书籍详情页导航到第一页内容
+                                    viewModel.navigateToContent()
+                                },
+                                onSwipeBack = {
+                                    // iOS侧滑返回
+                                    performBack()
                                 },
                                 onClick = {
-                                    // 如果设置面板显示，点击阅读区域关闭设置
-                                    if (showSettings) {
+                                    // 点击时关闭所有设置栏
+                                    if (showSettings || showChapterList) {
                                         showSettings = false
+                                        showChapterList = false
                                     } else {
                                         showControls = !showControls
                                     }
@@ -211,7 +319,7 @@ fun ReaderPage(
                         ReaderControls(
                             uiState = uiState,
                             hideProgress = showSettings || showChapterList,  // 有面板时隐藏进度条
-                            onBack = { /* 返回上一页 */ },
+                            onBack = performBack,
                             onPreviousChapter = { viewModel.previousChapter() },
                             onNextChapter = { viewModel.nextChapter() },
                             onSeekToProgress = { progress -> viewModel.seekToProgress(progress) },

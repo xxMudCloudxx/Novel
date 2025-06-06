@@ -11,7 +11,7 @@ object HtmlTextUtil {
             // 全局替换 &nbsp; 为普通空格
             .replace("&nbsp;", " ")
             // 全局替换 <br/><br/> 为换行
-            .replace("<br/><br/>", "\n")
+            .replace("<br/><br/>", "\n\n\n")
             // 全局替换 &amp; 为 &
             .replace("&amp;", "&")
             // 全局替换 &lt; 为 <

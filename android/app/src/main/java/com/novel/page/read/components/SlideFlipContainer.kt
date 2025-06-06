@@ -25,11 +25,13 @@ fun SlideFlipContainer(
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
     onChapterChange: (FlipDirection) -> Unit,
+    onSwipeBack: (() -> Unit)? = null, // 新增：iOS侧滑返回回调
     onClick: () -> Unit
 ) {
-    // 计算总页面数，包括当前章节和相邻章节
+    // 计算总页面数，包括当前章节、相邻章节和书籍详情页
     val totalPages = remember(pageData) {
         var total = pageData.pages.size
+        if (pageData.hasBookDetailPage) total += 1 // 书籍详情页
         if (pageData.previousChapterData != null) total += pageData.previousChapterData.pages.size
         if (pageData.nextChapterData != null) total += pageData.nextChapterData.pages.size
         total
@@ -38,6 +40,9 @@ fun SlideFlipContainer(
     // 计算当前页面在整个虚拟页面序列中的位置
     val globalPageIndex = remember(pageData, currentPageIndex) {
         var index = currentPageIndex
+        if (pageData.hasBookDetailPage) {
+            index += 1 // 书籍详情页占用一个位置
+        }
         if (pageData.previousChapterData != null) {
             index += pageData.previousChapterData.pages.size
         }
@@ -52,44 +57,58 @@ fun SlideFlipContainer(
     // 标记当前是否正在处理外部页面变化，避免重复触发
     var isHandlingExternalChange by remember { mutableStateOf(false) }
 
-    // 处理页面变化逻辑 - 优化版本
+    // 检查是否在书籍详情页
+    val isOnBookDetailPage = remember(currentPageIndex, pageData.hasBookDetailPage) {
+        currentPageIndex == -1 && pageData.hasBookDetailPage
+    }
+
+    // 处理页面变化逻辑 - 支持书籍详情页和iOS侧滑
     LaunchedEffect(pagerState.currentPage) {
         // 如果正在处理外部变化，跳过此次处理
         if (isHandlingExternalChange) return@LaunchedEffect
-        
-        val currentGlobalIndex = globalPageIndex
-        if (pagerState.currentPage != currentGlobalIndex) {
+
+        if (pagerState.currentPage != globalPageIndex) {
+            val bookDetailPageSize = if (pageData.hasBookDetailPage) 1 else 0
             val previousChapterSize = pageData.previousChapterData?.pages?.size ?: 0
             val currentChapterSize = pageData.pages.size
-            val newPageIndex = pagerState.currentPage - previousChapterSize
 
             when {
+                // 切换到书籍详情页
+                pagerState.currentPage < bookDetailPageSize -> {
+                    onPageChange(FlipDirection.PREVIOUS) // 切换到书籍详情页
+                    return@LaunchedEffect
+                }
                 // 切换到上一章
-                pagerState.currentPage < previousChapterSize -> {
+                pagerState.currentPage < bookDetailPageSize + previousChapterSize -> {
                     onChapterChange(FlipDirection.PREVIOUS)
                     return@LaunchedEffect
                 }
                 // 切换到下一章
-                pagerState.currentPage >= previousChapterSize + currentChapterSize -> {
+                pagerState.currentPage >= bookDetailPageSize + previousChapterSize + currentChapterSize -> {
                     onChapterChange(FlipDirection.NEXT)
                     return@LaunchedEffect
                 }
-                // 当前章节内翻页 - 增加边界检查
-                newPageIndex in 0 until currentChapterSize && newPageIndex != currentPageIndex -> {
-                    val direction = if (newPageIndex > currentPageIndex) {
-                        FlipDirection.NEXT
-                    } else {
-                        FlipDirection.PREVIOUS
+                // 当前章节内翻页
+                else -> {
+                    val newPageIndex =
+                        pagerState.currentPage - bookDetailPageSize - previousChapterSize
+                    if (newPageIndex in 0 until currentChapterSize && newPageIndex != currentPageIndex) {
+                        val direction = if (newPageIndex > currentPageIndex) {
+                            FlipDirection.NEXT
+                        } else {
+                            FlipDirection.PREVIOUS
+                        }
+                        onPageChange(direction)
                     }
-                    onPageChange(direction)
                 }
             }
         }
     }
 
-    // 同步外部页面索引变化 - 优化版本
+    // 同步外部页面索引变化 - 支持书籍详情页
     LaunchedEffect(currentPageIndex, pageData.chapterId) {
-        val newGlobalIndex = currentPageIndex + (pageData.previousChapterData?.pages?.size ?: 0)
+        val bookDetailPageSize = if (pageData.hasBookDetailPage) 1 else 0
+        val newGlobalIndex = currentPageIndex + bookDetailPageSize + (pageData.previousChapterData?.pages?.size ?: 0)
         if (newGlobalIndex != pagerState.currentPage && newGlobalIndex in 0 until totalPages) {
             // 标记正在处理外部变化
             isHandlingExternalChange = true
@@ -102,58 +121,118 @@ fun SlideFlipContainer(
         }
     }
 
+    // 主要内容区域 - 导航信息现在包含在PageContentDisplay中
     HorizontalPager(
         state = pagerState,
         modifier = Modifier
             .fillMaxSize()
             .clickable { onClick() }
     ) { globalPage ->
-        val previousChapterSize = pageData.previousChapterData?.pages?.size ?: 0
-        val currentChapterSize = pageData.pages.size
+            val bookDetailPageSize = if (pageData.hasBookDetailPage) 1 else 0
+            val previousChapterSize = pageData.previousChapterData?.pages?.size ?: 0
+            val currentChapterSize = pageData.pages.size
 
-        when {
-            // 显示上一章内容
-            globalPage < previousChapterSize -> {
-                pageData.previousChapterData?.let { prevChapter ->
-                    if (prevChapter.pages.isNotEmpty()) {
-                        CurrentPageContent(
-                            pageData = prevChapter,
-                            pageIndex = globalPage,
+            when {
+                // 显示书籍详情页
+                globalPage < bookDetailPageSize -> {
+                    if (pageData.hasBookDetailPage && pageData.bookInfo != null) {
+                        PageContentDisplay(
+                            page = "",
+                            chapterName = "",
+                            isFirstPage = false,
+                            isLastPage = false,
+                            isBookDetailPage = true,
+                            bookInfo = pageData.bookInfo,
+                            nextChapterData = pageData.nextChapterData,
+                            previousChapterData = pageData.previousChapterData,
                             readerSettings = readerSettings,
-                            isFirstPage = globalPage == 0,
-                            modifier = Modifier.fillMaxSize()
+                            onSwipeBack = onSwipeBack,
+                            onPageChange = { direction -> 
+                                onPageChange(direction)
+                            },
+                            showNavigationInfo = false, // 书籍详情页不显示导航信息
+                            currentPageIndex = 0,
+                            totalPages = 1,
+                            onClick = onClick
                         )
                     }
                 }
-            }
-            // 显示当前章节内容
-            globalPage < previousChapterSize + currentChapterSize -> {
-                val pageIndex = globalPage - previousChapterSize
-                if (pageIndex in 0 until pageData.pages.size) {
-                    CurrentPageContent(
-                        pageData = pageData,
-                        pageIndex = pageIndex,
-                        readerSettings = readerSettings,
-                        isFirstPage = pageIndex == 0,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                // 显示上一章内容
+                globalPage < bookDetailPageSize + previousChapterSize -> {
+                    pageData.previousChapterData?.let { prevChapter ->
+                        val pageIndex = globalPage - bookDetailPageSize
+                        if (pageIndex in 0 until prevChapter.pages.size) {
+                            PageContentDisplay(
+                                page = prevChapter.pages[pageIndex],
+                                chapterName = prevChapter.chapterName,
+                                isFirstPage = pageIndex == 0,
+                                isLastPage = pageIndex == prevChapter.pages.size - 1,
+                                isBookDetailPage = false,
+                                bookInfo = null,
+                                nextChapterData = pageData,
+                                previousChapterData = prevChapter.previousChapterData,
+                                readerSettings = readerSettings,
+                                onPageChange = { direction -> 
+                                    onPageChange(direction)
+                                },
+                                showNavigationInfo = true,
+                                currentPageIndex = pageIndex + 1,
+                                totalPages = prevChapter.pages.size,
+                                onClick = onClick
+                            )
+                        }
+                    }
                 }
-            }
-            // 显示下一章内容
-            else -> {
-                pageData.nextChapterData?.let { nextChapter ->
-                    val pageIndex = globalPage - previousChapterSize - currentChapterSize
-                    if (pageIndex in 0 until nextChapter.pages.size) {
-                        CurrentPageContent(
-                            pageData = nextChapter,
-                            pageIndex = pageIndex,
-                            readerSettings = readerSettings,
+                // 显示当前章节内容
+                globalPage < bookDetailPageSize + previousChapterSize + currentChapterSize -> {
+                    val pageIndex = globalPage - bookDetailPageSize - previousChapterSize
+                    if (pageIndex in 0 until pageData.pages.size) {
+                        PageContentDisplay(
+                            page = pageData.pages[pageIndex],
+                            chapterName = pageData.chapterName,
                             isFirstPage = pageIndex == 0,
-                            modifier = Modifier.fillMaxSize()
+                            isLastPage = pageIndex == pageData.pages.size - 1,
+                            isBookDetailPage = false,
+                            bookInfo = null,
+                            nextChapterData = pageData.nextChapterData,
+                            previousChapterData = pageData.previousChapterData,
+                            readerSettings = readerSettings,
+                            onPageChange = { direction -> 
+                                onPageChange(direction)
+                            },
+                            showNavigationInfo = true,
+                            currentPageIndex = pageIndex + 1,
+                            totalPages = pageData.pages.size,
+                            onClick = onClick
                         )
+                    }
+                }
+                // 显示下一章内容
+                else -> {
+                    pageData.nextChapterData?.let { nextChapter ->
+                        val pageIndex = globalPage - bookDetailPageSize - previousChapterSize - currentChapterSize
+                        if (pageIndex in 0 until nextChapter.pages.size) {
+                            PageContentDisplay(
+                                page = nextChapter.pages[pageIndex],
+                                chapterName = nextChapter.chapterName,
+                                isFirstPage = pageIndex == 0,
+                                isLastPage = pageIndex == nextChapter.pages.size - 1,
+                                isBookDetailPage = false,
+                                bookInfo = null,
+                                nextChapterData = nextChapter.nextChapterData,
+                                previousChapterData = pageData,
+                                readerSettings = readerSettings,
+                                onPageChange = { direction -> 
+                                    onPageChange(direction)
+                                },
+                                showNavigationInfo = true,
+                                currentPageIndex = pageIndex + 1,
+                                totalPages = nextChapter.pages.size,
+                                onClick = onClick
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 }

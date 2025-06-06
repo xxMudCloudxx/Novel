@@ -35,201 +35,255 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 上下滚动容器 - 章节无缝衔接版本，包含纸张纹理
+ * 上下滚动容器 - 章节无缝衔接版本，包含纸张纹理，支持边界检测和章节切换
  */
 @Composable
 fun VerticalScrollContainer(
     pageData: PageData,
     readerSettings: ReaderSettings,
     onChapterChange: (FlipDirection) -> Unit,
+    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
+    onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val listState = rememberLazyListState()
     var isLoadingNext by remember { mutableStateOf(false) }
     var isLoadingPrevious by remember { mutableStateOf(false) }
+    
+    // 检测滚动边界并自动加载章节
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) return@LaunchedEffect
+        
+        val layoutInfo = listState.layoutInfo
+        val visibleItems = layoutInfo.visibleItemsInfo
+        
+        if (visibleItems.isNotEmpty()) {
+            val firstVisible = visibleItems.first()
+            val lastVisible = visibleItems.last()
+            
+            // 检测是否滚动到顶部（需要加载上一章）
+            if (firstVisible.index == 0 && firstVisible.offset >= -50 && !isLoadingPrevious && pageData.previousChapterData == null) {
+                isLoadingPrevious = true
+                onChapterChange(FlipDirection.PREVIOUS)
+            }
+            
+            // 检测是否滚动到底部（需要加载下一章）
+            val totalItems = layoutInfo.totalItemsCount
+            if (lastVisible.index >= totalItems - 1 && !isLoadingNext && pageData.nextChapterData == null) {
+                isLoadingNext = true
+                onChapterChange(FlipDirection.NEXT)
+            }
+        }
+    }
 
-    PaperTexture(
-        modifier = Modifier.fillMaxSize(),
-        alpha = 0.04f,
-        density = 1.0f,
-        seed = pageData.chapterId.hashCode().toLong()
-    ) {
-        LazyColumn(
-            state = listState,
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 顶部导航信息
+        ReaderNavigationInfo(
+            chapterName = pageData.chapterName,
+            modifier = Modifier.padding(start = 12.wdp, top = 12.wdp)
+        )
+
+        // 主要内容区域
+        PaperTexture(
             modifier = Modifier
-                .fillMaxSize()
-                .background(readerSettings.backgroundColor)
-                .clickable { onClick() }
-                .padding(horizontal = 16.wdp, vertical = 10.wdp),
-            verticalArrangement = Arrangement.spacedBy(8.wdp)
+                .weight(1f)
+                .fillMaxSize(),
+            alpha = 0.04f,
+            density = 1.0f,
+            seed = pageData.chapterId.hashCode().toLong()
         ) {
-            // 上一章内容（如果有）
-            pageData.previousChapterData?.let { previousChapter ->
-                item(key = "previous_chapter_title_${previousChapter.chapterId}") {
-                    NovelText(
-                        text = previousChapter.chapterName,
-                        fontSize = (readerSettings.fontSize + 4).ssp,
-                        fontWeight = FontWeight.Bold,
-                        color = readerSettings.textColor.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.wdp)
-                    )
-                }
-
-                item(key = "previous_chapter_content_${previousChapter.chapterId}") {
-                    NovelText(
-                        text = HtmlTextUtil.cleanHtml(previousChapter.content),
-                        fontSize = readerSettings.fontSize.ssp,
-                        color = readerSettings.textColor.copy(alpha = 0.8f),
-                        lineHeight = (readerSettings.fontSize * 1.5).ssp,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // 章节分隔线
-                item(key = "previous_divider_${previousChapter.chapterId}") {
-                    Spacer(modifier = Modifier.height(24.wdp))
-                    HorizontalDivider(
-                        modifier = Modifier.fillMaxWidth(),
-                        thickness = 1.dp,
-                        color = readerSettings.textColor.copy(alpha = 0.3f)
-                    )
-                    Spacer(modifier = Modifier.height(24.wdp))
-                }
-            }
-
-            // 当前章节标题
-            item(key = "current_chapter_title_${pageData.chapterId}") {
-                NovelText(
-                    text = pageData.chapterName,
-                    fontSize = (readerSettings.fontSize + 4).ssp,
-                    fontWeight = FontWeight.Bold,
-                    color = readerSettings.textColor,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.wdp)
-                )
-            }
-
-            // 当前章节内容
-            item(key = "current_chapter_content_${pageData.chapterId}") {
-                NovelText(
-                    text = HtmlTextUtil.cleanHtml(pageData.content),
-                    fontSize = readerSettings.fontSize.ssp,
-                    color = readerSettings.textColor,
-                    lineHeight = (readerSettings.fontSize * 1.5).ssp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // 章节分隔线
-            item(key = "current_chapter_divider_${pageData.chapterId}") {
-                Spacer(modifier = Modifier.height(24.wdp))
-                HorizontalDivider(
-                    modifier = Modifier.fillMaxWidth(),
-                    thickness = 1.dp,
-                    color = readerSettings.textColor.copy(alpha = 0.3f)
-                )
-                Spacer(modifier = Modifier.height(24.wdp))
-            }
-
-            // 下一章内容（如果有）
-            pageData.nextChapterData?.let { nextChapter ->
-                item(key = "next_chapter_title_${nextChapter.chapterId}") {
-                    NovelText(
-                        text = nextChapter.chapterName,
-                        fontSize = (readerSettings.fontSize + 4).ssp,
-                        fontWeight = FontWeight.Bold,
-                        color = readerSettings.textColor,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.wdp)
-                    )
-                }
-
-                item(key = "next_chapter_content_${nextChapter.chapterId}") {
-                    NovelText(
-                        text = HtmlTextUtil.cleanHtml(nextChapter.content),
-                        fontSize = readerSettings.fontSize.ssp,
-                        color = readerSettings.textColor,
-                        lineHeight = (readerSettings.fontSize * 1.5).ssp,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // 下一章分隔线
-                item(key = "next_chapter_divider_${nextChapter.chapterId}") {
-                    Spacer(modifier = Modifier.height(24.wdp))
-                    HorizontalDivider(
-                        modifier = Modifier.fillMaxWidth(),
-                        thickness = 1.dp,
-                        color = readerSettings.textColor.copy(alpha = 0.3f)
-                    )
-                    Spacer(modifier = Modifier.height(24.wdp))
-                }
-            } ?: run {
-                // 如果没有下一章数据，显示加载指示器
-                item(key = "load_next_indicator") {
-                    LaunchedEffect(Unit) {
-                        if (!isLoadingNext) {
-                            isLoadingNext = true
-                            onChapterChange(FlipDirection.NEXT)
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(40.wdp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.wdp)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(readerSettings.backgroundColor)
+                    .clickable { onClick() }
+                    .padding(horizontal = 16.wdp, vertical = 10.wdp),
+                verticalArrangement = Arrangement.spacedBy(8.wdp)
+            ) {
+                // 书籍详情页（如果支持）
+                if (pageData.hasBookDetailPage) {
+                    item(key = "book_detail_page_${pageData.chapterId}") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(400.wdp) // 给书籍详情页一个固定高度
                         ) {
-                            CircularProgressIndicator(
-                                color = readerSettings.textColor,
-                                modifier = Modifier.size(24.wdp)
-                            )
-                            NovelText(
-                                text = "加载下一章...",
-                                fontSize = 12.ssp,
-                                color = readerSettings.textColor.copy(alpha = 0.7f)
+                            PageContentDisplay(
+                                page = "",
+                                chapterName = pageData.chapterName,
+                                isFirstPage = false,
+                                isLastPage = false,
+                                isBookDetailPage = true,
+                                bookInfo = pageData.bookInfo,
+                                nextChapterData = pageData.nextChapterData,
+                                previousChapterData = pageData.previousChapterData,
+                                readerSettings = readerSettings,
+                                onNavigateToReader = onNavigateToReader,
+                                onSwipeBack = onSwipeBack,
+                                showNavigationInfo = false,
+                                currentPageIndex = 0,
+                                totalPages = 1,
+                                onClick = onClick
                             )
                         }
                     }
                 }
-            }
 
-            // 预加载上一章的指示器（放在顶部，触发预加载）
-            if (pageData.previousChapterData == null) {
-                item(key = "load_previous_indicator") {
-                    LaunchedEffect(Unit) {
-                        if (!isLoadingPrevious) {
-                            isLoadingPrevious = true
-                            onChapterChange(FlipDirection.PREVIOUS)
+                // 上一章预加载指示器（如果需要）
+                if (pageData.previousChapterData == null && !pageData.hasBookDetailPage) {
+                    item(key = "load_previous_indicator") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.wdp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isLoadingPrevious) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.wdp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = readerSettings.textColor,
+                                        modifier = Modifier.size(20.wdp)
+                                    )
+                                    NovelText(
+                                        text = "加载上一章...",
+                                        fontSize = 12.ssp,
+                                        color = readerSettings.textColor.copy(alpha = 0.7f)
+                                    )
+                                }
+                            } else {
+                                NovelText(
+                                    text = "下拉加载上一章",
+                                    fontSize = 12.ssp,
+                                    color = readerSettings.textColor.copy(alpha = 0.5f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
+                }
 
-                    Box(
+                // 上一章内容（如果有）
+                pageData.previousChapterData?.let { previousChapter ->
+                    item(key = "previous_chapter_title_${previousChapter.chapterId}") {
+                        NovelText(
+                            text = previousChapter.chapterName,
+                            fontSize = (readerSettings.fontSize + 4).ssp,
+                            fontWeight = FontWeight.Bold,
+                            color = readerSettings.textColor.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.wdp)
+                        )
+                    }
+
+                    item(key = "previous_chapter_content_${previousChapter.chapterId}") {
+                        NovelText(
+                            text = HtmlTextUtil.cleanHtml(previousChapter.content),
+                            fontSize = readerSettings.fontSize.ssp,
+                            color = readerSettings.textColor.copy(alpha = 0.8f),
+                            lineHeight = (readerSettings.fontSize * 1.5).ssp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // 当前章节标题
+                item(key = "current_chapter_title_${pageData.chapterId}") {
+                    NovelText(
+                        text = pageData.chapterName,
+                        fontSize = (readerSettings.fontSize + 4).ssp,
+                        fontWeight = FontWeight.Bold,
+                        color = readerSettings.textColor,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.wdp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                            .padding(vertical = 16.wdp)
+                    )
+                }
+
+                // 当前章节内容
+                item(key = "current_chapter_content_${pageData.chapterId}") {
+                    NovelText(
+                        text = HtmlTextUtil.cleanHtml(pageData.content),
+                        fontSize = readerSettings.fontSize.ssp,
+                        color = readerSettings.textColor,
+                        lineHeight = (readerSettings.fontSize * 1.5).ssp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // 下一章内容（如果有）
+                pageData.nextChapterData?.let { nextChapter ->
+                    item(key = "next_chapter_title_${nextChapter.chapterId}") {
                         NovelText(
-                            text = "正在加载上一章...",
-                            fontSize = 12.ssp,
-                            color = readerSettings.textColor.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center
+                            text = nextChapter.chapterName,
+                            fontSize = (readerSettings.fontSize + 4).ssp,
+                            fontWeight = FontWeight.Bold,
+                            color = readerSettings.textColor,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.wdp)
                         )
+                    }
+
+                    item(key = "next_chapter_content_${nextChapter.chapterId}") {
+                        NovelText(
+                            text = HtmlTextUtil.cleanHtml(nextChapter.content),
+                            fontSize = readerSettings.fontSize.ssp,
+                            color = readerSettings.textColor,
+                            lineHeight = (readerSettings.fontSize * 1.5).ssp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } ?: run {
+                    // 如果没有下一章数据，显示加载指示器
+                    item(key = "load_next_indicator") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(40.wdp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isLoadingNext) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.wdp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = readerSettings.textColor,
+                                        modifier = Modifier.size(24.wdp)
+                                    )
+                                    NovelText(
+                                        text = "加载下一章...",
+                                        fontSize = 12.ssp,
+                                        color = readerSettings.textColor.copy(alpha = 0.7f)
+                                    )
+                                }
+                            } else {
+                                NovelText(
+                                    text = "上拉加载下一章",
+                                    fontSize = 12.ssp,
+                                    color = readerSettings.textColor.copy(alpha = 0.5f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // 底部页面信息（对于滚动模式，显示章节信息）
+        ReaderPageInfo(
+            chapterNum = 1, // 滚动模式显示为第1页
+            totalPages = 1, // 滚动模式总页数为1
+            modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp)
+        )
     }
 }

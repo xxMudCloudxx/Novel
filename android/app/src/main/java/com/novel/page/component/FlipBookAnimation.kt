@@ -27,6 +27,7 @@ import kotlinx.coroutines.coroutineScope
 import com.novel.page.book.BookDetailPage
 import com.novel.utils.NavViewModel
 import android.util.Log
+import com.novel.page.read.ReaderPage
 
 /**
  * 翻书动画状态
@@ -507,14 +508,19 @@ fun GlobalFlipBookOverlay(
                                 }
                             }
                     ) {
-                        BookDetailPage(
+                        ReaderPage(
                             bookId = animationState.bookId,
-                            fromRank = true,
+                            chapterId = null,
                             flipBookController = controller,
-                            onNavigateToReader = { bookId, chapterId ->
-                                NavViewModel.navigateToReader(bookId, chapterId)
-                            }
                         )
+//                        BookDetailPage(
+//                            bookId = animationState.bookId,
+//                            fromRank = true,
+//                            flipBookController = controller,
+//                            onNavigateToReader = { bookId, chapterId ->
+//                                NavViewModel.navigateToReader(bookId, chapterId)
+//                            }
+//                        )
                     }
                 }
                 
@@ -549,13 +555,18 @@ fun GlobalFlipBookOverlay(
                                 alpha = if (animationState.scaleProgress > 0.3f) 1f else 0.3f
                             }
                     ) {
-                        BookDetailPage(
+//                        BookDetailPage(
+//                            bookId = animationState.bookId,
+//                            fromRank = true,
+//                            flipBookController = controller,
+//                            onNavigateToReader = { bookId, chapterId ->
+//                                NavViewModel.navigateToReader(bookId, chapterId)
+//                            }
+//                        )
+                        ReaderPage(
                             bookId = animationState.bookId,
-                            fromRank = true,
+                            chapterId = null,
                             flipBookController = controller,
-                            onNavigateToReader = { bookId, chapterId ->
-                                NavViewModel.navigateToReader(bookId, chapterId)
-                            }
                         )
                     }
                 }

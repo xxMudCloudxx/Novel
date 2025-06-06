@@ -1,7 +1,9 @@
 package com.novel.page.read.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -19,19 +21,22 @@ import com.novel.page.component.pagecurl.page.PageCurl
 import com.novel.page.component.pagecurl.page.rememberPageCurlState
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
+import com.novel.utils.wdp
 
 /**
  * PageCurl仿真翻页容器
  *
  * 使用PageCurl库实现真实的书页卷曲翻页效果，并集成纸张纹理
- * 支持章节边界检测和自动章节切换
- * 修复版本：解决边界翻页和章节切换问题
+ * 支持章节边界检测和自动章节切换，支持书籍详情页
+ * 修复版本：解决边界翻页和章节切换问题，添加书籍详情页支持
  *
  * @param pageData 页面数据
  * @param currentPageIndex 当前页面索引
  * @param readerSettings 阅读器设置
  * @param onPageChange 页面变化回调
  * @param onChapterChange 章节变化回调
+ * @param onNavigateToReader 导航到阅读器回调
+ * @param onSwipeBack iOS侧滑返回回调
  * @param onClick 点击回调
  */
 @OptIn(ExperimentalPageCurlApi::class)
@@ -42,14 +47,21 @@ fun PageCurlFlipContainer(
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
     onChapterChange: (FlipDirection) -> Unit,
+    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
+    onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    // 构建虚拟页面序列，支持章节边界
+    // 构建虚拟页面序列，支持章节边界和书籍详情页
     val virtualPages = remember(pageData) {
         buildList {
             // 添加上一章的最后一页（如果存在）
             if (pageData.previousChapterData != null && pageData.previousChapterData.pages.isNotEmpty()) {
                 add(VirtualPage.PreviousChapter(pageData.previousChapterData))
+            }
+            
+            // 添加书籍详情页（如果当前章节支持）
+            if (pageData.hasBookDetailPage) {
+                add(VirtualPage.BookDetailPage)
             }
             
             // 添加当前章节的所有页面
@@ -69,7 +81,20 @@ fun PageCurlFlipContainer(
     // 计算当前页在虚拟页面序列中的索引
     val virtualCurrentIndex = remember(pageData, currentPageIndex) {
         val previousOffset = if (pageData.previousChapterData?.pages?.isNotEmpty() == true) 1 else 0
-        val targetIndex = currentPageIndex + previousOffset
+        val bookDetailOffset = if (pageData.hasBookDetailPage) 1 else 0
+        
+        val targetIndex = when {
+            currentPageIndex == -1 && pageData.hasBookDetailPage -> {
+                // 书籍详情页
+                previousOffset
+            }
+            currentPageIndex >= 0 -> {
+                // 正常内容页
+                currentPageIndex + previousOffset + bookDetailOffset
+            }
+            else -> previousOffset + bookDetailOffset
+        }
+        
         targetIndex.coerceIn(0, totalPages - 1)
     }
 
@@ -105,7 +130,21 @@ fun PageCurlFlipContainer(
 
     // 同步外部页面索引变化
     LaunchedEffect(currentPageIndex, pageData.chapterId) {
-        val newVirtualIndex = currentPageIndex + (if (pageData.previousChapterData?.pages?.isNotEmpty() == true) 1 else 0)
+        val previousOffset = if (pageData.previousChapterData?.pages?.isNotEmpty() == true) 1 else 0
+        val bookDetailOffset = if (pageData.hasBookDetailPage) 1 else 0
+        
+        val newVirtualIndex = when {
+            currentPageIndex == -1 && pageData.hasBookDetailPage -> {
+                // 书籍详情页
+                previousOffset
+            }
+            currentPageIndex >= 0 -> {
+                // 正常内容页
+                currentPageIndex + previousOffset + bookDetailOffset
+            }
+            else -> previousOffset + bookDetailOffset
+        }
+        
         if (newVirtualIndex != pageCurlState.current && newVirtualIndex in 0 until totalPages) {
             isHandlingExternalChange = true
             try {
@@ -133,6 +172,10 @@ fun PageCurlFlipContainer(
                     // 翻到下一章
                     onChapterChange(FlipDirection.NEXT)
                 }
+                is VirtualPage.BookDetailPage -> {
+                    // 翻到书籍详情页
+                    onPageChange(FlipDirection.PREVIOUS)
+                }
                 is VirtualPage.CurrentChapter -> {
                     // 当前章节内翻页
                     val newPageIndex = virtualPage.pageIndex
@@ -149,67 +192,102 @@ fun PageCurlFlipContainer(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (totalPages > 0) {
-            PageCurl(
-                count = totalPages,
-                state = pageCurlState,
-                config = config,
-                modifier = Modifier.fillMaxSize()
-            ) { virtualPageIndex ->
-                if (virtualPageIndex in virtualPages.indices) {
-                    val virtualPage = virtualPages[virtualPageIndex]
-                    
-                    // 渲染每一页内容，包含纸张纹理
-                    PaperTexture(
-                        modifier = Modifier.fillMaxSize(),
-                        alpha = 0.04f,
-                        density = 1.2f,
-                        seed = virtualPageIndex.toLong() * 42L
-                    ) {
-                        when (virtualPage) {
-                            is VirtualPage.PreviousChapter -> {
-                                val prevChapter = virtualPage.chapterData
-                                val lastPageIndex = prevChapter.pages.size - 1
-                                if (lastPageIndex >= 0) {
-                                    PageContentDisplay(
-                                        page = prevChapter.pages[lastPageIndex],
-                                        chapterName = prevChapter.chapterName,
-                                        isFirstPage = false,
-                                        isLastPage = true,
-                                        nextChapterData = pageData,
-                                        readerSettings = readerSettings,
-                                        onClick = onClick
-                                    )
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 主要内容区域 - 导航信息现在包含在PageContentDisplay中
+        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            if (totalPages > 0) {
+                PageCurl(
+                    count = totalPages,
+                    state = pageCurlState,
+                    config = config,
+                    modifier = Modifier.fillMaxSize()
+                ) { virtualPageIndex ->
+                    if (virtualPageIndex in virtualPages.indices) {
+                        val virtualPage = virtualPages[virtualPageIndex]
+                        
+                        // 渲染每一页内容，包含纸张纹理
+                        PaperTexture(
+                            modifier = Modifier.fillMaxSize(),
+                            alpha = 0.04f,
+                            density = 1.2f,
+                            seed = virtualPageIndex.toLong() * 42L
+                        ) {
+                            when (virtualPage) {
+                                is VirtualPage.PreviousChapter -> {
+                                    val prevChapter = virtualPage.chapterData
+                                    val lastPageIndex = prevChapter.pages.size - 1
+                                    if (lastPageIndex >= 0) {
+                                        PageContentDisplay(
+                                            page = prevChapter.pages[lastPageIndex],
+                                            chapterName = prevChapter.chapterName,
+                                            isFirstPage = false,
+                                            isLastPage = true,
+                                            nextChapterData = pageData,
+                                            readerSettings = readerSettings,
+                                            onNavigateToReader = onNavigateToReader,
+                                            currentPageIndex = lastPageIndex + 1,
+                                            totalPages = prevChapter.pages.size,
+                                            onClick = onClick
+                                        )
+                                    }
                                 }
-                            }
-                            is VirtualPage.NextChapter -> {
-                                val nextChapter = virtualPage.chapterData
-                                if (nextChapter.pages.isNotEmpty()) {
-                                    PageContentDisplay(
-                                        page = nextChapter.pages[0],
-                                        chapterName = nextChapter.chapterName,
-                                        isFirstPage = true,
-                                        isLastPage = false,
-                                        previousChapterData = pageData,
-                                        readerSettings = readerSettings,
-                                        onClick = onClick
-                                    )
+                                is VirtualPage.NextChapter -> {
+                                    val nextChapter = virtualPage.chapterData
+                                    if (nextChapter.pages.isNotEmpty()) {
+                                        PageContentDisplay(
+                                            page = nextChapter.pages[0],
+                                            chapterName = nextChapter.chapterName,
+                                            isFirstPage = true,
+                                            isLastPage = false,
+                                            previousChapterData = pageData,
+                                            readerSettings = readerSettings,
+                                            onNavigateToReader = onNavigateToReader,
+                                            currentPageIndex = 1,
+                                            totalPages = nextChapter.pages.size,
+                                            onClick = onClick
+                                        )
+                                    }
                                 }
-                            }
-                            is VirtualPage.CurrentChapter -> {
-                                val pageIndex = virtualPage.pageIndex
-                                if (pageIndex in 0 until pageData.pages.size) {
+                                is VirtualPage.BookDetailPage -> {
+                                    // 显示书籍详情页
                                     PageContentDisplay(
-                                        page = pageData.pages[pageIndex],
+                                        page = "",
                                         chapterName = pageData.chapterName,
-                                        isFirstPage = pageIndex == 0,
-                                        isLastPage = pageIndex == pageData.pages.size - 1,
-                                        nextChapterData = if (pageIndex == pageData.pages.size - 1) pageData.nextChapterData else null,
-                                        previousChapterData = if (pageIndex == 0) pageData.previousChapterData else null,
+                                        isFirstPage = false,
+                                        isLastPage = false,
+                                        isBookDetailPage = true,
+                                        bookInfo = pageData.bookInfo,
+                                        nextChapterData = pageData.nextChapterData,
+                                        previousChapterData = pageData.previousChapterData,
                                         readerSettings = readerSettings,
+                                        onNavigateToReader = onNavigateToReader,
+                                        onSwipeBack = onSwipeBack,
+                                        onPageChange = { direction -> 
+                                            onPageChange(direction)
+                                        },
+                                        showNavigationInfo = false, // 书籍详情页不显示导航信息
+                                        currentPageIndex = 0,
+                                        totalPages = 1,
                                         onClick = onClick
                                     )
+                                }
+                                is VirtualPage.CurrentChapter -> {
+                                    val pageIndex = virtualPage.pageIndex
+                                    if (pageIndex in 0 until pageData.pages.size) {
+                                        PageContentDisplay(
+                                            page = pageData.pages[pageIndex],
+                                            chapterName = pageData.chapterName,
+                                            isFirstPage = pageIndex == 0,
+                                            isLastPage = pageIndex == pageData.pages.size - 1,
+                                            nextChapterData = if (pageIndex == pageData.pages.size - 1) pageData.nextChapterData else null,
+                                            previousChapterData = if (pageIndex == 0) pageData.previousChapterData else null,
+                                            readerSettings = readerSettings,
+                                            onNavigateToReader = onNavigateToReader,
+                                            currentPageIndex = pageIndex + 1,
+                                            totalPages = pageData.pages.size,
+                                            onClick = onClick
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -221,10 +299,11 @@ fun PageCurlFlipContainer(
 }
 
 /**
- * 虚拟页面类型，用于统一处理章节边界
+ * 虚拟页面类型，用于统一处理章节边界和书籍详情页
  */
 private sealed class VirtualPage {
     data class PreviousChapter(val chapterData: PageData) : VirtualPage()
     data class CurrentChapter(val pageIndex: Int) : VirtualPage()
     data class NextChapter(val chapterData: PageData) : VirtualPage()
+    data object BookDetailPage : VirtualPage() // 新增：书籍详情页
 }
