@@ -36,5 +36,6 @@ const darkColors: NovelColors = {
 };
 
 export const useNovelColors = (): NovelColors => {
-  return lightColors;
+  const scheme = useColorScheme();
+  return scheme === 'dark' ? darkColors : lightColors;
 };
