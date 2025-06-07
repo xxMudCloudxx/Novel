@@ -143,8 +143,6 @@ fun NoAnimationContainer(
 
                 // 底部页面信息
                 ReaderPageInfo(
-                    chapterNum = currentPageIndex + 1, // 显示从1开始的页码
-                    totalPages = pageData.pages.size,
                     modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp)
                 )
             }

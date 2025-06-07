@@ -14,6 +14,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.Density
 import com.novel.page.read.components.PageFlipEffect
+import com.novel.page.read.repository.BookCacheData
+import com.novel.page.read.repository.BookCacheManager
+import com.novel.page.read.repository.PageCountCacheData
+import com.novel.page.read.repository.ProgressiveCalculationState
+import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
 
 /**
@@ -96,16 +101,36 @@ data class ReaderUiState(
     val currentChapter: Chapter? = null,
     val currentChapterIndex: Int = 0,
     val bookContent: String = "",
-    val readingProgress: Float = 0f,
     val readerSettings: ReaderSettings = ReaderSettings(),
+    var readingProgress: Float = 0f,
     // 新增分页相关状态
     val currentPageData: PageData? = null,
     val currentPageIndex: Int = 0,
     val containerSize: IntSize = IntSize.Zero,
-    val density: Density? = null
+    val density: Density? = null,
+
+    // New state for global pagination
+    val pageCountCache: PageCountCacheData? = null,
+    val paginationState: ProgressiveCalculationState = ProgressiveCalculationState()
 ) {
     val isSuccess: Boolean get() = !isLoading && !hasError && currentChapter != null
     val isEmpty: Boolean get() = !isLoading && !hasError && chapterList.isEmpty()
+
+    val computedReadingProgress: Float get() {
+        val cache = pageCountCache ?: return 0f
+        if (cache.totalPages <= 0) return 0f
+
+        val chapterRange = cache.chapterPageRanges.find { it.chapterId == currentChapter?.id }
+
+        val globalCurrentPage = if (chapterRange != null) {
+            chapterRange.startPage + currentPageIndex
+        } else {
+            0
+        }
+
+        readingProgress = (globalCurrentPage + 1).toFloat() / cache.totalPages.toFloat()
+        return (globalCurrentPage + 1).toFloat() / cache.totalPages.toFloat()
+    }
 }
 
 /**
@@ -113,17 +138,17 @@ data class ReaderUiState(
  */
 sealed class ReaderIntent {
     data class InitReader(val bookId: String, val chapterId: String?) : ReaderIntent()
-    object LoadChapterList : ReaderIntent()
+    data object LoadChapterList : ReaderIntent()
     data class LoadChapterContent(val chapterId: String) : ReaderIntent()
-    object PreviousChapter : ReaderIntent()
-    object NextChapter : ReaderIntent()
+    data object PreviousChapter : ReaderIntent()
+    data object NextChapter : ReaderIntent()
     data class SwitchToChapter(val chapterId: String) : ReaderIntent()
     data class SeekToProgress(val progress: Float) : ReaderIntent()
     data class UpdateSettings(val settings: ReaderSettings) : ReaderIntent()
     data class PageFlip(val direction: FlipDirection) : ReaderIntent()
     data class ChapterFlip(val direction: FlipDirection) : ReaderIntent()
     data class UpdateContainerSize(val size: IntSize, val density: Density) : ReaderIntent()
-    object Retry : ReaderIntent()
+    data object Retry : ReaderIntent()
 }
 
 /**
@@ -132,7 +157,8 @@ sealed class ReaderIntent {
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val bookService: BookService,
-    private val userDefaults: com.novel.utils.Store.UserDefaults.NovelUserDefaults
+    private val userDefaults: com.novel.utils.Store.UserDefaults.NovelUserDefaults,
+    private val bookCacheManager: BookCacheManager
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(ReaderUiState())
@@ -192,7 +218,7 @@ class ReaderViewModel @Inject constructor(
     /**
      * 处理用户意图
      */
-    fun handleIntent(intent: ReaderIntent) {
+    private fun handleIntent(intent: ReaderIntent) {
         when (intent) {
             is ReaderIntent.InitReader -> initReaderInternal(intent.bookId, intent.chapterId)
             is ReaderIntent.LoadChapterList -> loadChapterListMethod()
@@ -272,6 +298,9 @@ class ReaderViewModel @Inject constructor(
                     }
                     
                     loadChapterContentInternal(targetChapterId)
+
+                    // 在后台获取全本内容并开始计算分页
+                    fetchAllBookContentInBackground(bookId)
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -343,11 +372,15 @@ class ReaderViewModel @Inject constructor(
     /**
      * 加载章节内容内部方法 - 修复页面索引设置，支持书籍详情页
      */
-    private suspend fun loadChapterContentInternal(chapterId: String, flipDirection: FlipDirection? = null) {
+    private suspend fun loadChapterContentInternal(
+        chapterId: String,
+        flipDirection: FlipDirection? = null,
+        initialPageIndex: Int? = null
+    ) {
         // 先检查缓存
         val cachedChapter = chapterCache[chapterId]
         if (cachedChapter != null) {
-            updateCurrentChapter(cachedChapter, flipDirection)
+            updateCurrentChapter(cachedChapter, flipDirection, initialPageIndex)
             preloadAdjacentChapters(chapterId)
             return
         }
@@ -378,7 +411,7 @@ class ReaderViewModel @Inject constructor(
                 addToCache(chapterId, chapterCache)
 
                 // 更新状态
-                updateCurrentChapter(chapterCache, flipDirection)
+                updateCurrentChapter(chapterCache, flipDirection, initialPageIndex)
 
                 // 预加载前后章节
                 preloadAdjacentChapters(chapterId)
@@ -422,21 +455,29 @@ class ReaderViewModel @Inject constructor(
     /**
      * 更新当前章节信息 - 修复页面索引设置逻辑，支持书籍详情页
      */
-    private fun updateCurrentChapter(chapterCache: ChapterCache, flipDirection: FlipDirection? = null) {
+    private fun updateCurrentChapter(
+        chapterCache: ChapterCache,
+        flipDirection: FlipDirection? = null,
+        initialPageIndexOverride: Int? = null
+    ) {
         val currentIndex =
             _uiState.value.chapterList.indexOfFirst { it.id == chapterCache.chapter.id }
 
         // 根据翻页方向正确设置初始页面索引
-        val initialPageIndex = when (flipDirection) {
-            FlipDirection.PREVIOUS -> -1 // 标记为需要设置到最后一页，在分页完成后设置
-            FlipDirection.NEXT -> 0     // 下一章从第一页开始
-            else -> {
-                // 如果是第一章且当前页面索引为-1，保持在书籍详情页
-                val isFirstChapter = currentIndex == 0
-                if (isFirstChapter && _uiState.value.currentPageIndex == -1) {
-                    -1 // 保持在书籍详情页
-                } else {
-                    _uiState.value.currentPageIndex.coerceAtLeast(0) // 保持当前页面或默认第一页
+        val initialPageIndex = if (initialPageIndexOverride != null) {
+            initialPageIndexOverride
+        } else {
+            when (flipDirection) {
+                FlipDirection.PREVIOUS -> -1 // 标记为需要设置到最后一页，在分页完成后设置
+                FlipDirection.NEXT -> 0     // 下一章从第一页开始
+                else -> {
+                    // 如果是第一章且当前页面索引为-1，保持在书籍详情页
+                    val isFirstChapter = currentIndex == 0
+                    if (isFirstChapter && _uiState.value.currentPageIndex == -1) {
+                        -1 // 保持在书籍详情页
+                    } else {
+                        _uiState.value.currentPageIndex.coerceAtLeast(0) // 保持当前页面或默认第一页
+                    }
                 }
             }
         }
@@ -447,7 +488,6 @@ class ReaderViewModel @Inject constructor(
             currentChapter = chapterCache.chapter,
             currentChapterIndex = if (currentIndex >= 0) currentIndex else 0,
             bookContent = chapterCache.content,
-            readingProgress = if (initialPageIndex == -1) 0f else 0f, // 书籍详情页或重新开始的进度都是0
             currentPageIndex = initialPageIndex
         )
 
@@ -467,6 +507,22 @@ class ReaderViewModel @Inject constructor(
         val content = state.bookContent
         val chapterList = state.chapterList
         val currentIndex = state.currentChapterIndex
+
+        // 立即设置基本的PageData，避免长时间为null
+        if (chapter != null && content.isNotEmpty()) {
+            val basicPageData = PageData(
+                chapterId = chapter.id,
+                chapterName = chapter.chapterName,
+                content = content,
+                pages = listOf(content), // 暂时将整个内容作为一页
+                hasBookDetailPage = currentIndex == 0
+            )
+            
+            _uiState.value = state.copy(
+                currentPageData = basicPageData,
+                currentPageIndex = 0
+            )
+        }
 
         if (chapter != null && content.isNotEmpty() && state.containerSize != IntSize.Zero && state.density != null) {
             // 分页
@@ -796,13 +852,20 @@ class ReaderViewModel @Inject constructor(
      * 更新容器尺寸
      */
     private fun updateContainerSizeInternal(size: IntSize, density: Density) {
+        val oldSize = _uiState.value.containerSize
         _uiState.value = _uiState.value.copy(
             containerSize = size,
             density = density
         )
 
-        // 重新分页
-        if (_uiState.value.currentChapter != null) {
+        if (size != oldSize && _uiState.value.bookId.isNotEmpty()) {
+            viewModelScope.launch {
+                val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
+                if (bookCache != null) {
+                    startProgressivePagination(bookCache)
+                }
+            }
+        } else if (_uiState.value.currentChapter != null) {
             splitContent()
         }
     }
@@ -832,17 +895,25 @@ class ReaderViewModel @Inject constructor(
      * 跳转到指定进度
      */
     private fun seekToProgressInternal(progress: Float) {
-        val pageData = _uiState.value.currentPageData
-        if (pageData != null && pageData.pages.isNotEmpty()) {
-            val targetPageIndex = (progress * pageData.pages.size).toInt()
-                .coerceIn(0, pageData.pages.size - 1)
+        val pageCountCache = _uiState.value.pageCountCache ?: return
+        if (pageCountCache.totalPages <= 0) return
 
-            _uiState.value = _uiState.value.copy(
-                readingProgress = progress,
-                currentPageIndex = targetPageIndex
-            )
-        } else {
-            _uiState.value = _uiState.value.copy(readingProgress = progress)
+        val targetGlobalPage = (progress * pageCountCache.totalPages).toInt()
+            .coerceIn(0, pageCountCache.totalPages - 1)
+
+        val chapterAndPage = bookCacheManager.findChapterByAbsolutePage(pageCountCache, targetGlobalPage)
+        if (chapterAndPage != null) {
+            val (targetChapterId, relativePageInChapter) = chapterAndPage
+
+            if (targetChapterId == _uiState.value.currentChapter?.id) {
+                _uiState.value = _uiState.value.copy(
+                    currentPageIndex = relativePageInChapter
+                )
+            } else {
+                viewModelScope.launch {
+                    loadChapterContentInternal(targetChapterId, initialPageIndex = relativePageInChapter)
+                }
+            }
         }
     }
 
@@ -858,8 +929,15 @@ class ReaderViewModel @Inject constructor(
             savePageFlipEffect(settings.pageFlipEffect)
         }
 
-        // 设置变更后重新分页
-        if (_uiState.value.currentChapter != null) {
+        if (oldSettings.fontSize != settings.fontSize) {
+            viewModelScope.launch {
+                val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
+                if (bookCache != null) {
+                    startProgressivePagination(bookCache)
+                }
+            }
+        } else if (_uiState.value.currentChapter != null) {
+            // 设置变更后重新分页
             splitContent()
         }
     }
@@ -907,6 +985,17 @@ class ReaderViewModel @Inject constructor(
                 )
 
                 addToCache(chapterId, chapterCache)
+
+                // FIX: Check if preloaded chapter is adjacent and re-split content to update pageData
+                val state = _uiState.value
+                val currentChapterId = state.currentChapter?.id
+                val chapterList = state.chapterList
+                val currentIndex = chapterList.indexOfFirst { it.id == currentChapterId }
+                val preloadedIndex = chapterList.indexOfFirst { it.id == chapterId }
+
+                if (currentIndex != -1 && (preloadedIndex == currentIndex + 1 || preloadedIndex == currentIndex - 1)) {
+                    splitContent()
+                }
             }
         } catch (e: Exception) {
             // 预加载失败，忽略
@@ -924,5 +1013,105 @@ class ReaderViewModel @Inject constructor(
         }
 
         this.chapterCache[chapterId] = chapterCache
+    }
+
+    private fun fetchAllBookContentInBackground(bookId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val bookCache = bookCacheManager.getBookContentCache(bookId)
+            val chapterList = _uiState.value.chapterList
+            val allChapterIds = chapterList.map { it.id }.toSet()
+
+            // 检查缓存是否完整
+            if (bookCache != null && bookCache.chapterIds.toSet() == allChapterIds) {
+                startProgressivePagination(bookCache)
+                return@launch
+            }
+
+            val cachedChapters = bookCache?.chapters?.toMutableList() ?: mutableListOf()
+            val cachedChapterIds = cachedChapters.map { it.chapterId }.toSet()
+            val chaptersToFetch = chapterList.filterNot { cachedChapterIds.contains(it.id) }
+
+            chaptersToFetch.forEach { chapter ->
+                try {
+                    val response = bookService.getBookContentBlocking(chapter.id.toLong())
+                    if (response.code == "00000" && response.data != null) {
+                        cachedChapters.add(
+                            BookCacheData.ChapterContentData(
+                                chapterId = response.data.chapterInfo.id.toString(),
+                                chapterName = response.data.chapterInfo.chapterName,
+                                content = response.data.bookContent,
+                                chapterNum = response.data.chapterInfo.chapterNum
+                            )
+                        )
+                    }
+                } catch (e: Exception) {
+                    // Log error but continue
+                }
+            }
+
+            cachedChapters.sortBy { it.chapterNum }
+
+            val bookInfoData = loadBookInfo(bookId)
+            val bookInfoForCache = bookInfoData?.let {
+                BookCacheData.BookInfo(
+                    bookName = it.bookName,
+                    authorName = it.authorName,
+                    bookDesc = it.bookDesc,
+                    picUrl = it.picUrl,
+                    visitCount = it.visitCount,
+                    wordCount = it.wordCount,
+                    categoryName = it.categoryName
+                )
+            }
+
+            val newBookCacheData = BookCacheData(
+                bookId = bookId,
+                chapters = cachedChapters,
+                chapterIds = cachedChapters.map { it.chapterId },
+                cacheTime = System.currentTimeMillis(),
+                bookInfo = bookInfoForCache
+            )
+
+            bookCacheManager.saveBookContentCache(newBookCacheData)
+            startProgressivePagination(newBookCacheData)
+        }
+    }
+
+    private fun startProgressivePagination(bookCacheData: BookCacheData) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val state = _uiState.value
+            val containerSize = state.containerSize
+            if (containerSize == IntSize.Zero || state.density == null) return@launch
+
+            val existingPageCountCache = bookCacheManager.getPageCountCache(
+                bookCacheData.bookId,
+                state.readerSettings.fontSize,
+                containerSize
+            )
+            if (existingPageCountCache != null) {
+                _uiState.value = _uiState.value.copy(pageCountCache = existingPageCountCache)
+                return@launch
+            }
+
+            val progressJob = launch {
+                bookCacheManager.progressiveCalculationState.collect {
+                    _uiState.value = _uiState.value.copy(paginationState = it)
+                }
+            }
+
+            val newPageCountCache = bookCacheManager.calculateAllPagesProgressively(
+                bookCacheData = bookCacheData,
+                readerSettings = state.readerSettings,
+                containerSize = containerSize,
+                density = state.density,
+                onProgressUpdate = { _, _ -> }
+            )
+
+            progressJob.cancel()
+            _uiState.value = _uiState.value.copy(
+                pageCountCache = newPageCountCache,
+                paginationState = ProgressiveCalculationState(isCalculating = false)
+            )
+        }
     }
 } 

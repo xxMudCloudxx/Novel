@@ -77,7 +77,6 @@ fun PageFlipContainer(
                     readerSettings = readerSettings,
                     onPageChange = onPageChange,
                     onChapterChange = onChapterChange,
-                    onNavigateToReader = onNavigateToReader,
                     onSwipeBack = onSwipeBack,
                     onClick = onClick
                 )

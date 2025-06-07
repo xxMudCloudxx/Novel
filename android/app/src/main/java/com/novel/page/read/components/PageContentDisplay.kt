@@ -114,8 +114,6 @@ fun PageContentDisplay(
         // 底部页面信息 - 只在非书籍详情页且需要显示时显示
         if (!isBookDetailPage && showNavigationInfo) {
             ReaderPageInfo(
-                chapterNum = currentPageIndex, // currentPageIndex已经是从1开始的
-                totalPages = totalPages,
                 modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp)
             )
         }

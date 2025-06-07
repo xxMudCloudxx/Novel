@@ -281,8 +281,6 @@ fun VerticalScrollContainer(
 
         // 底部页面信息（对于滚动模式，显示章节信息）
         ReaderPageInfo(
-            chapterNum = 1, // 滚动模式显示为第1页
-            totalPages = 1, // 滚动模式总页数为1
             modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp)
         )
     }

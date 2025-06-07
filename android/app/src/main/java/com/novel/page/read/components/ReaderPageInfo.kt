@@ -6,6 +6,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.novel.page.component.NovelText
+import com.novel.page.read.LocalReaderInfo
 import com.novel.utils.ssp
 
 /**
@@ -33,18 +34,37 @@ fun ReaderNavigationInfo(
 
 /**
  * 阅读器页面信息组件
- * 显示在左下角的页码信息
+ * 显示在左下角的页码信息 - 支持全局页码和计算中状态
  */
 @Composable
 fun ReaderPageInfo(
-    chapterNum: Int,     // 当前页码（已经是从1开始的）
-    totalPages: Int,
     modifier: Modifier = Modifier
 ) {
-    val pageInfo = if (totalPages > 1) {
-        "$chapterNum / $totalPages"
+    val readerInfo = LocalReaderInfo.current
+    val isCalculating = readerInfo.paginationState.isCalculating
+
+    val totalPages = if (readerInfo.pageCountCache != null) {
+        readerInfo.pageCountCache.totalPages
     } else {
-        "1 / 1"
+        readerInfo.paginationState.estimatedTotalPages
+    }
+
+    val currentPage = if (readerInfo.pageCountCache != null && readerInfo.currentChapter != null) {
+        val chapterRange = readerInfo.pageCountCache.chapterPageRanges.find { it.chapterId == readerInfo.currentChapter.id }
+        if (chapterRange != null) {
+            (chapterRange.startPage + readerInfo.perChapterPageIndex + 1).coerceAtLeast(1)
+        } else {
+            1
+        }
+    } else {
+        1
+    }
+
+    val pageInfo = when {
+        isCalculating && totalPages > 0 -> "$currentPage / $totalPages..."
+        isCalculating -> "页数计算中..."
+        totalPages > 0 -> "$currentPage / $totalPages"
+        else -> "" // Don't show anything if not ready
     }
 
     // 最外层用 Row 或 Column，都可以。这里示例用 Row

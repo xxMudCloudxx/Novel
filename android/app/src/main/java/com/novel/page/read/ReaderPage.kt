@@ -38,6 +38,8 @@ import com.novel.page.component.NovelText
 import com.novel.page.component.SolidCircleSlider
 import com.novel.page.component.ViewState
 import com.novel.page.read.components.*
+import com.novel.page.read.repository.PageCountCacheData
+import com.novel.page.read.repository.ProgressiveCalculationState
 import com.novel.page.read.viewmodel.ReaderViewModel
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.ui.theme.NovelColors
@@ -47,6 +49,20 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 import com.novel.utils.NavViewModel
 import kotlin.math.roundToInt
+
+/**
+ * 状态信息，通过 CompositionLocal 提供给子组件
+ */
+data class ReaderInfo(
+    val paginationState: ProgressiveCalculationState,
+    val pageCountCache: PageCountCacheData?,
+    val currentChapter: Chapter?,
+    val perChapterPageIndex: Int
+)
+
+val LocalReaderInfo = staticCompositionLocalOf<ReaderInfo> {
+    error("No ReaderInfo provided")
+}
 
 /**
  * 小说阅读器页面
@@ -109,6 +125,14 @@ fun ReaderPage(
         onDispose { NavViewModel.setFlipBookController(null) }
     }
 
+    // 将需要传递给子组件的状态打包
+    val readerInfo = ReaderInfo(
+        paginationState = uiState.paginationState,
+        pageCountCache = uiState.pageCountCache,
+        currentChapter = uiState.currentChapter,
+        perChapterPageIndex = uiState.currentPageIndex
+    )
+
     // 优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
     val loadingStateComponent = remember(
         uiState.hasError,
@@ -150,77 +174,107 @@ fun ReaderPage(
         // 把当前的 FlipBookAnimationController 暂存到全局
         NavViewModel.setFlipBookController(flipBookController)
     }
-    LoadingStateComponent(
-        component = loadingStateComponent,
-        modifier = Modifier.fillMaxSize(),
-        backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f),
-        flipBookController = flipBookController,
-        onLeftSwipeToReader = handleLeftSwipeToReader
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(uiState.readerSettings.backgroundColor)
-                .onSizeChanged { size ->
-                    if (size != IntSize.Zero) {
-                        viewModel.updateContainerSize(size, density)
-                    }
-                }
+    CompositionLocalProvider(LocalReaderInfo provides readerInfo) {
+        LoadingStateComponent(
+            component = loadingStateComponent,
+            modifier = Modifier.fillMaxSize(),
+            backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f),
+            flipBookController = flipBookController,
+            onLeftSwipeToReader = handleLeftSwipeToReader
         ) {
-            when {
-                uiState.isLoading -> {
-                    LoadingIndicator()
-                }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(uiState.readerSettings.backgroundColor)
+                    .onSizeChanged { size ->
+                        if (size != IntSize.Zero) {
+                            viewModel.updateContainerSize(size, density)
+                        }
+                    }
+            ) {
+                when {
+                    uiState.isLoading -> {
+                        LoadingIndicator()
+                    }
 
-                uiState.hasError -> {
-                    ErrorContent(
-                        error = uiState.error,
-                        onRetry = { viewModel.retry() }
-                    )
-                }
+                    uiState.hasError -> {
+                        ErrorContent(
+                            error = uiState.error,
+                            onRetry = { viewModel.retry() }
+                        )
+                    }
 
-                uiState.isSuccess -> {
-                    // 主阅读内容 - 使用新的翻页容器
-                    if (uiState.currentPageData != null) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            PageFlipContainer(
-                                pageData = uiState.currentPageData!!,
-                                currentPageIndex = uiState.currentPageIndex,
-                                flipEffect = uiState.readerSettings.pageFlipEffect,
-                                readerSettings = uiState.readerSettings,
-                                onPageChange = { direction ->
-                                    // 翻页时关闭所有设置栏
-                                    if (showSettings || showChapterList) {
-                                        showSettings = false
-                                        showChapterList = false
-                                    } else {
-                                        viewModel.onPageChange(direction)
-                                    }
-                                },
-                                onChapterChange = { direction ->
-                                    // 章节切换时关闭所有设置栏
-                                    if (showSettings || showChapterList) {
-                                        showSettings = false
-                                        showChapterList = false
-                                    } else {
-                                        viewModel.onChapterChange(direction)
-                                    }
-                                },
-                                onNavigateToReader = { bookId, chapterId ->
-                                    // 从书籍详情页导航到第一页内容
-                                    viewModel.navigateToContent()
-                                },
-                                onSwipeBack = {
-                                    // iOS侧滑返回
-                                    performBack()
-                                },
+                    uiState.isSuccess -> {
+                        // 主阅读内容 - 使用新的翻页容器
+                        if (uiState.currentPageData != null) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                PageFlipContainer(
+                                    pageData = uiState.currentPageData!!,
+                                    currentPageIndex = uiState.currentPageIndex,
+                                    flipEffect = uiState.readerSettings.pageFlipEffect,
+                                    readerSettings = uiState.readerSettings,
+                                    onPageChange = { direction ->
+                                        // 翻页时关闭所有设置栏
+                                        if (showSettings || showChapterList) {
+                                            showSettings = false
+                                            showChapterList = false
+                                        } else {
+                                            viewModel.onPageChange(direction)
+                                        }
+                                    },
+                                    onChapterChange = { direction ->
+                                        // 章节切换时关闭所有设置栏
+                                        if (showSettings || showChapterList) {
+                                            showSettings = false
+                                            showChapterList = false
+                                        } else {
+                                            viewModel.onChapterChange(direction)
+                                        }
+                                    },
+                                    onNavigateToReader = { bookId, chapterId ->
+                                        // 从书籍详情页导航到第一页内容
+                                        viewModel.navigateToContent()
+                                    },
+                                    onSwipeBack = {
+                                        // iOS侧滑返回
+                                        performBack()
+                                    },
+                                    onClick = {
+                                        // 点击时关闭所有设置栏
+                                        if (showSettings || showChapterList) {
+                                            showSettings = false
+                                            showChapterList = false
+                                        } else {
+                                            showControls = !showControls
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .onSizeChanged { size ->
+                                            // 确保容器尺寸信息及时更新到ViewModel
+                                            if (size.width > 0 && size.height > 0) {
+                                                viewModel.updateContainerSize(size, density)
+                                            }
+                                        }
+                                )
+                            }
+                        } else {
+                            // 兼容旧的显示方式，当分页数据还未准备好时
+                            // 同时更新容器尺寸
+                            ReaderContent(
+                                uiState = uiState,
                                 onClick = {
-                                    // 点击时关闭所有设置栏
-                                    if (showSettings || showChapterList) {
+                                    if (showSettings) {
                                         showSettings = false
-                                        showChapterList = false
                                     } else {
                                         showControls = !showControls
+                                    }
+                                },
+                                onPageChange = { direction ->
+                                    if (direction > 0) {
+                                        viewModel.nextPage()
+                                    } else {
+                                        viewModel.previousPage()
                                     }
                                 },
                                 modifier = Modifier
@@ -233,105 +287,77 @@ fun ReaderPage(
                                     }
                             )
                         }
-                    } else {
-                        // 兼容旧的显示方式，当分页数据还未准备好时
-                        // 同时更新容器尺寸
-                        ReaderContent(
-                            uiState = uiState,
-                            onClick = {
-                                if (showSettings) {
+
+                        AnimatedVisibility(
+                            visible = showChapterList && !showSettings && showControls,
+                            enter = slideInVertically(initialOffsetY = { it }),
+                            exit = slideOutVertically(targetOffsetY = { it })
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = 60.wdp)
+                            ) {
+                                Spacer(modifier = Modifier.weight(1f))  // 让面板从剩余区域向上滑
+                                ChapterListPanel(
+                                    chapters = uiState.chapterList,
+                                    currentChapterId = uiState.currentChapter?.id ?: "",
+                                    backgroundColor = uiState.readerSettings.backgroundColor,
+                                    onChapterSelected = { chapter ->
+                                        viewModel.switchToChapter(chapter.id)
+                                        showChapterList = false
+                                    },
+                                    onDismiss = { showChapterList = false },
+                                    modifier = Modifier.clickable(enabled = false) { } // 阻止穿透
+                                )
+                            }
+                        }
+
+                        // —— 再绘制"设置"面板（如果 showSettings == true）——
+                        AnimatedVisibility(
+                            visible = showSettings && !showChapterList && showControls,
+                            enter = slideInVertically(initialOffsetY = { it }),
+                            exit = slideOutVertically(targetOffsetY = { it })
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = 60.wdp)
+                            ) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                ReaderSettingsPanel(
+                                    settings = uiState.readerSettings,
+                                    onSettingsChange = { settings ->
+                                        viewModel.updateSettings(settings)
+                                    },
+                                    modifier = Modifier.clickable(enabled = false) { }
+                                )
+                            }
+                        }
+
+                        // —— 最后再绘制"控制面板" ——
+                        AnimatedVisibility(
+                            visible = showControls,  // 只要 showControls，就展示 ReaderControls
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            ReaderControls(
+                                uiState = uiState,
+                                hideProgress = showSettings || showChapterList,  // 有面板时隐藏进度条
+                                onBack = performBack,
+                                onPreviousChapter = { viewModel.previousChapter() },
+                                onNextChapter = { viewModel.nextChapter() },
+                                onSeekToProgress = { progress -> viewModel.seekToProgress(progress) },
+                                onShowChapterList = {
+                                    showChapterList = !showChapterList
                                     showSettings = false
-                                } else {
-                                    showControls = !showControls
-                                }
-                            },
-                            onPageChange = { direction ->
-                                if (direction > 0) {
-                                    viewModel.nextPage()
-                                } else {
-                                    viewModel.previousPage()
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .onSizeChanged { size ->
-                                    // 确保容器尺寸信息及时更新到ViewModel
-                                    if (size.width > 0 && size.height > 0) {
-                                        viewModel.updateContainerSize(size, density)
-                                    }
-                                }
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        visible = showChapterList && !showSettings && showControls,
-                        enter = slideInVertically(initialOffsetY = { it }),
-                        exit = slideOutVertically(targetOffsetY = { it })
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = 60.wdp)
-                        ) {
-                            Spacer(modifier = Modifier.weight(1f))  // 让面板从剩余区域向上滑
-                            ChapterListPanel(
-                                chapters = uiState.chapterList,
-                                currentChapterId = uiState.currentChapter?.id ?: "",
-                                backgroundColor = uiState.readerSettings.backgroundColor,
-                                onChapterSelected = { chapter ->
-                                    viewModel.switchToChapter(chapter.id)
+                                },
+                                onShowSettings = {
+                                    showSettings = !showSettings
                                     showChapterList = false
-                                },
-                                onDismiss = { showChapterList = false },
-                                modifier = Modifier.clickable(enabled = false) { } // 阻止穿透
+                                }
                             )
                         }
-                    }
-
-                    // —— 再绘制“设置”面板（如果 showSettings == true）——
-                    AnimatedVisibility(
-                        visible = showSettings && !showChapterList && showControls,
-                        enter = slideInVertically(initialOffsetY = { it }),
-                        exit = slideOutVertically(targetOffsetY = { it })
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = 60.wdp)
-                        ) {
-                            Spacer(modifier = Modifier.weight(1f))
-                            ReaderSettingsPanel(
-                                settings = uiState.readerSettings,
-                                onSettingsChange = { settings ->
-                                    viewModel.updateSettings(settings)
-                                },
-                                modifier = Modifier.clickable(enabled = false) { }
-                            )
-                        }
-                    }
-
-                    // —— 最后再绘制“控制面板” ——
-                    AnimatedVisibility(
-                        visible = showControls,  // 只要 showControls，就展示 ReaderControls
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        ReaderControls(
-                            uiState = uiState,
-                            hideProgress = showSettings || showChapterList,  // 有面板时隐藏进度条
-                            onBack = performBack,
-                            onPreviousChapter = { viewModel.previousChapter() },
-                            onNextChapter = { viewModel.nextChapter() },
-                            onSeekToProgress = { progress -> viewModel.seekToProgress(progress) },
-                            onShowChapterList = {
-                                showChapterList = !showChapterList
-                                showSettings = false
-                            },
-                            onShowSettings = {
-                                showSettings = !showSettings
-                                showChapterList = false
-                            },
-                        )
                     }
                 }
             }
@@ -418,8 +444,7 @@ private fun ReaderControls(
             onNextChapter = onNextChapter,
             onSeekToProgress = onSeekToProgress,
             onShowChapterList = onShowChapterList,
-            onShowSettings = onShowSettings,
-            totalPages = uiState.chapterList.size
+            onShowSettings = onShowSettings
         )
     }
 }
@@ -460,9 +485,13 @@ private fun BottomControls(
     onNextChapter: () -> Unit,
     onSeekToProgress: (Float) -> Unit,
     onShowChapterList: () -> Unit,
-    onShowSettings: () -> Unit,
-    totalPages: Int
+    onShowSettings: () -> Unit
 ) {
+    val readerInfo = LocalReaderInfo.current
+    val totalPages = readerInfo.pageCountCache?.totalPages
+        ?: readerInfo.paginationState.estimatedTotalPages.takeIf { it > 0 }
+        ?: 1
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -487,10 +516,10 @@ private fun BottomControls(
 
                 // 进度条 - 改为SolidCircleSlider
                 SolidCircleSlider(
-                    progress = uiState.readingProgress,
+                    progress = uiState.computedReadingProgress,
                     onValueChange = { rawValue ->
                         // 仿照亮度控制，添加步进量化
-                        val stepSize = 1f / totalPages
+                        val stepSize = 20f / (totalPages.takeIf { it > 0 } ?: 1)
                         val stepped = (rawValue / stepSize).roundToInt() * stepSize
                         val clamped = stepped.coerceIn(0f, 1f)
                         onSeekToProgress(clamped)
