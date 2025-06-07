@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
+import com.novel.utils.SwipeBackContainer
 
 /**
  * 平移翻页容器 - ViewPager风格，支持章节切换
@@ -60,6 +61,39 @@ fun SlideFlipContainer(
     // 检查是否在书籍详情页
     val isOnBookDetailPage = remember(currentPageIndex, pageData.hasBookDetailPage) {
         currentPageIndex == -1 && pageData.hasBookDetailPage
+    }
+
+    // 当在书籍详情页时，使用SwipeBackContainer包裹以支持侧滑返回
+    if (isOnBookDetailPage) {
+        SwipeBackContainer(
+            modifier = Modifier.fillMaxSize(),
+            onSwipeComplete = onSwipeBack,
+            onLeftSwipeToReader = {
+                onPageChange(FlipDirection.NEXT)
+            }
+        ) {
+            // 在SwipeBackContainer中只渲染详情页
+            PageContentDisplay(
+                page = "",
+                chapterName = "",
+                isFirstPage = false,
+                isLastPage = false,
+                isBookDetailPage = true,
+                bookInfo = pageData.bookInfo,
+                nextChapterData = pageData.nextChapterData,
+                previousChapterData = pageData.previousChapterData,
+                readerSettings = readerSettings,
+                onSwipeBack = onSwipeBack,
+                onPageChange = { direction ->
+                    onPageChange(direction)
+                },
+                showNavigationInfo = false,
+                currentPageIndex = 0,
+                totalPages = 1,
+                onClick = onClick
+            )
+        }
+        return
     }
 
     // 处理页面变化逻辑 - 支持书籍详情页和iOS侧滑

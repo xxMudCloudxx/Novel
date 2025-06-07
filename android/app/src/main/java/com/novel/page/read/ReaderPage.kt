@@ -40,6 +40,7 @@ import com.novel.page.component.ViewState
 import com.novel.page.read.components.*
 import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.repository.ProgressiveCalculationState
+import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.ReaderViewModel
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.ui.theme.NovelColors
@@ -49,6 +50,7 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 import com.novel.utils.NavViewModel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /**
  * 状态信息，通过 CompositionLocal 提供给子组件
@@ -118,6 +120,15 @@ fun ReaderPage(
 
     LaunchedEffect(bookId, chapterId) {
         viewModel.initReader(bookId, chapterId)
+    }
+
+    LaunchedEffect(uiState.isSuccess, uiState.currentPageIndex) {
+        if (uiState.isSuccess && uiState.currentPageIndex == -1) {
+            // When reader opens on the book detail page, automatically trigger
+            // an animated flip to the first content page.
+            delay(300) // Delay to allow UI to settle before animating
+            viewModel.onPageChange(FlipDirection.NEXT)
+        }
     }
 
     // 清理controller的DisposableEffect
@@ -213,6 +224,8 @@ fun ReaderPage(
                                     currentPageIndex = uiState.currentPageIndex,
                                     flipEffect = uiState.readerSettings.pageFlipEffect,
                                     readerSettings = uiState.readerSettings,
+                                    pageCountCache = uiState.pageCountCache,
+                                    containerSize = uiState.containerSize,
                                     onPageChange = { direction ->
                                         // 翻页时关闭所有设置栏
                                         if (showSettings || showChapterList) {
@@ -238,6 +251,9 @@ fun ReaderPage(
                                     onSwipeBack = {
                                         // iOS侧滑返回
                                         performBack()
+                                    },
+                                    onVerticalScrollPageChange = { pageIndex ->
+                                        viewModel.updateCurrentPageFromScroll(pageIndex)
                                     },
                                     onClick = {
                                         // 点击时关闭所有设置栏

@@ -22,6 +22,7 @@ import com.novel.page.component.pagecurl.page.rememberPageCurlState
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.wdp
+import com.novel.utils.SwipeBackContainer
 
 /**
  * PageCurl仿真翻页容器
@@ -105,6 +106,43 @@ fun PageCurlFlipContainer(
     val pageCurlState = rememberPageCurlState(
         initialCurrent = virtualCurrentIndex
     )
+
+    val currentVirtualPage = virtualPages.getOrNull(pageCurlState.current)
+    val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
+
+    // 当在书籍详情页时，使用SwipeBackContainer包裹以支持侧滑返回
+    if (isOnBookDetailPage) {
+        SwipeBackContainer(
+            modifier = Modifier.fillMaxSize(),
+            onSwipeComplete = onSwipeBack,
+            onLeftSwipeToReader = {
+                onPageChange(FlipDirection.NEXT)
+            }
+        ) {
+            // 在SwipeBackContainer中只渲染详情页
+            PageContentDisplay(
+                page = "",
+                chapterName = pageData.chapterName,
+                isFirstPage = false,
+                isLastPage = false,
+                isBookDetailPage = true,
+                bookInfo = pageData.bookInfo,
+                nextChapterData = pageData.nextChapterData,
+                previousChapterData = pageData.previousChapterData,
+                readerSettings = readerSettings,
+                onNavigateToReader = onNavigateToReader,
+                onSwipeBack = onSwipeBack,
+                onPageChange = { direction ->
+                    onPageChange(direction)
+                },
+                showNavigationInfo = false,
+                currentPageIndex = 0,
+                totalPages = 1,
+                onClick = onClick
+            )
+        }
+        return
+    }
 
     // PageCurl配置 - 优化拖拽和点击区域
     val config = rememberPageCurlConfig(

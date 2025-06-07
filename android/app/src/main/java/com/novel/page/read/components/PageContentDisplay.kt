@@ -70,25 +70,16 @@ fun PageContentDisplay(
 
         // 主要内容区域
         if (isBookDetailPage) {
-            // 书籍详情页使用SwipeBackContainer，支持左滑翻页和右滑返回
-            SwipeBackContainer(
+            // 书籍详情页 - 手势由外部容器（如PageFlipContainer）处理
+            // 外部容器应根据翻页效果决定如何响应手势
+            // 例如，PageCurl会处理自己的卷曲手势，而NoAnimation/Cover会使用自定义手势检测
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxSize(),
-                backgroundColor = readerSettings.backgroundColor,
-                onSwipeComplete = onSwipeBack,
-                onLeftSwipeToReader = {
-                    // 左滑翻到第一页内容
-                    onPageChange?.invoke(FlipDirection.NEXT)
-                }
+                    .fillMaxSize()
+                    .debounceClickable(onClick = onClick)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .debounceClickable(onClick = onClick)
-                ) {
-                    BookDetailPageContent(bookInfo, onNavigateToReader)
-                }
+                BookDetailPageContent(bookInfo, onNavigateToReader)
             }
         } else {
             // 正常页面内容

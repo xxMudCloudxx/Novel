@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.*
+import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 
@@ -18,28 +19,31 @@ fun PageFlipContainer(
     currentPageIndex: Int,
     flipEffect: PageFlipEffect,
     readerSettings: ReaderSettings,
+    pageCountCache: PageCountCacheData?,
+    containerSize: IntSize,
     onPageChange: (direction: FlipDirection) -> Unit,
     onChapterChange: (direction: FlipDirection) -> Unit,
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null, // 新增：iOS侧滑返回回调
+    onVerticalScrollPageChange: (Int) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var containerSize by remember { mutableStateOf(IntSize.Zero) }
-    
     Box(
         modifier = modifier
             .fillMaxSize()
-            .onSizeChanged { containerSize = it }
     ) {
         when (flipEffect) {
             PageFlipEffect.VERTICAL -> {
                 VerticalScrollContainer(
                     pageData = pageData,
                     readerSettings = readerSettings,
+                    pageCountCache = pageCountCache,
+                    containerSize = containerSize,
                     onChapterChange = onChapterChange,
                     onNavigateToReader = onNavigateToReader,
                     onSwipeBack = onSwipeBack,
+                    onVerticalScrollPageChange = onVerticalScrollPageChange,
                     onClick = onClick
                 )
             }

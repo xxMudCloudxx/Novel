@@ -17,17 +17,21 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.novel.page.component.NovelText
 import com.novel.page.component.PaperTexture
+import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.HtmlTextUtil
@@ -41,15 +45,54 @@ import com.novel.utils.wdp
 fun VerticalScrollContainer(
     pageData: PageData,
     readerSettings: ReaderSettings,
+    pageCountCache: PageCountCacheData?,
+    containerSize: IntSize,
     onChapterChange: (FlipDirection) -> Unit,
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null,
+    onVerticalScrollPageChange: (Int) -> Unit,
     onClick: () -> Unit
 ) {
     val listState = rememberLazyListState()
     var isLoadingNext by remember { mutableStateOf(false) }
     var isLoadingPrevious by remember { mutableStateOf(false) }
     
+    val contentHeights = remember { mutableMapOf<String, Int>() }
+
+    // Use derivedStateOf for performance, only recalculating when necessary
+    val currentCalculatedPage by remember(pageCountCache) {
+        derivedStateOf {
+            if (listState.layoutInfo.visibleItemsInfo.isEmpty() || containerSize.height == 0 || pageCountCache == null) {
+                return@derivedStateOf 0
+            }
+
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            val firstVisible = visibleItems.first()
+            val chapterKey = firstVisible.key as? String ?: return@derivedStateOf 0
+
+            val chapterContentHeight = contentHeights[chapterKey] ?: 0
+            if (chapterContentHeight == 0) return@derivedStateOf 0
+
+            val chapterId = chapterKey.substringAfter("current_chapter_content_")
+            val chapterRange = pageCountCache.chapterPageRanges.find { it.chapterId == chapterId }
+
+            val pagesInChapter = chapterRange?.let { it.endPage - it.startPage + 1 } ?: 1
+            val pageHeight = chapterContentHeight.toFloat() / pagesInChapter.toFloat()
+            if (pageHeight <= 0) return@derivedStateOf 0
+
+
+            val scrollOffsetWithinItem = -firstVisible.offset
+            val currentPageInChapter = (scrollOffsetWithinItem / pageHeight).toInt()
+            
+            (chapterRange?.startPage ?: 0) + currentPageInChapter
+        }
+    }
+    
+    // Notify ViewModel of page changes
+    LaunchedEffect(currentCalculatedPage) {
+        onVerticalScrollPageChange(currentCalculatedPage)
+    }
+
     // 检测滚动边界并自动加载章节
     LaunchedEffect(listState.isScrollInProgress) {
         if (!listState.isScrollInProgress) return@LaunchedEffect
@@ -213,7 +256,9 @@ fun VerticalScrollContainer(
                         fontSize = readerSettings.fontSize.ssp,
                         color = readerSettings.textColor,
                         lineHeight = (readerSettings.fontSize * 1.5).ssp,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().onSizeChanged {
+                            contentHeights["current_chapter_content_${pageData.chapterId}"] = it.height
+                        }
                     )
                 }
 

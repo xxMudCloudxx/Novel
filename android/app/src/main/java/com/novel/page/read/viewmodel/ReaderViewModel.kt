@@ -263,6 +263,12 @@ class ReaderViewModel @Inject constructor(
     fun updateContainerSize(size: IntSize, density: Density) =
         handleIntent(ReaderIntent.UpdateContainerSize(size, density))
 
+    fun updateCurrentPageFromScroll(page: Int) {
+        if (page != _uiState.value.currentPageIndex) {
+            _uiState.value = _uiState.value.copy(currentPageIndex = page)
+        }
+    }
+
     /**
      * 从书籍详情页导航到第一页内容
      */
@@ -501,7 +507,7 @@ class ReaderViewModel @Inject constructor(
     /**
      * 分页处理 - 优化章节衔接和相邻章节数据获取，支持书籍详情页
      */
-    private fun splitContent() {
+    private fun splitContent(restoreProgress: Float? = null) {
         val state = _uiState.value
         val chapter = state.currentChapter
         val content = state.bookContent
@@ -595,17 +601,25 @@ class ReaderViewModel @Inject constructor(
                 }
             } else null
 
+            // 确定重新分页后的页面索引
+            val pageIndexAfterSplit = if (restoreProgress != null && finalPages.isNotEmpty()) {
+                (restoreProgress * finalPages.size).toInt().coerceIn(0, finalPages.size - 1)
+            } else {
+                state.currentPageIndex
+            }
+
             // 确保当前页面索引在有效范围内，考虑书籍详情页
-            val totalPages = finalPages.size + (if (hasBookDetailPage) 1 else 0)
+            val totalPagesInChapter = finalPages.size
             val safeCurrentPageIndex = when {
                 state.currentPageIndex == -1 -> {
                     if (hasBookDetailPage) {
                         -1 // 保持在书籍详情页
                     } else {
-                        totalPages - 1 // 切换到上一章时跳转到最后一页
+                        // This case happens when flipping to a previous chapter. We want the last page.
+                        (totalPagesInChapter - 1).coerceAtLeast(0)
                     }
                 }
-                else -> state.currentPageIndex.coerceIn(0, finalPages.size - 1) // 限制在实际内容页面范围内
+                else -> pageIndexAfterSplit.coerceIn(0, totalPagesInChapter - 1)
             }
 
             // 异步加载书籍信息（仅在第一章且需要时）
@@ -620,7 +634,7 @@ class ReaderViewModel @Inject constructor(
                     content = content,
                     pages = finalPages,
                     isFirstPage = safeCurrentPageIndex == 0,
-                    isLastPage = safeCurrentPageIndex == totalPages - 1,
+                    isLastPage = safeCurrentPageIndex == totalPagesInChapter - 1,
                     nextChapterData = nextChapterData,
                     previousChapterData = previousChapterData,
                     bookInfo = bookInfo,
@@ -632,8 +646,8 @@ class ReaderViewModel @Inject constructor(
                     currentPageIndex = safeCurrentPageIndex, // 确保页面索引有效
                     readingProgress = when {
                         safeCurrentPageIndex == -1 -> 0f // 书籍详情页进度为0
-                        totalPages > 0 && hasBookDetailPage -> (safeCurrentPageIndex + 1).toFloat() / totalPages.toFloat()
-                        totalPages > 0 -> safeCurrentPageIndex.toFloat() / totalPages.toFloat()
+                        totalPagesInChapter > 0 && hasBookDetailPage -> (safeCurrentPageIndex + 1).toFloat() / (totalPagesInChapter + 1).toFloat()
+                        totalPagesInChapter > 0 -> (safeCurrentPageIndex + 1).toFloat() / totalPagesInChapter.toFloat()
                         else -> 0f
                     }
                 )
@@ -922,6 +936,7 @@ class ReaderViewModel @Inject constructor(
      */
     private fun updateSettingsInternal(settings: ReaderSettings) {
         val oldSettings = _uiState.value.readerSettings
+        val oldState = _uiState.value // Capture state before change
         _uiState.value = _uiState.value.copy(readerSettings = settings)
 
         // 如果翻页方式发生改变，保存到本地存储
@@ -930,6 +945,15 @@ class ReaderViewModel @Inject constructor(
         }
 
         if (oldSettings.fontSize != settings.fontSize) {
+            // Font size changed, need to maintain reading position
+            val oldPages = oldState.currentPageData?.pages ?: emptyList()
+            val chapterProgress = if (oldPages.isNotEmpty() && oldState.currentPageIndex >= 0) {
+                (oldState.currentPageIndex.toFloat() + 1) / oldPages.size.toFloat()
+            } else 0f
+
+            // Re-split content, restoring progress
+            splitContent(restoreProgress = chapterProgress)
+
             viewModelScope.launch {
                 val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
                 if (bookCache != null) {
@@ -937,7 +961,7 @@ class ReaderViewModel @Inject constructor(
                 }
             }
         } else if (_uiState.value.currentChapter != null) {
-            // 设置变更后重新分页
+            // Settings other than font size changed, just re-split
             splitContent()
         }
     }
