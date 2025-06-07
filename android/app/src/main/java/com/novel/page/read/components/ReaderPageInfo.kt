@@ -2,11 +2,15 @@ package com.novel.page.read.components
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.novel.page.component.NovelText
 import com.novel.page.read.LocalReaderInfo
+import com.novel.page.read.ReaderInfo
 import com.novel.utils.ssp
 
 /**
@@ -19,7 +23,7 @@ fun ReaderNavigationInfo(
     modifier: Modifier = Modifier
 ) {
     if (chapterName == null) return
-    // 最外层用 Row 或 Column，都可以。这里示例用 Row
+    
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -33,41 +37,59 @@ fun ReaderNavigationInfo(
 }
 
 /**
- * 阅读器页面信息组件
- * 显示在左下角的页码信息 - 支持全局页码和计算中状态
+ * 阅读器页面信息组件 - 最优化版本
+ * 显示在左下角的页码信息 - 支持全局页码和计算中状态，实时更新绝对页码
+ * 统一管理所有翻页模式的页码显示逻辑
  */
 @Composable
 fun ReaderPageInfo(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentChapterIndex: Int? = null, // 外部传入的当前章节索引
+    totalChapters: Int? = null // 外部传入的总章节数
 ) {
     val readerInfo = LocalReaderInfo.current
     val isCalculating = readerInfo.paginationState.isCalculating
 
-    val totalPages = if (readerInfo.pageCountCache != null) {
-        readerInfo.pageCountCache.totalPages
-    } else {
-        readerInfo.paginationState.estimatedTotalPages
-    }
-
-    val currentPage = if (readerInfo.pageCountCache != null && readerInfo.currentChapter != null) {
-        val chapterRange = readerInfo.pageCountCache.chapterPageRanges.find { it.chapterId == readerInfo.currentChapter.id }
-        if (chapterRange != null) {
-            (chapterRange.startPage + readerInfo.perChapterPageIndex + 1).coerceAtLeast(1)
-        } else {
-            1
+    // 计算总页数
+    val totalPages by remember(readerInfo.pageCountCache, readerInfo.paginationState) {
+        derivedStateOf {
+            if (readerInfo.pageCountCache != null) {
+                readerInfo.pageCountCache.totalPages
+            } else {
+                readerInfo.paginationState.estimatedTotalPages.takeIf { it > 0 } ?: 1
+            }
         }
-    } else {
-        1
     }
 
-    val pageInfo = when {
-        isCalculating && totalPages > 0 -> "$currentPage / $totalPages..."
-        isCalculating -> "页数计算中..."
-        totalPages > 0 -> "$currentPage / $totalPages"
-        else -> "" // Don't show anything if not ready
+    // 计算当前全书绝对页码
+    val currentGlobalPage by remember(
+        readerInfo.pageCountCache, 
+        readerInfo.currentChapter, 
+        readerInfo.perChapterPageIndex,
+        currentChapterIndex,
+        totalChapters
+    ) {
+        derivedStateOf {
+            calculateGlobalPageNumber(
+                readerInfo = readerInfo,
+                currentChapterIndex = currentChapterIndex,
+                totalChapters = totalChapters
+            )
+        }
     }
 
-    // 最外层用 Row 或 Column，都可以。这里示例用 Row
+    // 构建页码信息字符串
+    val pageInfo by remember(isCalculating, currentGlobalPage, totalPages) {
+        derivedStateOf {
+            when {
+                isCalculating && totalPages > 0 -> "$currentGlobalPage / $totalPages (计算中...)"
+                isCalculating -> "页数计算中..."
+                totalPages > 0 -> "$currentGlobalPage / $totalPages"
+                else -> "1 / 1" // 默认显示
+            }
+        }
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -77,5 +99,104 @@ fun ReaderPageInfo(
             color = Color.Gray.copy(alpha = 0.8f),
             fontSize = 10.ssp
         )
+    }
+}
+
+/**
+ * 计算全书绝对页码的逻辑
+ */
+private fun calculateGlobalPageNumber(
+    readerInfo: ReaderInfo,
+    currentChapterIndex: Int?,
+    totalChapters: Int?
+): Int {
+    // 优先使用页码缓存数据
+    if (readerInfo.pageCountCache != null && readerInfo.currentChapter != null) {
+        val chapterRange = readerInfo.pageCountCache.chapterPageRanges.find { 
+            it.chapterId == readerInfo.currentChapter.id 
+        }
+        if (chapterRange != null) {
+            val pageIndexInChapter = readerInfo.perChapterPageIndex.coerceAtLeast(0)
+            val totalPages = readerInfo.pageCountCache.totalPages
+            return (chapterRange.startPage + pageIndexInChapter + 1).coerceIn(1, totalPages)
+        }
+    }
+    
+    // 如果没有缓存数据，使用估算
+    if (currentChapterIndex != null && totalChapters != null) {
+        val estimatedPagesPerChapter = 10 // 假设每章平均10页
+        val pageIndexInChapter = readerInfo.perChapterPageIndex.coerceAtLeast(0)
+        return (currentChapterIndex * estimatedPagesPerChapter + pageIndexInChapter + 1).coerceAtLeast(1)
+    }
+    
+    // 最后的兜底方案
+    return (readerInfo.perChapterPageIndex + 1).coerceAtLeast(1)
+}
+
+/**
+ * 获取章节进度信息 - 辅助函数，用于详细显示
+ */
+@Composable
+fun getChapterProgressInfo(): String {
+    val readerInfo = LocalReaderInfo.current
+    val currentChapter = readerInfo.currentChapter
+    val pageIndex = readerInfo.perChapterPageIndex
+    
+    return if (currentChapter != null) {
+        val chapterNum = currentChapter.chapterNum.takeIf { it?.isNotBlank() ?: false } ?: "1"
+        val pageNum = (pageIndex + 1).coerceAtLeast(1)
+        "第${chapterNum}章 第${pageNum}页"
+    } else {
+        "第1章 第1页"
+    }
+}
+
+/**
+ * 阅读器进度条信息组件 - 新增，用于显示详细的阅读进度
+ */
+@Composable
+fun ReaderProgressInfo(
+    modifier: Modifier = Modifier,
+    showDetailedInfo: Boolean = false
+) {
+    val readerInfo = LocalReaderInfo.current
+    val isCalculating = readerInfo.paginationState.isCalculating
+    
+    if (showDetailedInfo) {
+        val chapterInfo = getChapterProgressInfo()
+        val totalPages = if (readerInfo.pageCountCache != null) {
+            readerInfo.pageCountCache.totalPages
+        } else {
+            readerInfo.paginationState.estimatedTotalPages.takeIf { it > 0 } ?: 1
+        }
+        
+        val currentGlobalPage = calculateGlobalPageNumber(readerInfo, null, null)
+        val progressPercent = if (totalPages > 0) {
+            ((currentGlobalPage.toFloat() / totalPages.toFloat()) * 100).toInt()
+        } else 0
+        
+        val detailedInfo = buildString {
+            append(chapterInfo)
+            append(" • ")
+            append("$currentGlobalPage/$totalPages")
+            append(" • ")
+            append("${progressPercent}%")
+            if (isCalculating) {
+                append(" (计算中...)")
+            }
+        }
+        
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+        ) {
+            NovelText(
+                text = detailedInfo,
+                color = Color.Gray.copy(alpha = 0.8f),
+                fontSize = 10.ssp
+            )
+        }
+    } else {
+        ReaderPageInfo(modifier = modifier)
     }
 }

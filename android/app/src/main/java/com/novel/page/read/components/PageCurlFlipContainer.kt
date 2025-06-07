@@ -29,7 +29,7 @@ import com.novel.utils.SwipeBackContainer
  *
  * 使用PageCurl库实现真实的书页卷曲翻页效果，并集成纸张纹理
  * 支持章节边界检测和自动章节切换，支持书籍详情页
- * 修复版本：解决边界翻页和章节切换问题，添加书籍详情页支持
+ * 修复版本：解决边界翻页和章节切换问题，添加书籍详情页支持，增强预加载
  *
  * @param pageData 页面数据
  * @param currentPageIndex 当前页面索引
@@ -55,7 +55,7 @@ fun PageCurlFlipContainer(
     // 构建虚拟页面序列，支持章节边界和书籍详情页
     val virtualPages = remember(pageData) {
         buildList {
-            // 添加上一章的最后一页（如果存在）
+            // 添加上一章的最后一页（如果存在且已预加载）
             if (pageData.previousChapterData != null && pageData.previousChapterData.pages.isNotEmpty()) {
                 add(VirtualPage.PreviousChapter(pageData.previousChapterData))
             }
@@ -70,14 +70,14 @@ fun PageCurlFlipContainer(
                 add(VirtualPage.CurrentChapter(index))
             }
             
-            // 添加下一章的第一页（如果存在）
+            // 添加下一章的第一页（如果存在且已预加载）
             if (pageData.nextChapterData != null && pageData.nextChapterData.pages.isNotEmpty()) {
                 add(VirtualPage.NextChapter(pageData.nextChapterData))
             }
         }
     }
 
-    val totalPages = virtualPages.size
+    val totalPages = virtualPages.size.coerceAtLeast(1)
 
     // 计算当前页在虚拟页面序列中的索引
     val virtualCurrentIndex = remember(pageData, currentPageIndex) {
@@ -91,7 +91,8 @@ fun PageCurlFlipContainer(
             }
             currentPageIndex >= 0 -> {
                 // 正常内容页
-                currentPageIndex + previousOffset + bookDetailOffset
+                val safeIndex = currentPageIndex.coerceIn(0, pageData.pages.size - 1)
+                safeIndex + previousOffset + bookDetailOffset
             }
             else -> previousOffset + bookDetailOffset
         }
@@ -158,10 +159,10 @@ fun PageCurlFlipContainer(
         // 扩大点击区域，改善边界操作体验
         tapInteraction = com.novel.page.component.pagecurl.config.PageCurlConfig.TargetTapInteraction(
             forward = com.novel.page.component.pagecurl.config.PageCurlConfig.TargetTapInteraction.Config(
-                target = androidx.compose.ui.geometry.Rect(0.3f, 0.0f, 1.0f, 1.0f) // 右侧70%区域
+                target = androidx.compose.ui.geometry.Rect(0.25f, 0.0f, 1.0f, 1.0f) // 右侧75%区域
             ),
             backward = com.novel.page.component.pagecurl.config.PageCurlConfig.TargetTapInteraction.Config(
-                target = androidx.compose.ui.geometry.Rect(0.0f, 0.0f, 0.7f, 1.0f) // 左侧70%区域
+                target = androidx.compose.ui.geometry.Rect(0.0f, 0.0f, 0.75f, 1.0f) // 左侧75%区域
             )
         )
     )
@@ -178,15 +179,17 @@ fun PageCurlFlipContainer(
             }
             currentPageIndex >= 0 -> {
                 // 正常内容页
-                currentPageIndex + previousOffset + bookDetailOffset
+                val safeIndex = currentPageIndex.coerceIn(0, pageData.pages.size - 1)
+                safeIndex + previousOffset + bookDetailOffset
             }
             else -> previousOffset + bookDetailOffset
         }
         
-        if (newVirtualIndex != pageCurlState.current && newVirtualIndex in 0 until totalPages) {
+        val targetIndex = newVirtualIndex.coerceIn(0, totalPages - 1)
+        if (targetIndex != pageCurlState.current) {
             isHandlingExternalChange = true
             try {
-                pageCurlState.snapTo(newVirtualIndex)
+                pageCurlState.snapTo(targetIndex)
             } finally {
                 isHandlingExternalChange = false
             }
@@ -199,7 +202,7 @@ fun PageCurlFlipContainer(
         
         val currentVirtualIndex = pageCurlState.current
         if (currentVirtualIndex != virtualCurrentIndex && currentVirtualIndex in 0 until totalPages) {
-            val virtualPage = virtualPages[currentVirtualIndex]
+            val virtualPage = virtualPages.getOrNull(currentVirtualIndex)
             
             when (virtualPage) {
                 is VirtualPage.PreviousChapter -> {
@@ -226,6 +229,9 @@ fun PageCurlFlipContainer(
                         onPageChange(direction)
                     }
                 }
+                null -> {
+                    // 虚拟页面不存在，忽略
+                }
             }
         }
     }
@@ -240,9 +246,9 @@ fun PageCurlFlipContainer(
                     config = config,
                     modifier = Modifier.fillMaxSize()
                 ) { virtualPageIndex ->
-                    if (virtualPageIndex in virtualPages.indices) {
-                        val virtualPage = virtualPages[virtualPageIndex]
-                        
+                    val virtualPage = virtualPages.getOrNull(virtualPageIndex)
+                    
+                    if (virtualPage != null) {
                         // 渲染每一页内容，包含纸张纹理
                         PaperTexture(
                             modifier = Modifier.fillMaxSize(),
@@ -254,7 +260,7 @@ fun PageCurlFlipContainer(
                                 is VirtualPage.PreviousChapter -> {
                                     val prevChapter = virtualPage.chapterData
                                     val lastPageIndex = prevChapter.pages.size - 1
-                                    if (lastPageIndex >= 0) {
+                                    if (lastPageIndex >= 0 && lastPageIndex < prevChapter.pages.size) {
                                         PageContentDisplay(
                                             page = prevChapter.pages[lastPageIndex],
                                             chapterName = prevChapter.chapterName,
@@ -329,6 +335,9 @@ fun PageCurlFlipContainer(
                                 }
                             }
                         }
+                    } else {
+                        // 如果虚拟页面不存在，显示空白页面
+                        Box(modifier = Modifier.fillMaxSize().background(readerSettings.backgroundColor))
                     }
                 }
             }

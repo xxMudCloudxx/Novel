@@ -271,7 +271,9 @@ fun ReaderPage(
                                             if (size.width > 0 && size.height > 0) {
                                                 viewModel.updateContainerSize(size, density)
                                             }
-                                        }
+                                        },
+                                    currentChapterIndex = uiState.currentChapterIndex,
+                                    totalChapters = uiState.chapterList.size
                                 )
                             }
                         } else {
@@ -496,16 +498,17 @@ private fun TopBar(
 @Composable
 private fun BottomControls(
     uiState: ReaderUiState,
-    onPreviousChapter: () -> Unit,
     hideProgress: Boolean = false,
+    onPreviousChapter: () -> Unit,
     onNextChapter: () -> Unit,
     onSeekToProgress: (Float) -> Unit,
     onShowChapterList: () -> Unit,
     onShowSettings: () -> Unit
 ) {
     val readerInfo = LocalReaderInfo.current
+    val paginationState = readerInfo.paginationState
     val totalPages = readerInfo.pageCountCache?.totalPages
-        ?: readerInfo.paginationState.estimatedTotalPages.takeIf { it > 0 }
+        ?: paginationState.estimatedTotalPages.takeIf { it > 0 }
         ?: 1
 
     Column(
@@ -513,8 +516,19 @@ private fun BottomControls(
             .fillMaxWidth()
             .background(uiState.readerSettings.backgroundColor.copy(alpha = 1f))
     ) {
-        if (!hideProgress)
-        // 第一行：上一章、进度条、下一章
+        if (!hideProgress) {
+            // Pagination progress indicator
+            if (paginationState.isCalculating) {
+                Text(
+                    text = "正在计算总页数...",
+                    fontSize = 10.ssp,
+                    color = NovelColors.NovelText.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                )
+            }
+
+            // 第一行：上一章、进度条、下一章
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -556,13 +570,14 @@ private fun BottomControls(
                         onClick = { onNextChapter() }
                     ))
             }
-        else
+        } else {
             HorizontalDivider(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(0.02.wdp),
                 color = Color.Gray.copy(alpha = 0.1f),
             )
+        }
 
         // 第二行：功能按钮
         Row(

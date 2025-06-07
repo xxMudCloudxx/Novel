@@ -18,8 +18,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.zIndex
-import com.novel.page.read.utils.handlePageFlip
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.wdp
@@ -57,36 +55,26 @@ fun CoverFlipContainer(
                 detectDragGestures(
                     onDragStart = { /* 不需要特殊处理 */ },
                     onDragEnd = {
-                        val threshold = size.width * 0.2f // 降低阈值，更容易触发
+                        val threshold = size.width * 0.15f // 降低阈值，更容易触发
 
                         if (abs(dragOffset) >= threshold) {
-                            // 优化的页面切换逻辑
+                            // 根据拖拽方向和当前状态判断操作类型
                             when (flipDirection) {
                                 FlipDirection.NEXT -> {
-                                    if (isOnBookDetailPage) {
-                                        // 从书籍详情页翻到第一页内容
+                                    if (isOnBookDetailPage || currentPageIndex < pageData.contentPageCount - 1) {
+                                        // 在书籍详情页或章节内翻页
                                         onPageChange(FlipDirection.NEXT)
-                                    } else if (currentPageIndex < pageData.contentPageCount - 1) {
-                                        // 当前章节内还有下一页
-                                        onPageChange(FlipDirection.NEXT)
-                                    } else if (pageData.nextChapterData != null) {
-                                        // 切换到下一章
+                                    } else {
+                                        // 章节边界，切换到下一章
                                         onChapterChange(FlipDirection.NEXT)
                                     }
                                 }
-
                                 FlipDirection.PREVIOUS -> {
-                                    if (isOnBookDetailPage) {
-                                        // 从书籍详情页翻到第一页内容
-                                        onSwipeBack?.invoke()
-                                    } else if (currentPageIndex > 0) {
-                                        // 当前章节内还有上一页
+                                    if (currentPageIndex > 0 || (currentPageIndex == 0 && pageData.hasBookDetailPage)) {
+                                        // 章节内翻页或翻到书籍详情页
                                         onPageChange(FlipDirection.PREVIOUS)
-                                    } else if (currentPageIndex == 0 && pageData.hasBookDetailPage) {
-                                        // 从第一页内容返回到书籍详情页
-                                        onPageChange(FlipDirection.PREVIOUS)
-                                    } else if (pageData.previousChapterData != null) {
-                                        // 切换到上一章
+                                    } else {
+                                        // 章节边界，切换到上一章
                                         onChapterChange(FlipDirection.PREVIOUS)
                                     }
                                 }
@@ -96,30 +84,33 @@ fun CoverFlipContainer(
                         // 立即重置状态，不使用动画
                         dragOffset = 0f
                     },
+                    onDragCancel = { dragOffset = 0f },
                     onDrag = { _, dragAmount ->
                         val deltaX = dragAmount.x
                         val maxOffset = size.width * 0.8f // 限制最大拖拽距离
 
+                        val newDirection = if (deltaX > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
+                        
                         // 检查是否可以继续拖拽
-                        val canDragNext = when {
-                            isOnBookDetailPage -> true // 从书籍详情页可以翻到内容
-                            currentPageIndex < pageData.contentPageCount - 1 -> true
-                            pageData.nextChapterData != null -> true
-                            else -> false
-                        }
-
-                        val canDragPrevious = when {
-                            currentPageIndex > 0 -> true
-                            currentPageIndex == 0 && pageData.hasBookDetailPage -> true // 从第一页内容可以返回书籍详情页
-                            pageData.previousChapterData != null -> true
-                            else -> false
-                        }
-
-                        val newDirection =
-                            if (deltaX > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
                         val canDrag = when (newDirection) {
-                            FlipDirection.NEXT -> canDragNext
-                            FlipDirection.PREVIOUS -> canDragPrevious
+                            FlipDirection.NEXT -> {
+                                // 向左拖拽（下一页/下一章）
+                                when {
+                                    isOnBookDetailPage -> true // 从书籍详情页可以翻到内容
+                                    currentPageIndex < pageData.contentPageCount - 1 -> true // 章节内还有下一页
+                                    pageData.nextChapterData != null -> true // 有下一章
+                                    else -> false
+                                }
+                            }
+                            FlipDirection.PREVIOUS -> {
+                                // 向右拖拽（上一页/上一章）
+                                when {
+                                    currentPageIndex > 0 -> true // 章节内还有上一页
+                                    currentPageIndex == 0 && pageData.hasBookDetailPage -> true // 第一页可以返回书籍详情页
+                                    pageData.previousChapterData != null -> true // 有上一章
+                                    else -> false
+                                }
+                            }
                         }
 
                         if (canDrag) {
@@ -131,6 +122,10 @@ fun CoverFlipContainer(
                                 isOnBookDetailPage -> true // 在书籍详情页时
                                 currentPageIndex == 0 && !pageData.hasBookDetailPage && pageData.previousChapterData == null -> true // 第一页且没有上一章
                                 else -> false
+                            }
+                            
+                            if (shouldTriggerSwipeBack) {
+                                onSwipeBack?.invoke()
                             }
                         }
                     }

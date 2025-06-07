@@ -27,7 +27,9 @@ fun PageFlipContainer(
     onSwipeBack: (() -> Unit)? = null, // 新增：iOS侧滑返回回调
     onVerticalScrollPageChange: (Int) -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentChapterIndex: Int = 0, // 新增：当前章节索引
+    totalChapters: Int = 1 // 新增：总章节数
 ) {
     Box(
         modifier = modifier
@@ -44,7 +46,9 @@ fun PageFlipContainer(
                     onNavigateToReader = onNavigateToReader,
                     onSwipeBack = onSwipeBack,
                     onVerticalScrollPageChange = onVerticalScrollPageChange,
-                    onClick = onClick
+                    onClick = onClick,
+                    currentChapterIndex = currentChapterIndex,
+                    totalChapters = totalChapters
                 )
             }
 
