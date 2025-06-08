@@ -1,8 +1,13 @@
 package com.novel.page.read.repository
 
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import com.novel.page.read.components.Chapter
 import com.novel.page.read.components.ReaderSettings
+import com.novel.page.read.viewmodel.*
+import com.novel.page.read.utils.*
 import com.novel.utils.network.ApiService
+import com.novel.utils.network.api.front.BookService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +33,7 @@ data class ChapterContent(
 )
 
 /**
- * 书籍信息数据类
+ * 书籍信息数据类（旧版本兼容）
  */
 data class BookInfo(
     val id: String,
@@ -46,12 +51,188 @@ sealed class ApiResult<T> {
 }
 
 /**
- * 阅读器Repository - 数据层
- * 负责数据的获取、缓存和管理
+ * 数据源接口
+ */
+interface ContentDataSource {
+    suspend fun getChapterContent(chapterId: String): Result<String>
+    suspend fun getChapterList(bookId: String): Result<List<ChapterInfo>>
+    suspend fun getBookInfo(bookId: String): Result<PageData.BookInfo>
+    suspend fun preloadChapter(chapterId: String)
+}
+
+/**
+ * 远程数据源实现
  */
 @Singleton
-class ReaderRepository @Inject constructor() {
+class RemoteDataSource @Inject constructor(
+    private val bookService: BookService
+) : ContentDataSource {
+    
+    override suspend fun getChapterContent(chapterId: String): Result<String> = safeCall {
+        val response = bookService.getBookContentBlocking(chapterId.toLong())
+        if (response.code == "00000" && response.data != null) {
+            response.data.bookContent
+        } else {
+            throw Exception("Failed to fetch chapter content: ${response.message}")
+        }
+    }
+    
+    override suspend fun getChapterList(bookId: String): Result<List<ChapterInfo>> = safeCall {
+        val response = bookService.getBookChaptersBlocking(bookId.toLong())
+        if (response.code == "00000" && response.data != null) {
+            response.data.map { chapter ->
+                ChapterInfo(
+                    id = chapter.id.toString(),
+                    name = chapter.chapterName,
+                    url = chapter.chapterNum.toString(),
+                    hasContent = true,
+                    isVip = chapter.isVip == 1
+                )
+            }
+        } else {
+            throw Exception("Failed to fetch chapter list: ${response.message}")
+        }
+    }
+    
+    override suspend fun getBookInfo(bookId: String): Result<PageData.BookInfo> = safeCall {
+        val response = bookService.getBookByIdBlocking(bookId.toLong())
+        if (response.ok == true && response.data != null) {
+            PageData.BookInfo(
+                bookId = response.data.id.toString(),
+                bookName = response.data.bookName,
+                authorName = response.data.authorName,
+                bookDesc = response.data.bookDesc,
+                picUrl = response.data.picUrl,
+                visitCount = response.data.visitCount,
+                wordCount = response.data.wordCount,
+                categoryName = response.data.categoryName
+            )
+        } else {
+            throw Exception("Failed to fetch book info: ${response.message}")
+        }
+    }
+    
+    override suspend fun preloadChapter(chapterId: String) {
+        getChapterContent(chapterId)
+    }
+}
 
+/**
+ * 缓存数据源实现
+ */
+@Singleton
+class CacheDataSource @Inject constructor(
+    private val cacheManager: BookCacheManager
+) : ContentDataSource {
+    
+    override suspend fun getChapterContent(chapterId: String): Result<String> = safeCall {
+        // 简化实现，实际应该从缓存获取
+        throw Exception("Cache miss for chapter: $chapterId")
+    }
+    
+    override suspend fun getChapterList(bookId: String): Result<List<ChapterInfo>> = safeCall {
+        throw Exception("Cache miss for book chapters: $bookId")
+    }
+    
+    override suspend fun getBookInfo(bookId: String): Result<PageData.BookInfo> = safeCall {
+        throw Exception("Cache miss for book info: $bookId")
+    }
+    
+    override suspend fun preloadChapter(chapterId: String) {
+        // 缓存数据源的预加载是空操作
+    }
+}
+
+/**
+ * 本地数据源实现
+ */
+@Singleton
+class LocalDataSource @Inject constructor() : ContentDataSource {
+    
+    override suspend fun getChapterContent(chapterId: String): Result<String> = safeCall {
+        throw Exception("Local data not found for chapter: $chapterId")
+    }
+    
+    override suspend fun getChapterList(bookId: String): Result<List<ChapterInfo>> = safeCall {
+        throw Exception("Local data not found for book chapters: $bookId")
+    }
+    
+    override suspend fun getBookInfo(bookId: String): Result<PageData.BookInfo> = safeCall {
+        throw Exception("Local data not found for book info: $bookId")
+    }
+    
+    override suspend fun preloadChapter(chapterId: String) {
+        // 本地数据源的预加载是空操作
+    }
+}
+
+/**
+ * 责任链数据源
+ */
+class ChainDataSource(
+    private val primary: ContentDataSource,
+    private val fallback: ContentDataSource,
+    private val tertiary: ContentDataSource? = null
+) : ContentDataSource {
+    
+    override suspend fun getChapterContent(chapterId: String): Result<String> {
+        val primaryResult = primary.getChapterContent(chapterId)
+        if (primaryResult.isSuccess()) {
+            return primaryResult
+        }
+        
+        val fallbackResult = fallback.getChapterContent(chapterId)
+        if (fallbackResult.isSuccess()) {
+            return fallbackResult
+        }
+        
+        return tertiary?.getChapterContent(chapterId) ?: fallbackResult
+    }
+    
+    override suspend fun getChapterList(bookId: String): Result<List<ChapterInfo>> {
+        val primaryResult = primary.getChapterList(bookId)
+        if (primaryResult.isSuccess()) {
+            return primaryResult
+        }
+        
+        val fallbackResult = fallback.getChapterList(bookId)
+        if (fallbackResult.isSuccess()) {
+            return fallbackResult
+        }
+        
+        return tertiary?.getChapterList(bookId) ?: fallbackResult
+    }
+    
+    override suspend fun getBookInfo(bookId: String): Result<PageData.BookInfo> {
+        val primaryResult = primary.getBookInfo(bookId)
+        if (primaryResult.isSuccess()) {
+            return primaryResult
+        }
+        
+        val fallbackResult = fallback.getBookInfo(bookId)
+        if (fallbackResult.isSuccess()) {
+            return fallbackResult
+        }
+        
+        return tertiary?.getBookInfo(bookId) ?: fallbackResult
+    }
+    
+    override suspend fun preloadChapter(chapterId: String) {
+        primary.preloadChapter(chapterId)
+    }
+}
+
+/**
+ * 阅读器Repository - 整合版本
+ * 保留原有的缓存和网络逻辑，支持新的数据模型
+ */
+@Singleton
+class ReaderRepository @Inject constructor(
+    private val remoteDataSource: RemoteDataSource,
+    private val cacheDataSource: CacheDataSource,
+    private val localDataSource: LocalDataSource
+) {
+    
     // 设置缓存
     private val _readerSettings = MutableStateFlow(ReaderSettings())
     val readerSettings: Flow<ReaderSettings> = _readerSettings.asStateFlow()
@@ -67,9 +248,17 @@ class ReaderRepository @Inject constructor() {
     
     // 协程作用域用于预缓存
     private val cacheScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    private fun createChainDataSource(): ContentDataSource {
+        return ChainDataSource(
+            primary = cacheDataSource,
+            fallback = remoteDataSource,
+            tertiary = localDataSource
+        )
+    }
 
     /**
-     * 获取章节列表
+     * 获取章节列表（兼容旧接口）
      */
     fun getChapterList(bookId: String): Flow<ApiResult<List<Chapter>>> = flow {
         try {
@@ -88,9 +277,17 @@ class ReaderRepository @Inject constructor() {
             emit(ApiResult.Error("获取章节列表失败: ${e.message}", e))
         }
     }.flowOn(Dispatchers.IO)
+    
+    /**
+     * 获取章节列表（新接口）
+     */
+    suspend fun getChapterListNew(bookId: String): Result<List<ChapterInfo>> {
+        val dataSource = createChainDataSource()
+        return dataSource.getChapterList(bookId)
+    }
 
     /**
-     * 获取章节内容，支持预缓存
+     * 获取章节内容，支持预缓存（兼容旧接口）
      */
     fun getChapterContent(chapterId: String): Flow<ApiResult<ChapterContent>> = flow {
         try {
@@ -109,6 +306,24 @@ class ReaderRepository @Inject constructor() {
             emit(ApiResult.Error("获取章节内容失败: ${e.message}", e))
         }
     }.flowOn(Dispatchers.IO)
+    
+    /**
+     * 获取章节内容（新接口）
+     */
+    suspend fun getChapterContentNew(chapterId: String): Result<PageData> = safeCall {
+        val dataSource = createChainDataSource()
+        
+        val content = dataSource.getChapterContent(chapterId).getOrThrow()
+        val cleanContent = content.cleanHtml()
+        
+        PageData(
+            chapterId = chapterId,
+            chapterName = "Chapter $chapterId",
+            content = cleanContent,
+            pages = emptyList(), // 分页会在ViewModel中处理
+            currentPage = 0
+        )
+    }
 
     /**
      * 预缓存章节内容 - 异步加载，不影响主要流程

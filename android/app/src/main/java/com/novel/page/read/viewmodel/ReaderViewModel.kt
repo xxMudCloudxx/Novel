@@ -22,63 +22,12 @@ import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
 
 /**
- * 翻页数据类
- */
-data class PageData(
-    val chapterId: String,
-    val chapterName: String,
-    val content: String,
-    val pages: List<String> = emptyList(), // 分页后的内容
-    val isLastPage: Boolean = false, // 是否是章节最后一页
-    val isFirstPage: Boolean = false, // 是否是章节第一页
-    val isLastChapter: Boolean = false, // 是否是本书最后一章
-    val isFirstChapter: Boolean = false, // 是否是本书第一章
-    val nextChapterData: PageData? = null, // 下一章数据
-    val previousChapterData: PageData? = null, // 上一章数据
-    val bookInfo: BookInfo? = null, // 书籍信息，用于第0页显示书籍详情
-    val hasBookDetailPage: Boolean = false // 是否包含书籍详情页（第0页）
-) {
-    /**
-     * 书籍信息数据类，用于第0页的书籍详情显示
-     */
-    data class BookInfo(
-        val bookId: String,
-        val bookName: String,
-        val authorName: String,
-        val bookDesc: String,
-        val picUrl: String,
-        val visitCount: Long,
-        val wordCount: Int,
-        val categoryName: String
-    )
-    
-    /**
-     * 获取实际页面总数（包含书籍详情页）
-     */
-    val totalPageCount: Int 
-        get() = pages.size + if (hasBookDetailPage) 1 else 0
-    
-    /**
-     * 获取实际内容页面数量（不包含书籍详情页）
-     */
-    val contentPageCount: Int
-        get() = pages.size
-}
-
-/**
  * 翻页状态
  */
 sealed class FlipState {
     data object Idle : FlipState()
     data class Flipping(val progress: Float, val direction: FlipDirection) : FlipState()
     data class PageChanged(val newPageIndex: Int, val direction: FlipDirection) : FlipState()
-}
-
-/**
- * 翻页方向
- */
-enum class FlipDirection {
-    NEXT, PREVIOUS
 }
 
 

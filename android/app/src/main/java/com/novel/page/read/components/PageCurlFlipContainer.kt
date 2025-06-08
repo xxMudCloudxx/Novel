@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -337,7 +338,11 @@ fun PageCurlFlipContainer(
                         }
                     } else {
                         // 如果虚拟页面不存在，显示空白页面
-                        Box(modifier = Modifier.fillMaxSize().background(readerSettings.backgroundColor))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(readerSettings.backgroundColor)
+                        )
                     }
                 }
             }

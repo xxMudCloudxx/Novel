@@ -216,10 +216,10 @@ fun ReaderPage(
                     }
 
                     uiState.isSuccess -> {
-                        // 主阅读内容 - 使用新的翻页容器
+                        // 主阅读内容 - 使用整合的翻页容器以支持新的优化
                         if (uiState.currentPageData != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
-                                PageFlipContainer(
+                                IntegratedPageFlipContainer(
                                     pageData = uiState.currentPageData!!,
                                     currentPageIndex = uiState.currentPageIndex,
                                     flipEffect = uiState.readerSettings.pageFlipEffect,
@@ -273,7 +273,8 @@ fun ReaderPage(
                                             }
                                         },
                                     currentChapterIndex = uiState.currentChapterIndex,
-                                    totalChapters = uiState.chapterList.size
+                                    totalChapters = uiState.chapterList.size,
+                                    useNewImplementation = true // 启用新的策略模式优化
                                 )
                             }
                         } else {
