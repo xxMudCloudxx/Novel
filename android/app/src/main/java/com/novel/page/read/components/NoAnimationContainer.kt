@@ -43,11 +43,43 @@ fun NoAnimationContainer(
         return
     }
 
-    var swipeDirection by remember { mutableStateOf<FlipDirection?>(null) }
-    var swipeAmount by remember { mutableFloatStateOf(0f) }
-
     val currentVirtualPage = virtualPages.getOrNull(virtualPageIndex)
     val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
+
+    // 当在书籍详情页时，使用SwipeBackContainer包裹以支持侧滑返回和提示
+    if (isOnBookDetailPage) {
+        SwipeBackContainer(
+            modifier = Modifier.fillMaxSize(),
+            onSwipeComplete = onSwipeBack,
+            onLeftSwipeToReader = {
+                onPageChange(FlipDirection.NEXT)
+            }
+        ) {
+            val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
+            PageContentDisplay(
+                page = "",
+                chapterName = uiState.currentChapter?.chapterName ?: "",
+                isFirstPage = false,
+                isLastPage = false,
+                isBookDetailPage = true,
+                bookInfo = bookInfo,
+                nextChapterData = uiState.nextChapterData,
+                previousChapterData = uiState.previousChapterData,
+                readerSettings = readerSettings,
+                onNavigateToReader = onNavigateToReader,
+                onSwipeBack = onSwipeBack,
+                onPageChange = onPageChange,
+                showNavigationInfo = false,
+                currentPageIndex = 0,
+                totalPages = 1,
+                onClick = onClick
+            )
+        }
+        return
+    }
+
+    var swipeDirection by remember { mutableStateOf<FlipDirection?>(null) }
+    var swipeAmount by remember { mutableFloatStateOf(0f) }
 
     // 主要内容区域
     Box(

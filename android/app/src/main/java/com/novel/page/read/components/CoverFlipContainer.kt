@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -23,12 +24,13 @@ import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
+import com.novel.utils.SwipeBackContainer
 import com.novel.utils.wdp
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * 覆盖翻页容器 - 优化版本，修复边界处理，支持书籍详情页
+ * 覆盖翻页容器 - 优化版本，修复边界处理和virtualPageIndex实时更新
  */
 @Composable
 fun CoverFlipContainer(
@@ -49,30 +51,84 @@ fun CoverFlipContainer(
         return
     }
 
+    val currentVirtualPage = virtualPages.getOrNull(virtualPageIndex)
+    val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
+
+    // 当在书籍详情页时，使用SwipeBackContainer包裹以支持侧滑返回和提示
+    if (isOnBookDetailPage) {
+        SwipeBackContainer(
+            modifier = Modifier.fillMaxSize(),
+            onSwipeComplete = onSwipeBack,
+            onLeftSwipeToReader = {
+                onPageChange(FlipDirection.NEXT)
+            }
+        ) {
+            val bookInfo = (uiState.currentPageData?.bookInfo
+                ?: loadedChapters[uiState.currentChapter?.id]?.bookInfo)
+            PageContentDisplay(
+                page = "",
+                chapterName = uiState.currentChapter?.chapterName ?: "",
+                isFirstPage = false,
+                isLastPage = false,
+                isBookDetailPage = true,
+                bookInfo = bookInfo,
+                nextChapterData = uiState.nextChapterData,
+                previousChapterData = uiState.previousChapterData,
+                readerSettings = readerSettings,
+                onNavigateToReader = onNavigateToReader,
+                onSwipeBack = onSwipeBack,
+                onPageChange = onPageChange,
+                showNavigationInfo = false,
+                currentPageIndex = 0,
+                totalPages = 1,
+                onClick = onClick
+            )
+        }
+        return
+    }
+
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var flipDirection by remember { mutableStateOf(FlipDirection.NEXT) }
+    var isDragging by remember { mutableStateOf(false) }
 
     // 主要内容区域 - 导航信息现在包含在PageContentDisplay中
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
+            .pointerInput(virtualPageIndex) { // 添加virtualPageIndex作为key，确保手势重置
                 detectDragGestures(
-                    onDragStart = { dragOffset = 0f },
+                    onDragStart = { 
+                        dragOffset = 0f 
+                        isDragging = true
+                        // 每次手势开始时重置方向状态
+                        flipDirection = FlipDirection.NEXT
+                    },
                     onDragEnd = {
                         val threshold = size.width * 0.2f // 触发翻页的阈值
+                        val shouldFlip = abs(dragOffset) >= threshold
 
-                        if (abs(dragOffset) >= threshold) {
+                        if (shouldFlip) {
+                            // 立即触发翻页，ViewModel会更新virtualPageIndex
                             onPageChange(flipDirection)
                         }
-                        // Animate back to 0f if not flipped
+                        
+                        // 重置拖拽状态
                         dragOffset = 0f
+                        isDragging = false
                     },
-                    onDragCancel = { dragOffset = 0f },
+                    onDragCancel = { 
+                        dragOffset = 0f 
+                        isDragging = false
+                    },
                     onDrag = { _, dragAmount ->
-                        val newOffset = dragOffset + dragAmount.x
+                        // 每次拖拽都重新计算方向，不依赖之前的状态
                         val newDirection = if (dragAmount.x > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
+                        val newOffset = dragOffset + dragAmount.x
 
+                        Log.d("CoverFlipContainer", "DragAmount: $virtualPageIndex")
+                        Log.d("CoverFlipContainer", "DragDirection: $newDirection")
+                        Log.d("CoverFlipContainer", "DragOffset: $dragOffset")
+                        
                         // 检查是否可以朝该方向翻页
                         val canFlip = when(newDirection) {
                             FlipDirection.NEXT -> virtualPageIndex < virtualPages.size - 1
@@ -81,7 +137,7 @@ fun CoverFlipContainer(
 
                         if (canFlip) {
                             dragOffset = newOffset
-                            flipDirection = newDirection
+                            flipDirection = newDirection // 更新当前拖拽方向
                         } else if (newDirection == FlipDirection.PREVIOUS && onSwipeBack != null) {
                             // 如果不能向前翻页，则可能是iOS侧滑返回
                              onSwipeBack()

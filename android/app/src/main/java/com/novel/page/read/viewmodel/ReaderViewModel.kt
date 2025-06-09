@@ -269,6 +269,28 @@ class ReaderViewModel @Inject constructor(
     fun updateCurrentPageFromScroll(page: Int) {
         if (page != _uiState.value.currentPageIndex) {
             _uiState.value = _uiState.value.copy(currentPageIndex = page)
+            // 同时更新阅读进度，用于纵向滚动模式的进度计算
+            updateReadingProgressFromPageIndex(page)
+        }
+    }
+
+    /**
+     * 根据页面索引更新阅读进度 - 用于纵向滚动模式
+     */
+    private fun updateReadingProgressFromPageIndex(pageIndex: Int) {
+        val state = _uiState.value
+        val pageCountCache = state.pageCountCache
+        
+        if (pageCountCache != null && pageCountCache.totalPages > 0) {
+            val currentChapter = state.currentChapter
+            if (currentChapter != null) {
+                val chapterRange = pageCountCache.chapterPageRanges.find { it.chapterId == currentChapter.id }
+                if (chapterRange != null) {
+                    val globalPage = chapterRange.startPage + pageIndex
+                    val newProgress = globalPage.toFloat() / pageCountCache.totalPages.toFloat()
+                    _uiState.value = _uiState.value.copy(readingProgress = newProgress.coerceIn(0f, 1f))
+                }
+            }
         }
     }
 
@@ -968,7 +990,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 处理页面翻页 - 优化版本，更好的边界处理和状态同步
+     * 处理页面翻页 - 优化版本，更好的边界处理和状态同步，确保virtualPageIndex实时更新
      */
     private fun handlePageFlip(direction: FlipDirection) {
         // 防重复触发检查
@@ -992,7 +1014,7 @@ class ReaderViewModel @Inject constructor(
             // 在虚拟页面列表内移动
             val newVirtualPage = virtualPages[newVirtualIndex]
             
-            // 更新UI状态
+            // 立即更新virtualPageIndex，确保所有翻页模式都能实时反映索引变化
             _uiState.value = state.copy(virtualPageIndex = newVirtualIndex)
 
             // 如果移动到了不同章节的页面，需要更新currentChapter等信息
@@ -1525,5 +1547,109 @@ class ReaderViewModel @Inject constructor(
      */
     fun switchChapterImmediately(direction: FlipDirection) {
         handleChapterFlip(direction)
+    }
+
+    /**
+     * 统一的翻页状态更新方法 - 确保所有翻页模式的状态一致性
+     */
+    fun updateFlipState(
+        newVirtualPageIndex: Int,
+        newChapterId: String? = null,
+        newPageIndexInChapter: Int? = null,
+        triggerPreload: Boolean = true
+    ) {
+        val state = _uiState.value
+        val virtualPages = state.virtualPages
+        
+        if (newVirtualPageIndex !in virtualPages.indices) return
+
+        val newVirtualPage = virtualPages[newVirtualPageIndex]
+        var updatedState = state.copy(virtualPageIndex = newVirtualPageIndex)
+
+        // 更新章节和页面信息
+        when (newVirtualPage) {
+            is VirtualPage.ContentPage -> {
+                // 更新当前页面索引
+                updatedState = updatedState.copy(currentPageIndex = newVirtualPage.pageIndex)
+                
+                // 如果切换到不同章节
+                if (newVirtualPage.chapterId != state.currentChapter?.id) {
+                    val newChapterCache = chapterCache[newVirtualPage.chapterId]
+                    if (newChapterCache != null) {
+                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
+                        updatedState = updatedState.copy(
+                            currentChapter = newChapterCache.chapter,
+                            currentChapterIndex = newChapterIndex,
+                            currentPageData = newChapterCache.pageData
+                        )
+                        
+                        // 触发预加载
+                        if (triggerPreload) {
+                            viewModelScope.launch {
+                                performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
+                            }
+                        }
+                    }
+                }
+            }
+            is VirtualPage.BookDetailPage -> {
+                updatedState = updatedState.copy(currentPageIndex = -1)
+            }
+            is VirtualPage.ChapterSection -> {
+                // 章节模式暂不支持
+            }
+        }
+
+        // 更新阅读进度
+        updatedState = updateReadingProgressForState(updatedState)
+        
+        _uiState.value = updatedState
+    }
+
+    /**
+     * 更新阅读进度 - 基于当前状态计算
+     */
+    private fun updateReadingProgressForState(state: ReaderUiState): ReaderUiState {
+        val pageCountCache = state.pageCountCache
+        val currentChapter = state.currentChapter
+        val currentPageIndex = state.currentPageIndex
+        
+        if (pageCountCache != null && currentChapter != null && pageCountCache.totalPages > 0) {
+            val chapterRange = pageCountCache.chapterPageRanges.find { it.chapterId == currentChapter.id }
+            if (chapterRange != null) {
+                val globalPage = when {
+                    currentPageIndex == -1 -> chapterRange.startPage // 书籍详情页
+                    else -> chapterRange.startPage + currentPageIndex
+                }
+                val newProgress = globalPage.toFloat() / pageCountCache.totalPages.toFloat()
+                return state.copy(readingProgress = newProgress.coerceIn(0f, 1f))
+            }
+        }
+        
+        return state
+    }
+
+    /**
+     * 重置翻页状态 - 用于翻页模式切换时清理状态
+     */
+    fun resetFlipState() {
+        val state = _uiState.value
+        if (state.currentChapter != null && state.containerSize != IntSize.Zero && state.density != null) {
+            // 重新分页并重建虚拟页面
+            splitContent(preserveVirtualIndex = false)
+        }
+    }
+
+    /**
+     * 强制更新虚拟页面索引 - 用于某些翻页模式需要强制同步状态的情况
+     */
+    fun forceUpdateVirtualPageIndex(newIndex: Int) {
+        val state = _uiState.value
+        if (newIndex in state.virtualPages.indices && newIndex != state.virtualPageIndex) {
+            updateFlipState(
+                newVirtualPageIndex = newIndex,
+                triggerPreload = false // 强制更新时不触发预加载，避免性能问题
+            )
+        }
     }
 } 

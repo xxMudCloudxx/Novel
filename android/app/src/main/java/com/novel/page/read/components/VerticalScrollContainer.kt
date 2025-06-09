@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -75,7 +77,7 @@ private fun ChapterContentText(content: String, readerSettings: ReaderSettings, 
 
 /**
  * 上下滚动容器 - 章节无缝衔接版本，包含纸张纹理，支持边界检测和章节切换
- * 优化版：动态更新导航信息，无缝拼接章节内容
+ * 优化版：动态更新导航信息，无缝拼接章节内容，实时更新页码和章节信息
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -93,23 +95,35 @@ fun VerticalScrollContainer(
     
     // 当前显示的章节名称（动态更新）
     var currentDisplayChapterName by remember { mutableStateOf(uiState.currentChapter?.chapterName ?: "") }
+    
+    // 当前显示的页码信息（实时计算）
+    var currentPageInfo by remember { mutableStateOf("1 / 1") }
+    var currentAbsolutePage by remember { mutableStateOf(1) }
 
-    // 动态更新当前显示的章节名称
+    // 实时同步页面变化到 ViewModel - 添加防抖机制
+    var lastReportedPage by remember { mutableStateOf(-1) }
+    
+    // 动态更新当前显示的章节名称和页码信息
     LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
-            .map { visibleItems ->
-                // 找到第一个完全可见的章节标题
-                visibleItems.firstOrNull {
-                    val key = it.key as? String
-                    key?.startsWith("chapter_title_") == true
-                }?.key as? String
+        snapshotFlow { 
+            listState.layoutInfo.visibleItemsInfo to listState.firstVisibleItemScrollOffset 
+        }
+            .map { (visibleItems, scrollOffset) ->
+                // 计算当前滚动位置对应的章节和页码
+                calculateCurrentPositionInfo(visibleItems, scrollOffset, uiState, loadedChapters)
             }
             .distinctUntilChanged()
-            .collect { titleKey ->
-                titleKey?.let { key ->
-                    val chapterId = key.removePrefix("chapter_title_")
-                    uiState.loadedChapterData[chapterId]?.let {
-                        currentDisplayChapterName = it.chapterName
+            .collect { positionInfo ->
+                positionInfo?.let { (chapterName, pageInfo, absolutePage) ->
+                    currentDisplayChapterName = chapterName
+                    currentPageInfo = pageInfo
+                    currentAbsolutePage = absolutePage
+                    
+                    // 实时通知ViewModel当前页码变化（添加防抖避免过于频繁的调用）
+                    val pageIndex = absolutePage - 1 // 转换为0-based索引
+                    if (pageIndex != lastReportedPage) {
+                        lastReportedPage = pageIndex
+                        onVerticalScrollPageChange(pageIndex)
                     }
                 }
             }
@@ -197,12 +211,17 @@ fun VerticalScrollContainer(
             }
         }
 
-        // 底部页面信息（对于滚动模式，显示章节信息）
-        ReaderPageInfo(
-            modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp),
-            currentChapterIndex = uiState.currentChapterIndex,
-            totalChapters = uiState.chapterList.size
-        )
+        // 底部页面信息 - 显示实时计算的页码信息
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp)
+        ) {
+            NovelText(
+                text = currentPageInfo,
+                color = Color.Gray.copy(alpha = 0.8f),
+                fontSize = 10.ssp
+            )
+        }
     }
 }
 
@@ -229,4 +248,171 @@ private fun LoadingItem(readerSettings: ReaderSettings, text: String) {
             )
         }
     }
+}
+
+/**
+ * 计算当前滚动位置对应的章节和页码信息
+ * 返回 Triple(章节名称, 页码信息, 绝对页码)
+ */
+private fun calculateCurrentPositionInfo(
+    visibleItems: List<androidx.compose.foundation.lazy.LazyListItemInfo>,
+    scrollOffset: Int,
+    uiState: ReaderUiState,
+    loadedChapters: List<PageData>
+): Triple<String, String, Int>? {
+    if (visibleItems.isEmpty() || loadedChapters.isEmpty()) return null
+
+    // 找到当前可见的主要章节（占据最大可见面积的章节）
+    val mainVisibleChapter = findMainVisibleChapter(visibleItems, scrollOffset, loadedChapters)
+        ?: return null
+
+    val (chapterData, visibleOffset) = mainVisibleChapter
+
+    // 计算该章节的估算页码
+    val estimatedPageInChapter = calculateEstimatedPageInChapter(
+        chapterData = chapterData,
+        visibleOffset = visibleOffset,
+        readerSettings = uiState.readerSettings
+    )
+
+    // 计算绝对页码
+    val absolutePage = calculateAbsolutePageNumber(
+        chapterData = chapterData,
+        pageInChapter = estimatedPageInChapter,
+        uiState = uiState,
+        loadedChapters = loadedChapters
+    )
+
+    // 计算总页数
+    val totalPages = calculateTotalPages(uiState, loadedChapters)
+
+    val pageInfo = "$absolutePage / $totalPages"
+
+    return Triple(chapterData.chapterName, pageInfo, absolutePage)
+}
+
+/**
+ * 找到占据最大可见面积的章节 - 改进版，支持更精确的滚动偏移计算
+ */
+private fun findMainVisibleChapter(
+    visibleItems: List<androidx.compose.foundation.lazy.LazyListItemInfo>,
+    scrollOffset: Int,
+    loadedChapters: List<PageData>
+): Pair<PageData, Float>? {
+    // 找到第一个可见的章节项
+    val firstChapterItem = visibleItems.firstOrNull { item ->
+        val key = item.key as? String
+        key?.startsWith("chapter_") == true
+    } ?: return null
+
+    val chapterId = (firstChapterItem.key as String).removePrefix("chapter_")
+    val chapterData = loadedChapters.find { it.chapterId == chapterId } ?: return null
+
+    // 计算更精确的可见偏移比例
+    val visibleOffset = if (firstChapterItem.size > 0) {
+        // 考虑第一个可见项的滚动偏移
+        val itemVisibleHeight = firstChapterItem.size - (-firstChapterItem.offset).coerceAtLeast(0)
+        val scrollProgress = (-firstChapterItem.offset).toFloat() / firstChapterItem.size.toFloat()
+        scrollProgress.coerceIn(0f, 1f)
+    } else 0f
+
+    return Pair(chapterData, visibleOffset)
+}
+
+/**
+ * 计算章节内的估算页码
+ */
+private fun calculateEstimatedPageInChapter(
+    chapterData: PageData,
+    visibleOffset: Float,
+    readerSettings: ReaderSettings
+): Int {
+    // 如果有分页数据，使用分页数据
+    if (chapterData.pages.isNotEmpty()) {
+        val pageIndex = (visibleOffset * chapterData.pages.size).toInt()
+        return (pageIndex + 1).coerceIn(1, chapterData.pages.size)
+    }
+    
+    // 否则使用估算方法
+    val estimatedPagesInChapter = estimateChapterPages(chapterData.content, readerSettings)
+    val currentPageInChapter = (visibleOffset * estimatedPagesInChapter).toInt() + 1
+    return currentPageInChapter.coerceIn(1, estimatedPagesInChapter)
+}
+
+/**
+ * 估算章节页数
+ */
+private fun estimateChapterPages(content: String, readerSettings: ReaderSettings): Int {
+    // 基于内容长度和字体大小的简单估算
+    val cleanContent = HtmlTextUtil.cleanHtml(content)
+    val charCount = cleanContent.length
+    val baseCharsPerPage = when {
+        readerSettings.fontSize <= 14 -> 800
+        readerSettings.fontSize <= 18 -> 600
+        readerSettings.fontSize <= 22 -> 400
+        else -> 300
+    }
+    return (charCount / baseCharsPerPage).coerceAtLeast(1)
+}
+
+/**
+ * 计算绝对页码
+ */
+private fun calculateAbsolutePageNumber(
+    chapterData: PageData,
+    pageInChapter: Int,
+    uiState: ReaderUiState,
+    loadedChapters: List<PageData>
+): Int {
+    // 如果有全局页码缓存，使用缓存数据
+    if (uiState.pageCountCache != null) {
+        val chapterRange = uiState.pageCountCache.chapterPageRanges.find { 
+            it.chapterId == chapterData.chapterId 
+        }
+        if (chapterRange != null) {
+            return (chapterRange.startPage + pageInChapter - 1 + 1).coerceIn(1, uiState.pageCountCache.totalPages)
+        }
+    }
+
+    // 否则使用估算方法
+    var pagesBeforeCurrentChapter = 0
+    val chapterList = uiState.chapterList
+    val currentChapterIndex = chapterList.indexOfFirst { it.id == chapterData.chapterId }
+    
+    for (i in 0 until currentChapterIndex) {
+        val chapter = chapterList[i]
+        val loadedChapter = loadedChapters.find { it.chapterId == chapter.id }
+        if (loadedChapter != null) {
+            pagesBeforeCurrentChapter += if (loadedChapter.pages.isNotEmpty()) {
+                loadedChapter.pages.size
+            } else {
+                estimateChapterPages(loadedChapter.content, uiState.readerSettings)
+            }
+        } else {
+            pagesBeforeCurrentChapter += 10 // 默认估算
+        }
+    }
+
+    return pagesBeforeCurrentChapter + pageInChapter
+}
+
+/**
+ * 计算总页数
+ */
+private fun calculateTotalPages(
+    uiState: ReaderUiState,
+    loadedChapters: List<PageData>
+): Int {
+    // 优先使用页码缓存
+    if (uiState.pageCountCache != null) {
+        return uiState.pageCountCache.totalPages
+    }
+    
+    // 使用渐进计算状态
+    if (uiState.paginationState.estimatedTotalPages > 0) {
+        return uiState.paginationState.estimatedTotalPages
+    }
+    
+    // 最后使用简单估算
+    return uiState.chapterList.size * 10 // 假设每章平均10页
 }
