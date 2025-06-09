@@ -30,6 +30,27 @@ sealed class FlipState {
     data class PageChanged(val newPageIndex: Int, val direction: FlipDirection) : FlipState()
 }
 
+/**
+ * 虚拟页面，用于统一所有翻页模式
+ */
+sealed class VirtualPage {
+    /**
+     * 代表书籍详情页
+     */
+    data object BookDetailPage : VirtualPage()
+
+    /**
+     * 代表一个实际的内容页
+     * @param chapterId 所属章节ID
+     * @param pageIndex 在该章节内的页码 (从0开始)
+     */
+    data class ContentPage(val chapterId: String, val pageIndex: Int) : VirtualPage()
+
+    /**
+     * 代表一个完整的章节，主要用于纵向滚动模式
+     */
+    data class ChapterSection(val chapterId: String) : VirtualPage()
+}
 
 /**
  * 章节缓存数据
@@ -61,14 +82,33 @@ data class ReaderUiState(
     val containerSize: IntSize = IntSize.Zero,
     val density: Density? = null,
 
+    // 统一翻页模式所需的新状态
+    val virtualPages: List<VirtualPage> = emptyList(),
+    val virtualPageIndex: Int = 0,
+    val loadedChapterData: Map<String, PageData> = emptyMap(),
+
     // New state for global pagination
     val pageCountCache: PageCountCacheData? = null,
-    val paginationState: ProgressiveCalculationState = ProgressiveCalculationState()
+    val paginationState: ProgressiveCalculationState = ProgressiveCalculationState(),
+    
+    // 相邻章节数据
+    val previousChapterData: PageData? = null,
+    val nextChapterData: PageData? = null
 ) {
     val isSuccess: Boolean get() = !isLoading && !hasError && currentChapter != null
     val isEmpty: Boolean get() = !isLoading && !hasError && chapterList.isEmpty()
+    
+    // 添加扩展属性
+    val isFirstChapter: Boolean get() = currentChapterIndex == 0
+    val isLastChapter: Boolean get() = currentChapterIndex >= chapterList.size - 1
 
     val computedReadingProgress: Float get() {
+        if (readerSettings.pageFlipEffect == PageFlipEffect.VERTICAL) {
+            // 纵向滚动模式下，进度按章节计算
+            if (chapterList.isEmpty()) return 0f
+            return (currentChapterIndex + 1).toFloat() / chapterList.size.toFloat()
+        }
+
         val cache = pageCountCache ?: return 0f
         if (cache.totalPages <= 0) return 0f
 
@@ -127,6 +167,12 @@ class ReaderViewModel @Inject constructor(
     // 预加载状态跟踪
     private val preloadingChapters = mutableSetOf<String>()
     
+    // 动态预加载范围管理
+    private var currentPreloadStartIndex = -1 // 当前预加载的起始章节索引
+    private var currentPreloadEndIndex = -1   // 当前预加载的结束章节索引
+    private val minPreloadRange = 2           // 最小预加载范围：前后各2章
+    private val maxPreloadRange = 4           // 最大预加载范围：前后各4章
+    
     init {
         // 初始化时加载保存的翻页方式
         loadSavedPageFlipEffect()
@@ -139,8 +185,7 @@ class ReaderViewModel @Inject constructor(
         try {
             val savedEffect = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
             if (savedEffect != null) {
-                val pageFlipEffect = PageFlipEffect.entries
-                    .find { it.name == savedEffect } ?: com.novel.page.read.components.PageFlipEffect.PAGECURL
+                val pageFlipEffect = PageFlipEffect.valueOf(savedEffect)
                 
                 val currentSettings = _uiState.value.readerSettings
                 _uiState.value = _uiState.value.copy(
@@ -149,6 +194,9 @@ class ReaderViewModel @Inject constructor(
             }
         } catch (e: Exception) {
             // 如果加载失败，使用默认值
+            _uiState.value = _uiState.value.copy(
+                readerSettings = _uiState.value.readerSettings.copy(pageFlipEffect = PageFlipEffect.PAGECURL)
+            )
         }
     }
 
@@ -228,7 +276,9 @@ class ReaderViewModel @Inject constructor(
      * 从书籍详情页导航到第一页内容
      */
     fun navigateToContent() {
-        _uiState.value = _uiState.value.copy(currentPageIndex = 0)
+        if (_uiState.value.currentPageIndex == -1) {
+            onPageChange(FlipDirection.NEXT)
+        }
     }
 
     /**
@@ -255,7 +305,7 @@ class ReaderViewModel @Inject constructor(
                     
                     if (shouldStartFromBookDetail) {
                         // 设置为书籍详情页（索引-1）
-                        _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+                        _uiState.value = _uiState.value.copy(currentPageIndex = -1, virtualPageIndex = 0)
                     }
                     
                     loadChapterContentInternal(targetChapterId)
@@ -336,14 +386,15 @@ class ReaderViewModel @Inject constructor(
     private suspend fun loadChapterContentInternal(
         chapterId: String,
         flipDirection: FlipDirection? = null,
-        initialPageIndex: Int? = null
+        initialPageIndex: Int? = null,
+        preserveVirtualIndex: Boolean = false
     ) {
         // 先检查缓存
         val cachedChapter = chapterCache[chapterId]
         if (cachedChapter != null) {
-            updateCurrentChapter(cachedChapter, flipDirection, initialPageIndex)
-            // 立即开始预加载相邻章节（前后各2章）
-            preloadAdjacentChaptersExtended(chapterId)
+            updateCurrentChapter(cachedChapter, flipDirection, initialPageIndex, preserveVirtualIndex)
+            // 立即开始动态预加载（前后各2章）
+            performDynamicPreload(chapterId, triggerExpansion = false)
             return
         }
 
@@ -373,10 +424,10 @@ class ReaderViewModel @Inject constructor(
                 addToCache(chapterId, chapterCache)
 
                 // 更新状态
-                updateCurrentChapter(chapterCache, flipDirection, initialPageIndex)
+                updateCurrentChapter(chapterCache, flipDirection, initialPageIndex, preserveVirtualIndex)
 
-                // 预加载前后章节（前后各2章）
-                preloadAdjacentChaptersExtended(chapterId)
+                // 启动动态预加载（前后各2章）
+                performDynamicPreload(chapterId, triggerExpansion = false)
             } else {
                 throw Exception("章节内容加载失败")
             }
@@ -420,7 +471,8 @@ class ReaderViewModel @Inject constructor(
     private fun updateCurrentChapter(
         chapterCache: ChapterCache,
         flipDirection: FlipDirection? = null,
-        initialPageIndexOverride: Int? = null
+        initialPageIndexOverride: Int? = null,
+        preserveVirtualIndex: Boolean = false
     ) {
         val currentIndex =
             _uiState.value.chapterList.indexOfFirst { it.id == chapterCache.chapter.id }
@@ -450,20 +502,21 @@ class ReaderViewModel @Inject constructor(
             currentChapter = chapterCache.chapter,
             currentChapterIndex = if (currentIndex >= 0) currentIndex else 0,
             bookContent = chapterCache.content,
-            currentPageIndex = initialPageIndex
+            currentPageIndex = initialPageIndex,
+            isSwitchingChapter = true // 标记正在切换，以触发分页和虚拟页面重建
         )
 
         // 如果有容器尺寸信息，进行分页
         val state = _uiState.value
         if (state.containerSize != IntSize.Zero && state.density != null) {
-            splitContent()
+            splitContent(restoreProgress = null, preserveVirtualIndex = preserveVirtualIndex)
         }
     }
 
     /**
      * 分页处理 - 优化章节衔接和相邻章节数据获取，支持书籍详情页
      */
-    private fun splitContent(restoreProgress: Float? = null) {
+    private fun splitContent(restoreProgress: Float? = null, preserveVirtualIndex: Boolean = false) {
         val state = _uiState.value
         val chapter = state.currentChapter
         val content = state.bookContent
@@ -501,7 +554,7 @@ class ReaderViewModel @Inject constructor(
             // 判断是否是第一章且需要添加书籍详情页
             val isFirstChapter = currentIndex == 0
             val isLastChapter = currentIndex == chapterList.size - 1
-            val hasBookDetailPage = isFirstChapter || isLastChapter
+            val hasBookDetailPage = isFirstChapter // 只有第一章前有详情页
 
             // 准备相邻章节数据（用于PageCurl和Slide模式）
             val nextChapterData = if (currentIndex + 1 < chapterList.size) {
@@ -582,7 +635,7 @@ class ReaderViewModel @Inject constructor(
                         (totalPagesInChapter - 1).coerceAtLeast(0)
                     }
                 }
-                else -> pageIndexAfterSplit.coerceIn(0, totalPagesInChapter - 1)
+                else -> pageIndexAfterSplit.coerceIn(0, totalPagesInChapter.coerceAtLeast(1) - 1)
             }
 
             // 异步加载书籍信息（仅在第一章且需要时）
@@ -623,82 +676,295 @@ class ReaderViewModel @Inject constructor(
                 if (cachedChapter != null) {
                     chapterCache[chapter.id] = cachedChapter.copy(pageData = pageData)
                 }
+
+                // 分页完成后，立即构建虚拟页面列表
+                buildVirtualPages(preserveCurrentIndex = preserveVirtualIndex)
             }
         }
     }
 
     /**
-     * 预加载相邻章节 - 扩展版，预加载前后各2章并优化分页
+     * 构建或更新虚拟页面列表 - 包含所有已预加载的章节
      */
-    private fun preloadAdjacentChaptersExtended(currentChapterId: String) {
-        viewModelScope.launch {
-            val chapterList = _uiState.value.chapterList
-            val currentIndex = chapterList.indexOfFirst { it.id == currentChapterId }
+    private fun buildVirtualPages(preserveCurrentIndex: Boolean) {
+        val state = _uiState.value
+        val currentChapter = state.currentChapter ?: return
+        val chapterList = state.chapterList
+        val currentIndex = state.currentChapterIndex
+        val currentPageData = state.currentPageData ?: return
 
-            if (currentIndex >= 0) {
-                // 预加载前后各2章
-                val preloadRange = listOf(
-                    currentIndex - 2,
-                    currentIndex - 1,
-                    currentIndex + 1,
-                    currentIndex + 2
-                ).filter { it in chapterList.indices }
+        // 获取所有已加载且已分页的章节数据，按章节顺序排列
+        val loadedChaptersData = mutableMapOf<String, PageData>()
+        val orderedLoadedChapters = mutableListOf<Pair<Int, PageData>>()
+        
+        chapterList.forEachIndexed { index, chapter ->
+            val cachedChapter = chapterCache[chapter.id]
+            if (cachedChapter?.pageData != null) {
+                loadedChaptersData[chapter.id] = cachedChapter.pageData
+                orderedLoadedChapters.add(index to cachedChapter.pageData)
+            }
+        }
 
-                // 并行预加载所有需要的章节
-                preloadRange.map { index ->
-                    launch {
-                        val chapter = chapterList[index]
-                        if (!chapterCache.containsKey(chapter.id) && !preloadingChapters.contains(chapter.id)) {
-                            try {
-                                preloadingChapters.add(chapter.id)
-                                preloadChapter(chapter.id)
-                            } catch (e: Exception) {
-                                // 预加载失败不影响主流程
-                            } finally {
-                                preloadingChapters.remove(chapter.id)
-                            }
-                        }
+        // 按章节索引排序
+        orderedLoadedChapters.sortBy { it.first }
+
+        var currentChapterStartIndex = 0
+        
+        val newVirtualPages = buildList<VirtualPage> {
+            orderedLoadedChapters.forEach { (chapterIndex, pageData) ->
+                if (chapterIndex < currentIndex) {
+                    // 在当前章节之前的章节
+                    pageData.pages.forEachIndexed { pageIndex, _ ->
+                        add(VirtualPage.ContentPage(pageData.chapterId, pageIndex))
                     }
-                }.forEach { it.join() } // 等待所有预加载完成
-                
-                // 为已缓存但未分页的章节进行分页
-                val state = _uiState.value
-                if (state.containerSize != IntSize.Zero && state.density != null) {
-                    preloadRange.forEach { index ->
-                        val chapter = chapterList[index]
-                        val cachedChapter = chapterCache[chapter.id]
-                        if (cachedChapter != null && cachedChapter.pageData == null) {
-                            // 异步分页处理
-                            launch {
-                                try {
-                                    val pages = PageSplitter.splitContent(
-                                        content = cachedChapter.content,
-                                        chapterTitle = cachedChapter.chapter.chapterName,
-                                        containerSize = state.containerSize,
-                                        readerSettings = state.readerSettings,
-                                        density = state.density
-                                    )
-                                    
-                                    val pageData = PageData(
-                                        chapterId = chapter.id,
-                                        chapterName = chapter.chapterName,
-                                        content = cachedChapter.content,
-                                        pages = pages,
-                                        isFirstChapter = index == 0,
-                                        isLastChapter = index == chapterList.size - 1
-                                    )
-                                    
-                                    // 更新缓存
-                                    chapterCache[chapter.id] = cachedChapter.copy(pageData = pageData)
-                                } catch (e: Exception) {
-                                    // 分页失败,忽略
-                                }
-                            }
-                        }
+                } else if (chapterIndex == currentIndex) {
+                    // 当前章节
+                    currentChapterStartIndex = size
+                    
+                    // 添加书籍详情页（仅对第一章）
+                    if (pageData.hasBookDetailPage) {
+                        add(VirtualPage.BookDetailPage)
+                    }
+                    
+                    // 添加当前章节页面
+                    pageData.pages.forEachIndexed { pageIndex, _ ->
+                        add(VirtualPage.ContentPage(pageData.chapterId, pageIndex))
+                    }
+                } else {
+                    // 在当前章节之后的章节
+                    pageData.pages.forEachIndexed { pageIndex, _ ->
+                        add(VirtualPage.ContentPage(pageData.chapterId, pageIndex))
                     }
                 }
             }
         }
+
+        val newVirtualPageIndex = if (preserveCurrentIndex) {
+            // 保持当前虚拟页面索引，但需要确保在有效范围内
+            // 首先检查当前虚拟页面是否仍然有效
+            val currentVirtualPage = state.virtualPages.getOrNull(state.virtualPageIndex)
+            if (currentVirtualPage != null) {
+                // 尝试在新的虚拟页面列表中找到相同的页面
+                val newIndex = newVirtualPages.indexOfFirst { newPage ->
+                    when {
+                        currentVirtualPage is VirtualPage.BookDetailPage && newPage is VirtualPage.BookDetailPage -> true
+                        currentVirtualPage is VirtualPage.ContentPage && newPage is VirtualPage.ContentPage ->
+                            currentVirtualPage.chapterId == newPage.chapterId && 
+                            currentVirtualPage.pageIndex == newPage.pageIndex
+                        else -> false
+                    }
+                }
+                if (newIndex >= 0) {
+                    newIndex // 找到了对应的页面，使用新索引
+                } else {
+                    state.virtualPageIndex.coerceIn(0, newVirtualPages.size.coerceAtLeast(1) - 1)
+                }
+            } else {
+                state.virtualPageIndex.coerceIn(0, newVirtualPages.size.coerceAtLeast(1) - 1)
+            }
+        } else {
+            // 重新计算虚拟页面索引
+            val bookDetailPageCount = if (currentPageData.hasBookDetailPage) 1 else 0
+            
+            when (state.currentPageIndex) {
+                -1 -> currentChapterStartIndex // 书籍详情页的索引
+                else -> currentChapterStartIndex + bookDetailPageCount + state.currentPageIndex
+            }.coerceIn(0, newVirtualPages.size.coerceAtLeast(1) - 1)
+        }
+
+        // 获取相邻章节数据用于兼容性
+        val (previousChapterData, nextChapterData) = getAdjacentChapterData(currentChapter.id)
+
+        _uiState.value = state.copy(
+            virtualPages = newVirtualPages,
+            virtualPageIndex = newVirtualPageIndex,
+            loadedChapterData = loadedChaptersData,
+            previousChapterData = previousChapterData,
+            nextChapterData = nextChapterData,
+            isSwitchingChapter = false
+        )
+    }
+
+    /**
+     * 动态双向预加载 - 根据当前阅读位置动态调整预加载范围
+     * 确保始终前后各有至少2章已加载，最多扩展到前后各4章
+     */
+    private fun performDynamicPreload(currentChapterId: String, triggerExpansion: Boolean = false) {
+        viewModelScope.launch {
+            val chapterList = _uiState.value.chapterList
+            val currentIndex = chapterList.indexOfFirst { it.id == currentChapterId }
+
+            if (currentIndex < 0) return@launch
+
+            // 计算新的预加载范围
+            val newPreloadRange = calculatePreloadRange(currentIndex, chapterList.size, triggerExpansion)
+            val (newStartIndex, newEndIndex) = newPreloadRange
+
+            // 更新预加载范围
+            currentPreloadStartIndex = newStartIndex
+            currentPreloadEndIndex = newEndIndex
+
+            // 执行预加载
+            val preloadIndices = (newStartIndex..newEndIndex).filter { it != currentIndex }
+            
+            // 并行预加载所有需要的章节
+            preloadIndices.map { index ->
+                launch {
+                    val chapter = chapterList[index]
+                    if (!chapterCache.containsKey(chapter.id) && !preloadingChapters.contains(chapter.id)) {
+                        try {
+                            preloadingChapters.add(chapter.id)
+                            preloadChapter(chapter.id)
+                        } catch (e: Exception) {
+                            // 预加载失败不影响主流程
+                        } finally {
+                            preloadingChapters.remove(chapter.id)
+                        }
+                    }
+                }
+            }.forEach { it.join() }
+            
+            // 为已缓存但未分页的章节进行分页
+            val state = _uiState.value
+            if (state.containerSize != IntSize.Zero && state.density != null) {
+                val paginationJobs = preloadIndices.mapNotNull { index ->
+                    val chapter = chapterList[index]
+                    val cachedChapter = chapterCache[chapter.id]
+                    if (cachedChapter != null && cachedChapter.pageData == null) {
+                        launch {
+                            try {
+                                val pages = PageSplitter.splitContent(
+                                    content = cachedChapter.content,
+                                    chapterTitle = cachedChapter.chapter.chapterName,
+                                    containerSize = state.containerSize,
+                                    readerSettings = state.readerSettings,
+                                    density = state.density
+                                )
+                                
+                                val pageData = PageData(
+                                    chapterId = chapter.id,
+                                    chapterName = chapter.chapterName,
+                                    content = cachedChapter.content,
+                                    pages = pages,
+                                    isFirstChapter = index == 0,
+                                    isLastChapter = index == chapterList.size - 1
+                                )
+                                
+                                // 更新缓存
+                                chapterCache[chapter.id] = cachedChapter.copy(pageData = pageData)
+                            } catch (e: Exception) {
+                                // 分页失败,忽略
+                            }
+                        }
+                    } else null
+                }
+                
+                // 等待所有分页任务完成
+                paginationJobs.forEach { it.join() }
+            }
+
+            // 清理超出预加载范围的缓存
+            cleanupOutOfRangeCache(newStartIndex, newEndIndex, currentIndex)
+            
+            // 只有在新加载了相邻章节时才重建虚拟页面
+            val hasNewAdjacentChapters = checkIfNewAdjacentChaptersLoaded(currentIndex)
+            if (hasNewAdjacentChapters) {
+                buildVirtualPages(preserveCurrentIndex = true)
+            }
+        }
+    }
+
+    /**
+     * 计算预加载范围
+     */
+    private fun calculatePreloadRange(currentIndex: Int, totalChapters: Int, triggerExpansion: Boolean): Pair<Int, Int> {
+        val range = if (triggerExpansion && canExpandRange()) {
+            // 扩展到最大范围
+            maxPreloadRange
+        } else {
+            // 使用最小范围
+            minPreloadRange
+        }
+
+        val startIndex = (currentIndex - range).coerceAtLeast(0)
+        val endIndex = (currentIndex + range).coerceAtMost(totalChapters - 1)
+        
+        return Pair(startIndex, endIndex)
+    }
+
+    /**
+     * 判断是否可以扩展预加载范围
+     */
+    private fun canExpandRange(): Boolean {
+        // 如果缓存使用率较低，可以扩展
+        return chapterCache.size < maxCacheSize * 0.8
+    }
+
+    /**
+     * 清理超出预加载范围的缓存
+     */
+    private fun cleanupOutOfRangeCache(startIndex: Int, endIndex: Int, currentIndex: Int) {
+        val chapterList = _uiState.value.chapterList
+        val keysToRemove = mutableListOf<String>()
+        
+        chapterCache.keys.forEach { chapterId ->
+            val chapterIndex = chapterList.indexOfFirst { it.id == chapterId }
+            if (chapterIndex >= 0 && (chapterIndex < startIndex || chapterIndex > endIndex)) {
+                keysToRemove.add(chapterId)
+            }
+        }
+        
+        // 保留当前章节
+        val currentChapterId = chapterList.getOrNull(currentIndex)?.id
+        keysToRemove.removeAll { it == currentChapterId }
+        
+        // 清理
+        keysToRemove.forEach { chapterCache.remove(it) }
+    }
+
+    /**
+     * 检查是否有新的相邻章节被加载
+     */
+    private fun checkIfNewAdjacentChaptersLoaded(currentIndex: Int): Boolean {
+        val chapterList = _uiState.value.chapterList
+        val currentVirtualPages = _uiState.value.virtualPages
+        
+        // 检查前一章节
+        val prevIndex = currentIndex - 1
+        if (prevIndex >= 0) {
+            val prevChapter = chapterList[prevIndex]
+            val prevChapterInVirtual = currentVirtualPages.any { 
+                it is VirtualPage.ContentPage && it.chapterId == prevChapter.id 
+            }
+            val prevChapterLoaded = chapterCache[prevChapter.id]?.pageData != null
+            
+            if (prevChapterLoaded && !prevChapterInVirtual) {
+                return true // 有新的前一章节已加载但不在虚拟页面中
+            }
+        }
+        
+        // 检查后一章节
+        val nextIndex = currentIndex + 1
+        if (nextIndex < chapterList.size) {
+            val nextChapter = chapterList[nextIndex]
+            val nextChapterInVirtual = currentVirtualPages.any { 
+                it is VirtualPage.ContentPage && it.chapterId == nextChapter.id 
+            }
+            val nextChapterLoaded = chapterCache[nextChapter.id]?.pageData != null
+            
+            if (nextChapterLoaded && !nextChapterInVirtual) {
+                return true // 有新的后一章节已加载但不在虚拟页面中
+            }
+        }
+        
+        return false
+    }
+
+    /**
+     * 预加载相邻章节 - 兼容旧接口，调用新的动态预加载
+     */
+    private fun preloadAdjacentChaptersExtended(currentChapterId: String) {
+        performDynamicPreload(currentChapterId, triggerExpansion = false)
     }
 
     /**
@@ -713,53 +979,160 @@ class ReaderViewModel @Inject constructor(
         lastFlipTime = currentTime
 
         val state = _uiState.value
-        val pageData = state.currentPageData ?: return
-        
-        // 计算总页数（包含书籍详情页）
-        val totalPages = pageData.totalPageCount
-        
-        // 确保页面数据有效
-        if (totalPages == 0) {
-            // 如果没有页面数据，直接切换章节
-            handleChapterFlip(direction)
-            return
+        val virtualPages = state.virtualPages
+        if (virtualPages.isEmpty()) return
+
+        val currentVirtualIndex = state.virtualPageIndex
+        val newVirtualIndex = when (direction) {
+            FlipDirection.NEXT -> currentVirtualIndex + 1
+            FlipDirection.PREVIOUS -> currentVirtualIndex - 1
         }
 
-        when (direction) {
-            FlipDirection.NEXT -> {
-                val currentIndex = state.currentPageIndex
-                if (currentIndex == -1) {
-                    // 从书籍详情页翻到第一章第一页
-                    if (pageData.pages.isNotEmpty()) {
-                        val newIndex = 0
-                        updatePageIndex(newIndex, pageData, totalPages)
+        if (newVirtualIndex in virtualPages.indices) {
+            // 在虚拟页面列表内移动
+            val newVirtualPage = virtualPages[newVirtualIndex]
+            
+            // 更新UI状态
+            _uiState.value = state.copy(virtualPageIndex = newVirtualIndex)
+
+            // 如果移动到了不同章节的页面，需要更新currentChapter等信息
+            if (newVirtualPage is VirtualPage.ContentPage) {
+                if (newVirtualPage.chapterId != state.currentChapter?.id) {
+                    // 切换章节，但只更新状态，不重新加载
+                    val newChapterCache = chapterCache[newVirtualPage.chapterId]
+                    if (newChapterCache != null) {
+                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
+                        _uiState.value = _uiState.value.copy(
+                            currentChapter = newChapterCache.chapter,
+                            currentChapterIndex = newChapterIndex,
+                            currentPageIndex = newVirtualPage.pageIndex,
+                            currentPageData = newChapterCache.pageData
+                        )
+                        
+                        // 触发动态预加载 - 进入新章节
+                        performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
                     }
-                } else if (currentIndex < pageData.pages.size - 1) {
-                    // 还有下一页，执行页面翻页
-                    val newIndex = currentIndex + 1
-                    updatePageIndex(newIndex, pageData, totalPages)
                 } else {
-                    // 已经是章节最后一页，切换到下一章
-                    handleChapterFlip(FlipDirection.NEXT)
+                     _uiState.value = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
+                }
+            } else if (newVirtualPage is VirtualPage.BookDetailPage) {
+                 _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+            }
+            
+            // 检查是否需要预加载更多 - 降低检查频率，避免频繁重建虚拟页面
+            if (newVirtualPage is VirtualPage.ContentPage) {
+                val pageData = _uiState.value.loadedChapterData[newVirtualPage.chapterId]
+                if (pageData != null) {
+                    val isAtChapterBoundary = newVirtualPage.pageIndex == 0 || 
+                                             newVirtualPage.pageIndex == pageData.pages.size - 1
+                    // 只在章节边界时检查预加载
+                    if (isAtChapterBoundary) {
+                        checkAndPreload(newVirtualIndex, virtualPages.size)
+                    }
                 }
             }
 
-            FlipDirection.PREVIOUS -> {
-                val currentIndex = state.currentPageIndex
-                if (currentIndex > 0) {
-                    // 还有上一页，执行页面翻页
-                    val newIndex = currentIndex - 1
-                    updatePageIndex(newIndex, pageData, totalPages)
-                } else if (currentIndex == 0 && pageData.hasBookDetailPage) {
-                    // 从第一页翻到书籍详情页
-                    val newIndex = -1
-                    updatePageIndex(newIndex, pageData, totalPages)
-                } else {
-                    // 已经是章节第一页且没有书籍详情页，切换到上一章
-                    handleChapterFlip(FlipDirection.PREVIOUS)
+        } else {
+            // 到达虚拟列表边界，需要加载新章节
+            handleChapterFlip(direction)
+        }
+    }
+
+    /**
+     * 检查是否需要动态扩展预加载范围
+     * 当用户进入预加载边缘章节时，自动扩展预加载范围
+     */
+    private fun checkAndPreload(currentVirtualIndex: Int, totalVirtualPages: Int) {
+        val state = _uiState.value
+        val currentContentPage = state.virtualPages.getOrNull(currentVirtualIndex) as? VirtualPage.ContentPage ?: return
+        
+        val chapterList = state.chapterList
+        val currentChapterIndex = chapterList.indexOfFirst { it.id == currentContentPage.chapterId }
+        
+        if (currentChapterIndex < 0) return
+
+        // 检查是否需要扩展预加载范围
+        val shouldExpandPreload = shouldExpandPreloadRange(currentChapterIndex, currentContentPage)
+        
+        if (shouldExpandPreload) {
+            // 触发动态预加载扩展
+            performDynamicPreload(currentContentPage.chapterId, triggerExpansion = true)
+        } else {
+            // 常规预加载检查
+            checkRegularPreload(currentChapterIndex, currentContentPage)
+        }
+    }
+
+    /**
+     * 判断是否需要扩展预加载范围
+     * 当用户进入预加载边缘的章节时返回true
+     */
+    private fun shouldExpandPreloadRange(currentChapterIndex: Int, currentContentPage: VirtualPage.ContentPage): Boolean {
+        // 如果还没有初始化预加载范围，不扩展
+        if (currentPreloadStartIndex == -1 || currentPreloadEndIndex == -1) {
+            return false
+        }
+
+        val chapterData = _uiState.value.loadedChapterData[currentContentPage.chapterId] ?: return false
+        val isAtChapterStart = currentContentPage.pageIndex == 0
+        val isAtChapterEnd = currentContentPage.pageIndex == chapterData.pages.size - 1
+
+        // 检查是否接近预加载范围边缘
+        val isNearStartEdge = currentChapterIndex <= currentPreloadStartIndex + 1
+        val isNearEndEdge = currentChapterIndex >= currentPreloadEndIndex - 1
+
+        // 在章节边界且接近预加载范围边缘时扩展
+        return (isAtChapterStart && isNearStartEdge) || (isAtChapterEnd && isNearEndEdge)
+    }
+
+    /**
+     * 常规预加载检查
+     * 确保基本的预加载范围始终维持
+     */
+    private fun checkRegularPreload(currentChapterIndex: Int, currentContentPage: VirtualPage.ContentPage) {
+        val chapterData = _uiState.value.loadedChapterData[currentContentPage.chapterId] ?: return
+        val isAtChapterStart = currentContentPage.pageIndex == 0
+        val isAtChapterEnd = currentContentPage.pageIndex == chapterData.pages.size - 1
+
+        // 基本预加载检查：在章节边界时确保相邻章节已加载
+        if (isAtChapterStart || isAtChapterEnd) {
+            // 检查前后相邻章节是否已加载
+            val needsPreload = checkAdjacentChaptersLoaded(currentChapterIndex)
+            if (needsPreload) {
+                performDynamicPreload(currentContentPage.chapterId, triggerExpansion = false)
+            }
+        }
+    }
+
+    /**
+     * 检查相邻章节是否已加载
+     */
+    private fun checkAdjacentChaptersLoaded(currentChapterIndex: Int): Boolean {
+        val chapterList = _uiState.value.chapterList
+        
+        // 检查前两章
+        for (i in 1..minPreloadRange) {
+            val prevIndex = currentChapterIndex - i
+            if (prevIndex >= 0) {
+                val prevChapter = chapterList[prevIndex]
+                if (!chapterCache.containsKey(prevChapter.id)) {
+                    return true // 需要预加载
                 }
             }
         }
+
+        // 检查后两章
+        for (i in 1..minPreloadRange) {
+            val nextIndex = currentChapterIndex + i
+            if (nextIndex < chapterList.size) {
+                val nextChapter = chapterList[nextIndex]
+                if (!chapterCache.containsKey(nextChapter.id)) {
+                    return true // 需要预加载
+                }
+            }
+        }
+
+        return false // 都已加载，无需预加载
     }
 
     /**
@@ -777,9 +1150,10 @@ class ReaderViewModel @Inject constructor(
             readingProgress = when {
                 newIndex == -1 -> 0f // 书籍详情页进度为0
                 pageData.hasBookDetailPage -> (newIndex + 1).toFloat() / totalPages.toFloat()
-                else -> newIndex.toFloat() / totalPages.toFloat()
+                else -> (newIndex + 1).toFloat() / totalPages.toFloat()
             }
         )
+        buildVirtualPages(preserveCurrentIndex = false)
     }
 
     /**
@@ -807,17 +1181,9 @@ class ReaderViewModel @Inject constructor(
         if (targetIndex in chapterList.indices) {
             val targetChapter = chapterList[targetIndex]
             
-            // 检查缓存中是否已有目标章节
-            val cachedChapter = chapterCache[targetChapter.id]
-            if (cachedChapter != null) {
-                // 如果已缓存，立即切换
-                updateCurrentChapter(cachedChapter, direction, null)
-                _uiState.value = _uiState.value.copy(isSwitchingChapter = false)
-                // 继续预加载更远的章节
-                preloadAdjacentChaptersExtended(targetChapter.id)
-            } else {
-                // 如果未缓存，从网络加载
-                loadChapterContentMethod(targetChapter.id, direction)
+            // 切换时，我们不保留旧的虚拟页面索引，因为整个页面列表会重建
+            viewModelScope.launch {
+                loadChapterContentInternal(targetChapter.id, direction, preserveVirtualIndex = false)
             }
         } else {
             // 到达书籍开头或结尾
@@ -830,20 +1196,27 @@ class ReaderViewModel @Inject constructor(
      */
     private fun updateContainerSizeInternal(size: IntSize, density: Density) {
         val oldSize = _uiState.value.containerSize
+        val needsRecalculation = size != oldSize
+
         _uiState.value = _uiState.value.copy(
             containerSize = size,
             density = density
         )
 
-        if (size != oldSize && _uiState.value.bookId.isNotEmpty()) {
-            viewModelScope.launch {
-                val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
-                if (bookCache != null) {
-                    startProgressivePagination(bookCache)
+        if (needsRecalculation) {
+             if (_uiState.value.bookId.isNotEmpty() && _uiState.value.readerSettings.pageFlipEffect != PageFlipEffect.VERTICAL) {
+                viewModelScope.launch {
+                    val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
+                    if (bookCache != null) {
+                        startProgressivePagination(bookCache)
+                    }
                 }
             }
-        } else if (_uiState.value.currentChapter != null) {
-            splitContent()
+
+            // 对当前章节和已加载的相邻章节重新分页
+            if (_uiState.value.currentChapter != null) {
+                splitContent()
+            }
         }
     }
 
@@ -865,7 +1238,13 @@ class ReaderViewModel @Inject constructor(
      * 切换到指定章节
      */
     private fun switchToChapterInternal(chapterId: String) {
-        loadChapterContentMethod(chapterId)
+        val state = _uiState.value
+        if (chapterId == state.currentChapter?.id) return
+
+        _uiState.value = state.copy(isSwitchingChapter = true)
+        viewModelScope.launch {
+            loadChapterContentInternal(chapterId, preserveVirtualIndex = false)
+        }
     }
 
     /**
@@ -886,9 +1265,10 @@ class ReaderViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     currentPageIndex = relativePageInChapter
                 )
+                buildVirtualPages(preserveCurrentIndex = false)
             } else {
                 viewModelScope.launch {
-                    loadChapterContentInternal(targetChapterId, initialPageIndex = relativePageInChapter)
+                    loadChapterContentInternal(targetChapterId, initialPageIndex = relativePageInChapter, preserveVirtualIndex = false)
                 }
             }
         }
@@ -907,8 +1287,13 @@ class ReaderViewModel @Inject constructor(
             savePageFlipEffect(settings.pageFlipEffect)
         }
 
-        // If font size or background color changed, pagination needs to be recalculated
-        if (oldSettings.fontSize != settings.fontSize || oldSettings.backgroundColor != settings.backgroundColor) {
+        // 如果字体大小、背景色或翻页模式发生变化，需要重新计算分页
+        val needsRecalculation = oldSettings.fontSize != settings.fontSize ||
+                oldSettings.backgroundColor != settings.backgroundColor ||
+                (oldSettings.pageFlipEffect == PageFlipEffect.VERTICAL && settings.pageFlipEffect != PageFlipEffect.VERTICAL) ||
+                (oldSettings.pageFlipEffect != PageFlipEffect.VERTICAL && settings.pageFlipEffect == PageFlipEffect.VERTICAL)
+
+        if (needsRecalculation) {
             // Font size changed, need to maintain reading position
             val oldPages = oldState.currentPageData?.pages ?: emptyList()
             val chapterProgress = if (oldPages.isNotEmpty() && oldState.currentPageIndex >= 0) {
@@ -918,10 +1303,12 @@ class ReaderViewModel @Inject constructor(
             // Re-split content, restoring progress
             splitContent(restoreProgress = chapterProgress)
 
-            viewModelScope.launch {
-                val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
-                if (bookCache != null) {
-                    startProgressivePagination(bookCache)
+            if (settings.pageFlipEffect != PageFlipEffect.VERTICAL) {
+                viewModelScope.launch {
+                    val bookCache = bookCacheManager.getBookContentCache(_uiState.value.bookId)
+                    if (bookCache != null) {
+                        startProgressivePagination(bookCache)
+                    }
                 }
             }
         } else if (_uiState.value.currentChapter != null) {
@@ -935,15 +1322,9 @@ class ReaderViewModel @Inject constructor(
      */
     private fun retryInternal() {
         val currentState = _uiState.value
-        if (currentState.bookId.isNotEmpty()) {
-            if (currentState.chapterList.isEmpty()) {
-                loadChapterListMethod()
-            } else if (currentState.currentChapter == null) {
-                val firstChapter = currentState.chapterList.firstOrNull()
-                if (firstChapter != null) {
-                    loadChapterContentMethod(firstChapter.id)
-                }
-            }
+        if (currentState.hasError) {
+             _uiState.value = currentState.copy(isLoading = true, hasError = false, error = "")
+             initReaderInternal(currentState.bookId, currentState.currentChapter?.id)
         }
     }
 
@@ -974,7 +1355,7 @@ class ReaderViewModel @Inject constructor(
 
                 addToCache(chapterId, chapterCache)
 
-                // FIX: Check if preloaded chapter is adjacent and re-split content to update pageData
+                // 检查预加载的章节是否是相邻章节，如果是则更新虚拟页面
                 val state = _uiState.value
                 val currentChapterId = state.currentChapter?.id
                 val chapterList = state.chapterList
@@ -982,7 +1363,8 @@ class ReaderViewModel @Inject constructor(
                 val preloadedIndex = chapterList.indexOfFirst { it.id == chapterId }
 
                 if (currentIndex != -1 && (preloadedIndex == currentIndex + 1 || preloadedIndex == currentIndex - 1)) {
-                    splitContent()
+                    // 预加载完成后，如果影响到了当前显示的相邻章节，则需要重建虚拟页面
+                     buildVirtualPages(preserveCurrentIndex = true)
                 }
             }
         } catch (e: Exception) {

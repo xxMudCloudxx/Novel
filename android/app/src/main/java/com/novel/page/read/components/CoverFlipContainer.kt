@@ -72,7 +72,7 @@ fun CoverFlipContainer(
                     onDrag = { _, dragAmount ->
                         val newOffset = dragOffset + dragAmount.x
                         val newDirection = if (dragAmount.x > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
-                        
+
                         // 检查是否可以朝该方向翻页
                         val canFlip = when(newDirection) {
                             FlipDirection.NEXT -> virtualPageIndex < virtualPages.size - 1
@@ -103,14 +103,14 @@ fun CoverFlipContainer(
             PageRenderer(
                 virtualPage = targetVirtualPage,
                 uiState = uiState,
-                    readerSettings = readerSettings,
-                    onNavigateToReader = onNavigateToReader,
+                readerSettings = readerSettings,
+                onNavigateToReader = onNavigateToReader,
                 onSwipeBack = onSwipeBack,
                 onPageChange = onPageChange,
                 onClick = onClick,
                 isCurrentPage = false
-                )
-            }
+            )
+        }
 
 
         // 当前页（覆盖效果）- 移除所有动画和阴影抖动
@@ -120,8 +120,8 @@ fun CoverFlipContainer(
                 .offset { IntOffset(dragOffset.roundToInt(), 0) }
                 .shadow(
                     elevation = if (dragOffset != 0f) 8.wdp else 0.wdp,
-                            shape = RectangleShape
-                        )
+                    shape = RectangleShape
+                )
         ) {
             val currentVirtualPage = virtualPages.getOrNull(virtualPageIndex)
             if (currentVirtualPage != null) {
@@ -160,24 +160,24 @@ private fun PageRenderer(
         is VirtualPage.BookDetailPage -> {
             val bookInfo = (uiState.currentPageData?.bookInfo
                 ?: loadedChapters[uiState.currentChapter?.id]?.bookInfo)
-                PageContentDisplay(
-                    page = "",
+            PageContentDisplay(
+                page = "",
                 chapterName = uiState.currentChapter?.chapterName ?: "",
-                    isFirstPage = false,
-                    isLastPage = false,
-                    isBookDetailPage = true,
+                isFirstPage = false,
+                isLastPage = false,
+                isBookDetailPage = true,
                 bookInfo = bookInfo,
                 nextChapterData = uiState.nextChapterData,
                 previousChapterData = uiState.previousChapterData,
-                    readerSettings = readerSettings,
+                readerSettings = readerSettings,
                 onNavigateToReader = onNavigateToReader,
-                    onSwipeBack = onSwipeBack,
+                onSwipeBack = onSwipeBack,
                 onPageChange = onPageChange,
                 showNavigationInfo = false,
                 currentPageIndex = 0,
                 totalPages = 1,
-                    onClick = onClick
-                )
+                onClick = onClick
+            )
         }
         is VirtualPage.ContentPage -> {
             val chapterData = loadedChapters[virtualPage.chapterId]

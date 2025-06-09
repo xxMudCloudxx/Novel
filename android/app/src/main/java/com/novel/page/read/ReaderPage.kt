@@ -122,14 +122,14 @@ fun ReaderPage(
         viewModel.initReader(bookId, chapterId)
     }
 
-    LaunchedEffect(uiState.isSuccess, uiState.currentPageIndex) {
-        if (uiState.isSuccess && uiState.currentPageIndex == -1) {
-            // When reader opens on the book detail page, automatically trigger
-            // an animated flip to the first content page.
-            delay(300) // Delay to allow UI to settle before animating
-            viewModel.onPageChange(FlipDirection.NEXT)
-        }
-    }
+//    LaunchedEffect(uiState.isSuccess, uiState.currentPageIndex) {
+//        if (uiState.isSuccess && uiState.currentPageIndex == -1) {
+//            // When reader opens on the book detail page, automatically trigger
+//            // an animated flip to the first content page.
+//            delay(300) // Delay to allow UI to settle before animating
+//            viewModel.onPageChange(FlipDirection.NEXT)
+//        }
+//    }
 
     // 清理controller的DisposableEffect
     DisposableEffect(Unit) {

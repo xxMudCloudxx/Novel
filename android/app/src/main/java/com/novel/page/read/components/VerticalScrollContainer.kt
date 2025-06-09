@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -43,6 +45,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import com.novel.page.read.viewmodel.ReaderUiState
 
 @Composable
 private fun ChapterTitleHeader(title: String, readerSettings: ReaderSettings) {
@@ -77,144 +80,60 @@ private fun ChapterContentText(content: String, readerSettings: ReaderSettings, 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VerticalScrollContainer(
-    pageData: PageData,
+    uiState: ReaderUiState,
     readerSettings: ReaderSettings,
-    pageCountCache: PageCountCacheData?,
-    containerSize: IntSize,
     onChapterChange: (FlipDirection) -> Unit,
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null,
     onVerticalScrollPageChange: (Int) -> Unit,
-    onClick: () -> Unit,
-    currentChapterIndex: Int = 0, // 新增：当前章节索引
-    totalChapters: Int = 1 // 新增：总章节数
+    onClick: () -> Unit
 ) {
     val listState = rememberLazyListState()
-    var isLoadingNext by remember { mutableStateOf(false) }
-    var isLoadingPrevious by remember { mutableStateOf(false) }
+    val loadedChapters = uiState.loadedChapterData.values.toList()
     
     // 当前显示的章节名称（动态更新）
-    var currentDisplayChapterName by remember { mutableStateOf(pageData.chapterName) }
-
-    val contentHeights = remember { mutableMapOf<String, Int>() }
-
-    // Reset loading flags when new data arrives
-    LaunchedEffect(pageData.nextChapterData, pageData.previousChapterData) {
-        isLoadingNext = false
-        isLoadingPrevious = false
-    }
-    
-    // Auto-scroll to new chapter content after it's loaded
-    LaunchedEffect(pageData.chapterId) {
-        if (listState.isScrollInProgress) return@LaunchedEffect
-        
-        // Find the index of the current chapter's title item
-        val currentChapterKey = "current_chapter_title_${pageData.chapterId}"
-        val itemInfo = listState.layoutInfo.visibleItemsInfo.find { it.key == currentChapterKey }
-        
-        if (itemInfo != null && itemInfo.offset != 0) {
-             // Heuristic to check if we should scroll
-             listState.animateScrollToItem(itemInfo.index)
-        }
-    }
+    var currentDisplayChapterName by remember { mutableStateOf(uiState.currentChapter?.chapterName ?: "") }
 
     // 动态更新当前显示的章节名称
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
             .map { visibleItems ->
-                // 找到当前显示区域中的章节标题
-                visibleItems.find { item ->
-                    val key = item.key as? String
-                    key?.contains("chapter_title") == true
+                // 找到第一个完全可见的章节标题
+                visibleItems.firstOrNull {
+                    val key = it.key as? String
+                    key?.startsWith("chapter_title_") == true
                 }?.key as? String
             }
             .distinctUntilChanged()
             .collect { titleKey ->
                 titleKey?.let { key ->
-                    when {
-                        key.contains("previous_chapter_title") -> {
-                            pageData.previousChapterData?.let { 
-                                currentDisplayChapterName = it.chapterName 
-                            }
-                        }
-                        key.contains("current_chapter_title") -> {
-                            currentDisplayChapterName = pageData.chapterName
-                        }
-                        key.contains("next_chapter_title") -> {
-                            pageData.nextChapterData?.let { 
-                                currentDisplayChapterName = it.chapterName 
-                            }
-                        }
+                    val chapterId = key.removePrefix("chapter_title_")
+                    uiState.loadedChapterData[chapterId]?.let {
+                        currentDisplayChapterName = it.chapterName
                     }
                 }
             }
     }
 
-    // 实时计算当前页码并通知ViewModel
-    LaunchedEffect(listState, containerSize, pageCountCache) {
-        snapshotFlow { listState.firstVisibleItemScrollOffset }
-            .map {
-                val layoutInfo = listState.layoutInfo
-                if (layoutInfo.visibleItemsInfo.isEmpty() || containerSize.height == 0 || pageCountCache == null) {
-                    return@map -1
-                }
-
-                val firstVisible = layoutInfo.visibleItemsInfo.first()
-                val chapterKey = firstVisible.key as? String
-
-                if (chapterKey != "current_chapter_content_${pageData.chapterId}") {
-                    return@map -1
-                }
-
-                val chapterContentHeight = contentHeights[chapterKey] ?: 0
-                if (chapterContentHeight == 0) return@map -1
-
-                val chapterRange =
-                    pageCountCache.chapterPageRanges.find { it.chapterId == pageData.chapterId }
-                val pagesInChapter = chapterRange?.let { it.endPage - it.startPage + 1 } ?: 1
-                if (pagesInChapter <= 1) return@map 0 // 如果只有一页，则页码始终为0
-
-                val pageHeight = chapterContentHeight.toFloat() / pagesInChapter.toFloat()
-                if (pageHeight <= 0) return@map -1
-
-                val scrollOffsetWithinItem = -firstVisible.offset
-                (scrollOffsetWithinItem / pageHeight).toInt().coerceIn(0, pagesInChapter - 1)
-            }
-            .filter { it >= 0 }
-            .distinctUntilChanged()
-            .collect { newPageIndex ->
-                onVerticalScrollPageChange(newPageIndex)
-            }
-    }
-
     // 检测滚动边界并自动加载章节
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (!listState.isScrollInProgress) return@LaunchedEffect
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
+            .filter { it.isNotEmpty() }
+            .collect { visibleItems ->
+                val firstVisible = visibleItems.first()
+                val lastVisible = visibleItems.last()
+                val totalItems = listState.layoutInfo.totalItemsCount
 
-        val layoutInfo = listState.layoutInfo
-        val visibleItems = layoutInfo.visibleItemsInfo
+                // 检测是否滚动到顶部（需要加载上一章）
+                if (firstVisible.index <= 1 && !uiState.isSwitchingChapter && !uiState.isFirstChapter) {
+                    onChapterChange(FlipDirection.PREVIOUS)
+                }
 
-        if (visibleItems.isNotEmpty()) {
-            val firstVisible = visibleItems.first()
-            val lastVisible = visibleItems.last()
-
-            // 检测是否滚动到顶部（需要加载上一章）
-            if (firstVisible.index <= 1 && !isLoadingPrevious && pageData.previousChapterData == null) {
-                isLoadingPrevious = true
-                onChapterChange(FlipDirection.PREVIOUS)
-                // Give time for UI to update before another trigger
-                delay(500)
+                // 检测是否滚动到底部（需要加载下一章）
+                if (lastVisible.index >= totalItems - 2 && !uiState.isSwitchingChapter && !uiState.isLastChapter) {
+                    onChapterChange(FlipDirection.NEXT)
+                }
             }
-
-            // 检测是否滚动到底部（需要加载下一章）
-            val totalItems = layoutInfo.totalItemsCount
-            if (lastVisible.index >= totalItems - 2 && !isLoadingNext && pageData.nextChapterData == null) {
-                isLoadingNext = true
-                onChapterChange(FlipDirection.NEXT)
-                // Give time for UI to update before another trigger
-                delay(500)
-            }
-        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -231,7 +150,7 @@ fun VerticalScrollContainer(
                 .fillMaxSize(),
             alpha = 0.04f,
             density = 1.0f,
-            seed = pageData.chapterId.hashCode().toLong()
+            seed = uiState.bookId.hashCode().toLong()
         ) {
             LazyColumn(
                 state = listState,
@@ -242,148 +161,37 @@ fun VerticalScrollContainer(
                     .padding(horizontal = 16.wdp, vertical = 10.wdp),
                 verticalArrangement = Arrangement.spacedBy(8.dp) // Use dp for arrangement
             ) {
-                // 书籍详情页（如果支持）
-                if (pageData.hasBookDetailPage) {
-                    item(key = "book_detail_page_${pageData.chapterId}") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(400.wdp) // 给书籍详情页一个固定高度
-                        ) {
-                            PageContentDisplay(
-                                page = "",
-                                chapterName = pageData.chapterName,
-                                isFirstPage = false,
-                                isLastPage = false,
-                                isBookDetailPage = true,
-                                bookInfo = pageData.bookInfo,
-                                nextChapterData = pageData.nextChapterData,
-                                previousChapterData = pageData.previousChapterData,
-                                readerSettings = readerSettings,
-                                onNavigateToReader = onNavigateToReader,
-                                onSwipeBack = onSwipeBack,
-                                showNavigationInfo = false,
-                                currentPageIndex = 0,
-                                totalPages = 1,
-                                onClick = onClick
-                            )
-                        }
-                    }
+                // 上一章加载指示器
+                if (uiState.isSwitchingChapter && uiState.chapterList.firstOrNull()?.id != uiState.currentChapter?.id) {
+                     item(key = "load_previous_indicator") {
+                        LoadingItem(readerSettings = readerSettings, text = "加载上一章中...")
+                     }
                 }
 
-                // 上一章预加载指示器和内容
-                if (pageData.previousChapterData == null && !isLoadingPrevious && !pageData.isFirstChapter) {
-                    item(key = "load_previous_indicator") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.wdp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isLoadingPrevious) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.wdp)
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = readerSettings.textColor,
-                                        modifier = Modifier.size(20.wdp)
-                                    )
-                                    NovelText(
-                                        text = "加载上一章...",
-                                        fontSize = 12.ssp,
-                                        color = readerSettings.textColor.copy(alpha = 0.7f)
-                                    )
-                                }
-                            } else {
-                                NovelText(
-                                    text = "下拉加载上一章",
-                                    fontSize = 12.ssp,
-                                    color = readerSettings.textColor.copy(alpha = 0.5f),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // 上一章内容（如果有）- 无缝拼接
-                pageData.previousChapterData?.let { previousChapter ->
-                    item(key = "previous_chapter_title_${previousChapter.chapterId}") {
-                        ChapterTitleHeader(previousChapter.chapterName, readerSettings)
-                    }
-                    item(key = "previous_chapter_content_${previousChapter.chapterId}") {
+                // 渲染所有已加载的章节
+                items(
+                    count = loadedChapters.size,
+                    key = { index -> "chapter_${loadedChapters[index].chapterId}" }
+                ) { index ->
+                    val chapterData = loadedChapters[index]
+                    Column {
+                        ChapterTitleHeader(
+                            title = chapterData.chapterName,
+                            readerSettings = readerSettings
+                        )
                         ChapterContentText(
-                            content = previousChapter.content,
+                            content = chapterData.content,
                             readerSettings = readerSettings,
                             modifier = Modifier.padding(bottom = 24.wdp)
                         )
                     }
                 }
 
-                // 当前章节内容
-                item(key = "current_chapter_title_${pageData.chapterId}") {
-                    ChapterTitleHeader(pageData.chapterName, readerSettings)
-                }
-                item(key = "current_chapter_content_${pageData.chapterId}") {
-                    ChapterContentText(
-                        content = pageData.content,
-                        readerSettings = readerSettings,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.wdp)
-                            .onSizeChanged {
-                                contentHeights["current_chapter_content_${pageData.chapterId}"] =
-                                    it.height
-                            }
-                    )
-                }
-
-                // 下一章内容（如果有）- 无缝拼接
-                pageData.nextChapterData?.let { nextChapter ->
-                    item(key = "next_chapter_title_${nextChapter.chapterId}") {
-                        ChapterTitleHeader(nextChapter.chapterName, readerSettings)
-                    }
-                    item(key = "next_chapter_content_${nextChapter.chapterId}") {
-                        ChapterContentText(
-                            content = nextChapter.content,
-                            readerSettings = readerSettings,
-                            modifier = Modifier.padding(bottom = 24.wdp)
-                        )
-                    }
-                }
 
                 // 下一章预加载指示器
-                item(key = "load_next_indicator") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(40.wdp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isLoadingNext) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.wdp)
-                            ) {
-                                CircularProgressIndicator(
-                                    color = readerSettings.textColor,
-                                    modifier = Modifier.size(24.wdp)
-                                )
-                                NovelText(
-                                    text = "加载下一章...",
-                                    fontSize = 12.ssp,
-                                    color = readerSettings.textColor.copy(alpha = 0.7f)
-                                )
-                            }
-                        } else if(pageData.nextChapterData == null && !pageData.isLastPage) {
-                            NovelText(
-                                text = "上拉加载下一章",
-                                fontSize = 12.ssp,
-                                color = readerSettings.textColor.copy(alpha = 0.5f),
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                if (uiState.isSwitchingChapter && uiState.chapterList.lastOrNull()?.id != uiState.currentChapter?.id) {
+                    item(key = "load_next_indicator") {
+                        LoadingItem(readerSettings = readerSettings, text = "加载下一章中...")
                     }
                 }
             }
@@ -392,8 +200,33 @@ fun VerticalScrollContainer(
         // 底部页面信息（对于滚动模式，显示章节信息）
         ReaderPageInfo(
             modifier = Modifier.padding(start = 12.wdp, bottom = 3.wdp),
-            currentChapterIndex = currentChapterIndex,
-            totalChapters = totalChapters
+            currentChapterIndex = uiState.currentChapterIndex,
+            totalChapters = uiState.chapterList.size
         )
+    }
+}
+
+@Composable
+private fun LoadingItem(readerSettings: ReaderSettings, text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(40.wdp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.wdp)
+        ) {
+            CircularProgressIndicator(
+                color = readerSettings.textColor,
+                modifier = Modifier.size(24.wdp)
+            )
+            NovelText(
+                text = text,
+                fontSize = 12.ssp,
+                color = readerSettings.textColor.copy(alpha = 0.7f)
+            )
+        }
     }
 }

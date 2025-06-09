@@ -1,6 +1,7 @@
 package com.novel.page.read.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -16,6 +17,8 @@ import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.SwipeBackContainer
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.VirtualPage
 
 /**
  * 平移翻页容器 - ViewPager风格，支持章节切换
@@ -23,43 +26,34 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  */
 @Composable
 fun SlideFlipContainer(
-    pageData: PageData,
-    currentPageIndex: Int,
+    uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
     onChapterChange: (FlipDirection) -> Unit,
     onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    // 重新计算页面尺寸和顺序
-    val previousChapterSize = pageData.previousChapterData?.pages?.size ?: 0
-    val bookDetailPageSize = if (pageData.hasBookDetailPage) 1 else 0
-    val currentChapterSize = pageData.pages.size
-    val nextChapterSize = pageData.nextChapterData?.pages?.size ?: 0
+    val virtualPages = uiState.virtualPages
+    val virtualPageIndex = uiState.virtualPageIndex
+    val loadedChapters = uiState.loadedChapterData
 
-    val totalPages = remember(pageData) {
-        previousChapterSize + bookDetailPageSize + currentChapterSize + nextChapterSize
+    if (virtualPages.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize().clickable { onClick() })
+        return
     }
 
-    // 正确计算当前页面在虚拟序列中的全局索引
-    val globalPageIndex = remember(pageData, currentPageIndex) {
-        if (currentPageIndex == -1 && pageData.hasBookDetailPage) {
-            previousChapterSize // 书籍详情页的索引
-        } else {
-            val safeCurrentIndex = currentPageIndex.coerceAtLeast(0)
-            previousChapterSize + bookDetailPageSize + safeCurrentIndex // 正常内容页索引
-        }
-    }
+    val totalPages = virtualPages.size
+    val currentVirtualPage = virtualPages.getOrNull(virtualPageIndex)
 
     val pagerState = rememberPagerState(
-        initialPage = globalPageIndex.coerceIn(0, totalPages - 1),
+        initialPage = virtualPageIndex,
         pageCount = { totalPages }
     )
-
-    var isHandlingExternalChange by remember { mutableStateOf(false) }
+    
+    val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
 
     // 当在书籍详情页时，使用SwipeBackContainer包裹以支持侧滑返回
-    if (currentPageIndex == -1 && pageData.hasBookDetailPage) {
+    if (isOnBookDetailPage) {
         SwipeBackContainer(
             modifier = Modifier.fillMaxSize(),
             onSwipeComplete = onSwipeBack,
@@ -67,20 +61,21 @@ fun SlideFlipContainer(
                 onPageChange(FlipDirection.NEXT)
             }
         ) {
+            val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
             PageContentDisplay(
-                page = "", 
-                chapterName = pageData.chapterName, 
-                isFirstPage = false, 
-                isLastPage = false, 
+                page = "",
+                chapterName = uiState.currentChapter?.chapterName ?: "",
+                isFirstPage = false,
+                isLastPage = false,
                 isBookDetailPage = true,
-                bookInfo = pageData.bookInfo,
-                nextChapterData = pageData.nextChapterData,
-                previousChapterData = pageData.previousChapterData,
-                readerSettings = readerSettings, 
+                bookInfo = bookInfo,
+                nextChapterData = uiState.nextChapterData,
+                previousChapterData = uiState.previousChapterData,
+                readerSettings = readerSettings,
                 onSwipeBack = onSwipeBack,
                 onPageChange = { onPageChange(it) },
-                showNavigationInfo = false, 
-                currentPageIndex = 0, 
+                showNavigationInfo = false,
+                currentPageIndex = 0,
                 totalPages = 1,
                 onClick = onClick
             )
@@ -89,15 +84,9 @@ fun SlideFlipContainer(
     }
 
     // 从ViewModel到Pager的同步
-    LaunchedEffect(globalPageIndex) {
-        val targetPage = globalPageIndex.coerceIn(0, totalPages - 1)
-        if (pagerState.currentPage != targetPage) {
-            isHandlingExternalChange = true
-            try {
-                pagerState.scrollToPage(targetPage)
-            } finally {
-                isHandlingExternalChange = false
-            }
+    LaunchedEffect(virtualPageIndex) {
+        if (pagerState.currentPage != virtualPageIndex) {
+            pagerState.scrollToPage(virtualPageIndex)
         }
     }
 
@@ -106,117 +95,65 @@ fun SlideFlipContainer(
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
             .collect { settledPage ->
-                if (isHandlingExternalChange || settledPage == globalPageIndex) return@collect
-
-                val direction = if (settledPage > globalPageIndex) FlipDirection.NEXT else FlipDirection.PREVIOUS
-
-                when {
-                    // 切换到上一章
-                    settledPage < previousChapterSize -> {
-                        onChapterChange(FlipDirection.PREVIOUS)
-                    }
-                    // 切换到书籍详情页
-                    bookDetailPageSize == 1 && settledPage == previousChapterSize -> {
-                        onPageChange(FlipDirection.PREVIOUS)
-                    }
-                    // 切换到下一章
-                    settledPage >= previousChapterSize + bookDetailPageSize + currentChapterSize -> {
-                        onChapterChange(FlipDirection.NEXT)
-                    }
-                    // 当前章节内翻页
-                    else -> {
-                        onPageChange(direction)
-                                }
-        }
+                if (settledPage != virtualPageIndex) {
+                    val direction = if (settledPage > virtualPageIndex) FlipDirection.NEXT else FlipDirection.PREVIOUS
+                    onPageChange(direction)
+                }
+            }
     }
-}
 
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize().clickable { onClick() }
-    ) { globalPage ->
-        // 确保globalPage在有效范围内
-        val validGlobalPage = globalPage.coerceIn(0, totalPages - 1)
-        
-        when {
-            // 上一章内容
-            validGlobalPage < previousChapterSize -> {
-                pageData.previousChapterData?.let { prevChapter ->
-                    val pageIndex = validGlobalPage
-                    if (pageIndex < prevChapter.pages.size) {
-                        PageContentDisplay(
-                            page = prevChapter.pages[pageIndex],
-                            chapterName = prevChapter.chapterName,
-                            isFirstPage = pageIndex == 0, 
-                            isLastPage = pageIndex == prevChapter.pages.size - 1,
-                            nextChapterData = pageData,
-                            readerSettings = readerSettings,
-                            onPageChange = { onPageChange(it) },
-                            currentPageIndex = pageIndex + 1, 
-                            totalPages = prevChapter.pages.size,
-                            onClick = onClick
-                        )
-                    }
-                }
-            }
-            // 书籍详情页
-            validGlobalPage < previousChapterSize + bookDetailPageSize -> {
+    ) { pageIndex ->
+        val virtualPage = virtualPages.getOrNull(pageIndex)
+
+        when (virtualPage) {
+            is VirtualPage.BookDetailPage -> {
+                val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
                 PageContentDisplay(
-                    page = "", 
-                    chapterName = pageData.chapterName, 
-                    isFirstPage = false, 
-                    isLastPage = false, 
+                    page = "",
+                    chapterName = uiState.currentChapter?.chapterName ?: "",
+                    isFirstPage = false,
+                    isLastPage = false,
                     isBookDetailPage = true,
-                    bookInfo = pageData.bookInfo,
-                    nextChapterData = pageData.nextChapterData,
-                    previousChapterData = pageData.previousChapterData,
-                    readerSettings = readerSettings, 
+                    bookInfo = bookInfo,
+                    nextChapterData = uiState.nextChapterData,
+                    previousChapterData = uiState.previousChapterData,
+                    readerSettings = readerSettings,
                     onSwipeBack = onSwipeBack,
                     onPageChange = { onPageChange(it) },
-                    showNavigationInfo = false, 
-                    currentPageIndex = 0, 
+                    showNavigationInfo = false,
+                    currentPageIndex = 0,
                     totalPages = 1,
                     onClick = onClick
                 )
             }
-            // 当前章节内容
-            validGlobalPage < previousChapterSize + bookDetailPageSize + currentChapterSize -> {
-                val pageIndex = validGlobalPage - previousChapterSize - bookDetailPageSize
-                if (pageIndex < pageData.pages.size) {
+            is VirtualPage.ContentPage -> {
+                val chapterData = loadedChapters[virtualPage.chapterId]
+                if (chapterData != null) {
                     PageContentDisplay(
-                        page = pageData.pages[pageIndex],
-                        chapterName = pageData.chapterName,
-                        isFirstPage = pageIndex == 0, 
-                        isLastPage = pageIndex == pageData.pages.size - 1,
-                        nextChapterData = pageData.nextChapterData,
-                        previousChapterData = pageData.previousChapterData,
+                        page = chapterData.pages[virtualPage.pageIndex],
+                        chapterName = chapterData.chapterName,
+                        isFirstPage = virtualPage.pageIndex == 0,
+                        isLastPage = virtualPage.pageIndex == chapterData.pages.size - 1,
+                        nextChapterData = if (virtualPage.pageIndex == chapterData.pages.size - 1) uiState.nextChapterData else null,
+                        previousChapterData = if (virtualPage.pageIndex == 0) uiState.previousChapterData else null,
                         readerSettings = readerSettings,
                         onPageChange = { onPageChange(it) },
-                        currentPageIndex = pageIndex + 1, 
-                        totalPages = pageData.pages.size,
+                        currentPageIndex = virtualPage.pageIndex + 1,
+                        totalPages = chapterData.pages.size,
                         onClick = onClick
                     )
                 }
             }
-            // 下一章内容
-            else -> {
-                pageData.nextChapterData?.let { nextChapter ->
-                    val pageIndex = validGlobalPage - previousChapterSize - bookDetailPageSize - currentChapterSize
-                    if (pageIndex < nextChapter.pages.size) {
-                        PageContentDisplay(
-                            page = nextChapter.pages[pageIndex],
-                            chapterName = nextChapter.chapterName,
-                            isFirstPage = pageIndex == 0, 
-                            isLastPage = pageIndex == nextChapter.pages.size - 1,
-                            previousChapterData = pageData,
-                            readerSettings = readerSettings,
-                            onPageChange = { onPageChange(it) },
-                            currentPageIndex = pageIndex + 1, 
-                            totalPages = nextChapter.pages.size,
-                            onClick = onClick
-                        )
-                    }
-                }
+            is VirtualPage.ChapterSection -> {
+                // Chapter section not supported in this flip mode
+                Box(modifier = Modifier.fillMaxSize())
+            }
+            null -> {
+                // Placeholder for loading or error
+                Box(modifier = Modifier.fillMaxSize())
             }
         }
     }

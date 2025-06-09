@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -17,14 +18,15 @@ import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.wdp
 import com.novel.utils.SwipeBackContainer
 import kotlin.math.abs
+import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.VirtualPage
 
 /**
  * 无动画翻页容器 - 优化版本，修复章节切换问题
  */
 @Composable
 fun NoAnimationContainer(
-    pageData: PageData,
-    currentPageIndex: Int,
+    uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
     onChapterChange: (FlipDirection) -> Unit,
@@ -32,11 +34,20 @@ fun NoAnimationContainer(
     onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    val virtualPages = uiState.virtualPages
+    val virtualPageIndex = uiState.virtualPageIndex
+    val loadedChapters = uiState.loadedChapterData
+
+    if (virtualPages.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize().clickable(onClick = onClick))
+        return
+    }
+
     var swipeDirection by remember { mutableStateOf<FlipDirection?>(null) }
     var swipeAmount by remember { mutableFloatStateOf(0f) }
 
-    // 检查是否在书籍详情页
-    val isOnBookDetailPage = currentPageIndex == -1 && pageData.hasBookDetailPage
+    val currentVirtualPage = virtualPages.getOrNull(virtualPageIndex)
+    val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
 
     // 主要内容区域
     Box(
@@ -53,31 +64,7 @@ fun NoAnimationContainer(
                             // 判断是否达到翻页阈值
                             val threshold = size.width * 0.2f
                             if (abs(swipeAmount) >= threshold) {
-                                // 根据方向和当前状态判断操作类型
-                                when (direction) {
-                                    FlipDirection.NEXT -> {
-                                        if (isOnBookDetailPage || currentPageIndex < pageData.contentPageCount - 1) {
-                                            // 在书籍详情页或章节内翻页
-                                            onPageChange(FlipDirection.NEXT)
-                                        } else {
-                                            // 章节边界，切换到下一章
-                                            onChapterChange(FlipDirection.NEXT)
-                                        }
-                                    }
-                                    FlipDirection.PREVIOUS -> {
-                                        if (currentPageIndex > 0 || (currentPageIndex == 0 && pageData.hasBookDetailPage)) {
-                                            // 章节内翻页或翻到书籍详情页
-                                            onPageChange(FlipDirection.PREVIOUS)
-                                        } else {
-                                            // 章节边界，切换到上一章，或者触发侧滑返回
-                                            if (pageData.previousChapterData != null) {
-                                                onChapterChange(FlipDirection.PREVIOUS)
-                                            } else {
-                                                onSwipeBack?.invoke()
-                                            }
-                                        }
-                                    }
-                                }
+                                onPageChange(direction)
                             }
                         }
                         swipeDirection = null
@@ -93,63 +80,77 @@ fun NoAnimationContainer(
                         
                         // 仅在 swipeDirection 未设置时确定方向，避免拖拽过程中方向改变
                         if (swipeDirection == null && abs(deltaX) > 20) {
-                            val newDirection = if (deltaX > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
+                             val newDirection = if (deltaX > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
                             
-                            // 检查是否可以在该方向进行操作
-                            val canOperate = when (newDirection) {
-                                FlipDirection.NEXT -> {
-                                    // 向左滑动（下一页/下一章）
-                                    when {
-                                        isOnBookDetailPage -> true // 从书籍详情页可以翻到内容
-                                        currentPageIndex < pageData.contentPageCount - 1 -> true // 章节内还有下一页
-                                        pageData.nextChapterData != null -> true // 有下一章
-                                        else -> false
-                                    }
-                                }
-                                FlipDirection.PREVIOUS -> {
-                                    // 向右滑动（上一页/上一章/返回）
-                                    when {
-                                        currentPageIndex > 0 -> true // 章节内还有上一页
-                                        currentPageIndex == 0 && pageData.hasBookDetailPage -> true // 第一页可以返回书籍详情页
-                                        pageData.previousChapterData != null -> true // 有上一章
-                                        isOnBookDetailPage -> true // 书籍详情页可以侧滑返回
-                                        currentPageIndex == 0 -> true // 第一页可以侧滑返回
-                                        else -> false
-                                    }
-                                }
-                            }
-                            
-                            if (canOperate) {
+                             val canFlip = when(newDirection) {
+                                 FlipDirection.NEXT -> virtualPageIndex < virtualPages.size - 1
+                                 FlipDirection.PREVIOUS -> virtualPageIndex > 0
+                             }
+
+                            if (canFlip) {
                                 swipeDirection = newDirection
+                            } else if (newDirection == FlipDirection.PREVIOUS && onSwipeBack != null) {
+                                onSwipeBack()
                             }
                         }
                     }
                 )
             }
     ) {
-        val pageContent = when {
-            isOnBookDetailPage -> ""
-            currentPageIndex in pageData.pages.indices -> pageData.pages[currentPageIndex]
-            else -> ""
+        when (currentVirtualPage) {
+            is VirtualPage.BookDetailPage -> {
+                val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
+                PageContentDisplay(
+                    page = "",
+                    chapterName = uiState.currentChapter?.chapterName ?: "",
+                    isFirstPage = false,
+                    isLastPage = false,
+                    isBookDetailPage = true,
+                    bookInfo = bookInfo,
+                    nextChapterData = uiState.nextChapterData,
+                    previousChapterData = uiState.previousChapterData,
+                    readerSettings = readerSettings,
+                    onNavigateToReader = onNavigateToReader,
+                    onSwipeBack = onSwipeBack,
+                    onPageChange = onPageChange,
+                    showNavigationInfo = false,
+                    currentPageIndex = 0,
+                    totalPages = 1,
+                    onClick = onClick
+                )
+            }
+            is VirtualPage.ContentPage -> {
+                val chapterData = loadedChapters[currentVirtualPage.chapterId]
+                if (chapterData != null) {
+                    val pageContent = chapterData.pages.getOrNull(currentVirtualPage.pageIndex) ?: ""
+                    PageContentDisplay(
+                        page = pageContent,
+                        chapterName = chapterData.chapterName,
+                        isFirstPage = currentVirtualPage.pageIndex == 0,
+                        isLastPage = currentVirtualPage.pageIndex == chapterData.pages.size - 1,
+                        isBookDetailPage = false,
+                        bookInfo = null,
+                        nextChapterData = uiState.nextChapterData,
+                        previousChapterData = uiState.previousChapterData,
+                        readerSettings = readerSettings,
+                        onNavigateToReader = onNavigateToReader,
+                        onSwipeBack = onSwipeBack,
+                        onPageChange = onPageChange,
+                        showNavigationInfo = true,
+                        currentPageIndex = currentVirtualPage.pageIndex + 1,
+                        totalPages = chapterData.contentPageCount,
+                        onClick = onClick
+                    )
+                }
+            }
+            is VirtualPage.ChapterSection -> {
+                // Chapter section not supported in this flip mode
+                Box(modifier = Modifier.fillMaxSize().background(readerSettings.backgroundColor))
+            }
+            null -> {
+                 // Placeholder
+                 Box(modifier = Modifier.fillMaxSize())
+            }
         }
-
-        PageContentDisplay(
-            page = pageContent,
-            chapterName = pageData.chapterName,
-            isFirstPage = currentPageIndex == 0,
-            isLastPage = currentPageIndex == pageData.pages.size - 1,
-            isBookDetailPage = isOnBookDetailPage,
-            bookInfo = pageData.bookInfo,
-            nextChapterData = pageData.nextChapterData,
-            previousChapterData = pageData.previousChapterData,
-            readerSettings = readerSettings,
-            onNavigateToReader = onNavigateToReader,
-            onSwipeBack = onSwipeBack,
-            onPageChange = onPageChange,
-            showNavigationInfo = true,
-            currentPageIndex = if (isOnBookDetailPage) 0 else currentPageIndex + 1,
-            totalPages = if (isOnBookDetailPage) 1 else pageData.contentPageCount,
-            onClick = onClick
-        )
     }
 }
