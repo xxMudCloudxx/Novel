@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,10 +20,11 @@ import com.novel.utils.SwipeBackContainer
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
+import com.novel.utils.wdp
 
 /**
  * 平移翻页容器 - ViewPager风格，支持章节切换
- * 修复版本：解决章节切换时多翻一页的问题，修复页面索引计算逻辑，增强预加载支持
+ * 修复版本：解决翻页回跳问题和手势冲突，确保流畅的翻页体验
  */
 @Composable
 fun SlideFlipContainer(
@@ -31,7 +33,8 @@ fun SlideFlipContainer(
     onPageChange: (FlipDirection) -> Unit,
     onChapterChange: (FlipDirection) -> Unit,
     onSwipeBack: (() -> Unit)? = null,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onSlideIndexChange: ((Int) -> Unit)? = null // 新增：平移模式专用的索引更新回调
 ) {
     val virtualPages = uiState.virtualPages
     val virtualPageIndex = uiState.virtualPageIndex
@@ -52,13 +55,84 @@ fun SlideFlipContainer(
     
     val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
 
-    // 当在书籍详情页时，使用SwipeBackContainer包裹以支持侧滑返回
+    // 状态管理 - 修复循环更新问题
+    var lastKnownVirtualPageIndex by remember { mutableStateOf(virtualPageIndex) }
+    var isUserScrolling by remember { mutableStateOf(false) }
+    var shouldSyncFromViewModel by remember { mutableStateOf(false) }
+
+    // 调试日志
+    Log.d("SlideFlipContainer", "State - virtualPageIndex: $virtualPageIndex, pagerPage: ${pagerState.currentPage}, lastKnown: $lastKnownVirtualPageIndex")
+
+    // 检测 ViewModel 中的 virtualPageIndex 变化（非用户手势触发）
+    LaunchedEffect(virtualPageIndex) {
+        if (virtualPageIndex != lastKnownVirtualPageIndex && !isUserScrolling) {
+            // ViewModel 状态发生了变化，且不是用户滚动触发的
+            Log.d("SlideFlipContainer", "Syncing from ViewModel: $lastKnownVirtualPageIndex -> $virtualPageIndex")
+            shouldSyncFromViewModel = true
+            pagerState.scrollToPage(virtualPageIndex)
+            lastKnownVirtualPageIndex = virtualPageIndex
+            shouldSyncFromViewModel = false
+        }
+    }
+
+    // 监听用户滚动行为
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.isScrollInProgress }
+            .collect { isScrolling ->
+                if (isScrolling && !shouldSyncFromViewModel) {
+                    // 用户开始滚动，且不是 ViewModel 同步触发的
+                    if (!isUserScrolling) {
+                        Log.d("SlideFlipContainer", "User started scrolling")
+                        isUserScrolling = true
+                    }
+                } else if (!isScrolling && isUserScrolling) {
+                    // 用户滚动结束
+                    Log.d("SlideFlipContainer", "User finished scrolling")
+                    isUserScrolling = false
+                }
+            }
+    }
+
+    // 监听页面变化并通知 ViewModel
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }
+            .distinctUntilChanged()
+            .collect { currentPage ->
+                if (currentPage != lastKnownVirtualPageIndex && isUserScrolling && !shouldSyncFromViewModel) {
+                    Log.d("SlideFlipContainer", "User flipped page: $lastKnownVirtualPageIndex -> $currentPage")
+                    
+                    val previousPage = lastKnownVirtualPageIndex
+                    lastKnownVirtualPageIndex = currentPage
+                    
+                    // 优先使用专用的索引更新回调，避免循环更新
+                    if (onSlideIndexChange != null) {
+                        onSlideIndexChange(currentPage)
+                    } else {
+                        // 兼容性：使用方向方式
+                        val direction = if (currentPage > previousPage) {
+                            FlipDirection.NEXT
+                        } else {
+                            FlipDirection.PREVIOUS
+                        }
+                        onPageChange(direction)
+                    }
+                }
+            }
+    }
+
+    // 当在书籍详情页时，单独渲染以支持侧滑返回
+    // 注意：在平移模式中，书籍详情页需要特殊处理以避免与 HorizontalPager 的手势冲突
     if (isOnBookDetailPage) {
         SwipeBackContainer(
             modifier = Modifier.fillMaxSize(),
             onSwipeComplete = onSwipeBack,
             onLeftSwipeToReader = {
-                onPageChange(FlipDirection.NEXT)
+                // 左滑进入阅读器：使用专用回调更新索引，避免循环
+                val nextIndex = virtualPageIndex + 1
+                Log.d("SlideFlipContainer", "Left swipe to reader: $virtualPageIndex -> $nextIndex")
+                if (nextIndex < virtualPages.size) {
+                    onSlideIndexChange?.invoke(nextIndex) ?: onPageChange(FlipDirection.NEXT)
+                }
             }
         ) {
             val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
@@ -73,7 +147,17 @@ fun SlideFlipContainer(
                 previousChapterData = uiState.previousChapterData,
                 readerSettings = readerSettings,
                 onSwipeBack = onSwipeBack,
-                onPageChange = { onPageChange(it) },
+                onPageChange = { direction ->
+                    // 书籍详情页中的翻页也使用专用回调
+                    val newIndex = when (direction) {
+                        FlipDirection.NEXT -> virtualPageIndex + 1
+                        FlipDirection.PREVIOUS -> virtualPageIndex - 1
+                    }
+                    Log.d("SlideFlipContainer", "Page change in book detail: $virtualPageIndex -> $newIndex")
+                    if (newIndex in virtualPages.indices) {
+                        onSlideIndexChange?.invoke(newIndex) ?: onPageChange(direction)
+                    }
+                },
                 showNavigationInfo = false,
                 currentPageIndex = 0,
                 totalPages = 1,
@@ -83,77 +167,66 @@ fun SlideFlipContainer(
         return
     }
 
-    // 从ViewModel到Pager的同步
-    LaunchedEffect(virtualPageIndex) {
-        if (pagerState.currentPage != virtualPageIndex) {
-            pagerState.scrollToPage(virtualPageIndex)
-        }
-    }
-
-    // 从Pager到ViewModel的同步 - 使用settledPage确保只在滚动结束后触发
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
-            .distinctUntilChanged()
-            .collect { settledPage ->
-                if (settledPage != virtualPageIndex) {
-                    val direction = if (settledPage > virtualPageIndex) FlipDirection.NEXT else FlipDirection.PREVIOUS
-                    onPageChange(direction)
-                }
-            }
-    }
-
+    // 正常的翻页模式
     HorizontalPager(
         state = pagerState,
-        modifier = Modifier.fillMaxSize().clickable { onClick() }
+        modifier = Modifier.fillMaxSize()
     ) { pageIndex ->
         val virtualPage = virtualPages.getOrNull(pageIndex)
 
-        when (virtualPage) {
-            is VirtualPage.BookDetailPage -> {
-                val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
-                PageContentDisplay(
-                    page = "",
-                    chapterName = uiState.currentChapter?.chapterName ?: "",
-                    isFirstPage = false,
-                    isLastPage = false,
-                    isBookDetailPage = true,
-                    bookInfo = bookInfo,
-                    nextChapterData = uiState.nextChapterData,
-                    previousChapterData = uiState.previousChapterData,
-                    readerSettings = readerSettings,
-                    onSwipeBack = onSwipeBack,
-                    onPageChange = { onPageChange(it) },
-                    showNavigationInfo = false,
-                    currentPageIndex = 0,
-                    totalPages = 1,
-                    onClick = onClick
-                )
-            }
-            is VirtualPage.ContentPage -> {
-                val chapterData = loadedChapters[virtualPage.chapterId]
-                if (chapterData != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { onClick() }
+        ) {
+            when (virtualPage) {
+                is VirtualPage.BookDetailPage -> {
+                    // 这种情况理论上不会出现，因为书籍详情页已在上面单独处理
+                    val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
                     PageContentDisplay(
-                        page = chapterData.pages[virtualPage.pageIndex],
-                        chapterName = chapterData.chapterName,
-                        isFirstPage = virtualPage.pageIndex == 0,
-                        isLastPage = virtualPage.pageIndex == chapterData.pages.size - 1,
-                        nextChapterData = if (virtualPage.pageIndex == chapterData.pages.size - 1) uiState.nextChapterData else null,
-                        previousChapterData = if (virtualPage.pageIndex == 0) uiState.previousChapterData else null,
+                        page = "",
+                        chapterName = uiState.currentChapter?.chapterName ?: "",
+                        isFirstPage = false,
+                        isLastPage = false,
+                        isBookDetailPage = true,
+                        bookInfo = bookInfo,
+                        nextChapterData = uiState.nextChapterData,
+                        previousChapterData = uiState.previousChapterData,
                         readerSettings = readerSettings,
+                        onSwipeBack = onSwipeBack,
                         onPageChange = { onPageChange(it) },
-                        currentPageIndex = virtualPage.pageIndex + 1,
-                        totalPages = chapterData.pages.size,
+                        showNavigationInfo = false,
+                        currentPageIndex = 0,
+                        totalPages = 1,
                         onClick = onClick
                     )
                 }
-            }
-            is VirtualPage.ChapterSection -> {
-                // Chapter section not supported in this flip mode
-                Box(modifier = Modifier.fillMaxSize())
-            }
-            null -> {
-                // Placeholder for loading or error
-                Box(modifier = Modifier.fillMaxSize())
+                is VirtualPage.ContentPage -> {
+                    val chapterData = loadedChapters[virtualPage.chapterId]
+                    if (chapterData != null) {
+                        PageContentDisplay(
+                            page = chapterData.pages.getOrNull(virtualPage.pageIndex) ?: "",
+                            chapterName = chapterData.chapterName,
+                            isFirstPage = virtualPage.pageIndex == 0,
+                            isLastPage = virtualPage.pageIndex == chapterData.pages.size - 1,
+                            nextChapterData = if (virtualPage.pageIndex == chapterData.pages.size - 1) uiState.nextChapterData else null,
+                            previousChapterData = if (virtualPage.pageIndex == 0) uiState.previousChapterData else null,
+                            readerSettings = readerSettings,
+                            onPageChange = { onPageChange(it) },
+                            currentPageIndex = virtualPage.pageIndex + 1,
+                            totalPages = chapterData.pages.size,
+                            onClick = onClick
+                        )
+                    }
+                }
+                is VirtualPage.ChapterSection -> {
+                    // Chapter section not supported in this flip mode
+                    Box(modifier = Modifier.fillMaxSize())
+                }
+                null -> {
+                    // Placeholder for loading or error
+                    Box(modifier = Modifier.fillMaxSize())
+                }
             }
         }
     }

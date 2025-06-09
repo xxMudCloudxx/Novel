@@ -162,30 +162,6 @@ private fun NormalPageContent(
             color = readerSettings.textColor,
             lineHeight = (readerSettings.fontSize * 1.5).ssp
         )
-
-        // 如果是最后一页且有下一章，显示下一章提示
-        if (isLastPage && nextChapterData != null) {
-            Spacer(modifier = Modifier.height(24.wdp))
-            NovelText(
-                text = "下一章: ${nextChapterData.chapterName}",
-                fontSize = (readerSettings.fontSize - 2).ssp,
-                color = readerSettings.textColor.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // 如果是第一页且有上一章，显示上一章提示
-        if (isFirstPage && previousChapterData != null) {
-            Spacer(modifier = Modifier.height(24.wdp))
-            NovelText(
-                text = "上一章: ${previousChapterData.chapterName}",
-                fontSize = (readerSettings.fontSize - 2).ssp,
-                color = readerSettings.textColor.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
     }
 }
 

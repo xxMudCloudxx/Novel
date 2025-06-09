@@ -990,7 +990,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 处理页面翻页 - 优化版本，更好的边界处理和状态同步，确保virtualPageIndex实时更新
+     * 处理页面翻页 - 优化版本，更好的边界处理和状态同步，支持平移模式防回跳
      */
     private fun handlePageFlip(direction: FlipDirection) {
         // 防重复触发检查
@@ -1014,34 +1014,20 @@ class ReaderViewModel @Inject constructor(
             // 在虚拟页面列表内移动
             val newVirtualPage = virtualPages[newVirtualIndex]
             
-            // 立即更新virtualPageIndex，确保所有翻页模式都能实时反映索引变化
-            _uiState.value = state.copy(virtualPageIndex = newVirtualIndex)
-
-            // 如果移动到了不同章节的页面，需要更新currentChapter等信息
-            if (newVirtualPage is VirtualPage.ContentPage) {
-                if (newVirtualPage.chapterId != state.currentChapter?.id) {
-                    // 切换章节，但只更新状态，不重新加载
-                    val newChapterCache = chapterCache[newVirtualPage.chapterId]
-                    if (newChapterCache != null) {
-                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
-                        _uiState.value = _uiState.value.copy(
-                            currentChapter = newChapterCache.chapter,
-                            currentChapterIndex = newChapterIndex,
-                            currentPageIndex = newVirtualPage.pageIndex,
-                            currentPageData = newChapterCache.pageData
-                        )
-                        
-                        // 触发动态预加载 - 进入新章节
-                        performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
-                    }
-                } else {
-                     _uiState.value = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
-                }
-            } else if (newVirtualPage is VirtualPage.BookDetailPage) {
-                 _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+            // 检查是否为平移模式，如果是则需要特殊处理以避免循环更新
+            val isSlideMode = state.readerSettings.pageFlipEffect == PageFlipEffect.SLIDE
+            
+            if (isSlideMode) {
+                // 平移模式：只更新相关状态，不更新 virtualPageIndex
+                // virtualPageIndex 将由 SlideFlipContainer 的用户手势直接管理
+                updateSlideFlipState(newVirtualPage, newVirtualIndex)
+            } else {
+                // 其他翻页模式：立即更新virtualPageIndex
+                _uiState.value = state.copy(virtualPageIndex = newVirtualIndex)
+                updatePageFlipState(newVirtualPage, newVirtualIndex)
             }
             
-            // 检查是否需要预加载更多 - 降低检查频率，避免频繁重建虚拟页面
+            // 检查是否需要预加载更多
             if (newVirtualPage is VirtualPage.ContentPage) {
                 val pageData = _uiState.value.loadedChapterData[newVirtualPage.chapterId]
                 if (pageData != null) {
@@ -1057,6 +1043,85 @@ class ReaderViewModel @Inject constructor(
         } else {
             // 到达虚拟列表边界，需要加载新章节
             handleChapterFlip(direction)
+        }
+    }
+
+    /**
+     * 处理平移模式的状态更新（避免循环更新）
+     */
+    private fun updateSlideFlipState(newVirtualPage: VirtualPage, newVirtualIndex: Int) {
+        when (newVirtualPage) {
+            is VirtualPage.ContentPage -> {
+                val state = _uiState.value
+                if (newVirtualPage.chapterId != state.currentChapter?.id) {
+                    // 切换章节
+                    val newChapterCache = chapterCache[newVirtualPage.chapterId]
+                    if (newChapterCache != null) {
+                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
+                        _uiState.value = _uiState.value.copy(
+                            currentChapter = newChapterCache.chapter,
+                            currentChapterIndex = newChapterIndex,
+                            currentPageIndex = newVirtualPage.pageIndex,
+                            currentPageData = newChapterCache.pageData,
+                            virtualPageIndex = newVirtualIndex // 只在这里更新 virtualPageIndex
+                        )
+                        
+                        // 触发动态预加载
+                        performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
+                    }
+                } else {
+                    // 同章节内翻页
+                    _uiState.value = _uiState.value.copy(
+                        currentPageIndex = newVirtualPage.pageIndex,
+                        virtualPageIndex = newVirtualIndex
+                    )
+                }
+            }
+            is VirtualPage.BookDetailPage -> {
+                _uiState.value = _uiState.value.copy(
+                    currentPageIndex = -1,
+                    virtualPageIndex = newVirtualIndex
+                )
+            }
+            is VirtualPage.ChapterSection -> {
+                _uiState.value = _uiState.value.copy(virtualPageIndex = newVirtualIndex)
+            }
+        }
+    }
+
+    /**
+     * 处理其他翻页模式的状态更新
+     */
+    private fun updatePageFlipState(newVirtualPage: VirtualPage, newVirtualIndex: Int) {
+        when (newVirtualPage) {
+            is VirtualPage.ContentPage -> {
+                val state = _uiState.value
+                if (newVirtualPage.chapterId != state.currentChapter?.id) {
+                    // 切换章节
+                    val newChapterCache = chapterCache[newVirtualPage.chapterId]
+                    if (newChapterCache != null) {
+                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
+                        _uiState.value = _uiState.value.copy(
+                            currentChapter = newChapterCache.chapter,
+                            currentChapterIndex = newChapterIndex,
+                            currentPageIndex = newVirtualPage.pageIndex,
+                            currentPageData = newChapterCache.pageData
+                        )
+                        
+                        // 触发动态预加载
+                        performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
+                    }
+                } else {
+                    // 同章节内翻页
+                    _uiState.value = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
+                }
+            }
+            is VirtualPage.BookDetailPage -> {
+                _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+            }
+            is VirtualPage.ChapterSection -> {
+                // 章节模式暂不支持
+            }
         }
     }
 
@@ -1650,6 +1715,79 @@ class ReaderViewModel @Inject constructor(
                 newVirtualPageIndex = newIndex,
                 triggerPreload = false // 强制更新时不触发预加载，避免性能问题
             )
+        }
+    }
+
+    /**
+     * 平移模式专用：直接更新虚拟页面索引和相关状态
+     * 用于平移容器中的用户手势完成后同步状态，避免循环更新
+     */
+    fun updateSlideFlipIndex(newIndex: Int) {
+        val state = _uiState.value
+        val virtualPages = state.virtualPages
+        
+        if (newIndex !in virtualPages.indices || newIndex == state.virtualPageIndex) {
+            return // 索引无效或没有变化
+        }
+
+        val newVirtualPage = virtualPages[newIndex]
+        
+        // 只更新必要的状态，不触发重新构建虚拟页面
+        when (newVirtualPage) {
+            is VirtualPage.ContentPage -> {
+                if (newVirtualPage.chapterId != state.currentChapter?.id) {
+                    // 切换到不同章节
+                    val newChapterCache = chapterCache[newVirtualPage.chapterId]
+                    if (newChapterCache != null) {
+                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
+                        _uiState.value = state.copy(
+                            virtualPageIndex = newIndex,
+                            currentChapter = newChapterCache.chapter,
+                            currentChapterIndex = newChapterIndex,
+                            currentPageIndex = newVirtualPage.pageIndex,
+                            currentPageData = newChapterCache.pageData
+                        )
+                        
+                        // 章节切换时触发预加载
+                        performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
+                    } else {
+                        // 章节数据未加载，只更新索引
+                        _uiState.value = state.copy(virtualPageIndex = newIndex)
+                    }
+                } else {
+                    // 同章节内翻页
+                    _uiState.value = state.copy(
+                        virtualPageIndex = newIndex,
+                        currentPageIndex = newVirtualPage.pageIndex
+                    )
+                }
+            }
+            is VirtualPage.BookDetailPage -> {
+                _uiState.value = state.copy(
+                    virtualPageIndex = newIndex,
+                    currentPageIndex = -1
+                )
+            }
+            is VirtualPage.ChapterSection -> {
+                _uiState.value = state.copy(virtualPageIndex = newIndex)
+            }
+        }
+        
+        // 检查预加载（轻量级检查）
+        if (newVirtualPage is VirtualPage.ContentPage) {
+            val pageData = _uiState.value.loadedChapterData[newVirtualPage.chapterId]
+            if (pageData != null) {
+                val isAtBoundary = newVirtualPage.pageIndex == 0 || 
+                                  newVirtualPage.pageIndex == pageData.pages.size - 1
+                if (isAtBoundary) {
+                    viewModelScope.launch {
+                        checkRegularPreload(
+                            _uiState.value.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId },
+                            newVirtualPage
+                        )
+                    }
+                }
+            }
         }
     }
 } 

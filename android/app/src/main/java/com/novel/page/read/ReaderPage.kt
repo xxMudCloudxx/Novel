@@ -220,6 +220,7 @@ fun ReaderPage(
                         if (uiState.currentPageData != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 IntegratedPageFlipContainer(
+                                    viewModel = viewModel,
                                     uiState = uiState,
                                     readerSettings = uiState.readerSettings,
                                     onPageChange = { direction ->
@@ -382,6 +383,7 @@ fun ReaderPage(
  */
 @Composable
 private fun IntegratedPageFlipContainer(
+    viewModel: ReaderViewModel,
     modifier: Modifier = Modifier,
     uiState: ReaderUiState,
     readerSettings: ReaderSettings,
@@ -419,7 +421,11 @@ private fun IntegratedPageFlipContainer(
             onPageChange = onPageChange,
             onChapterChange = onChapterChange,
             onSwipeBack = onSwipeBack,
-            onClick = onClick
+            onClick = onClick,
+            onSlideIndexChange = { newIndex ->
+                // 使用专用的更新方法避免循环更新
+                viewModel.updateSlideFlipIndex(newIndex)
+            }
         )
 
         PageFlipEffect.PAGECURL -> PageCurlFlipContainer(
