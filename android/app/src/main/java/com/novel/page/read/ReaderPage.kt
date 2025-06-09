@@ -220,12 +220,8 @@ fun ReaderPage(
                         if (uiState.currentPageData != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 IntegratedPageFlipContainer(
-                                    pageData = uiState.currentPageData!!,
-                                    currentPageIndex = uiState.currentPageIndex,
-                                    flipEffect = uiState.readerSettings.pageFlipEffect,
+                                    uiState = uiState,
                                     readerSettings = uiState.readerSettings,
-                                    pageCountCache = uiState.pageCountCache,
-                                    containerSize = uiState.containerSize,
                                     onPageChange = { direction ->
                                         // 翻页时关闭所有设置栏
                                         if (showSettings || showChapterList) {
@@ -244,7 +240,7 @@ fun ReaderPage(
                                             viewModel.onChapterChange(direction)
                                         }
                                     },
-                                    onNavigateToReader = { bookId, chapterId ->
+                                    onNavigateToReader = { _, _ ->
                                         // 从书籍详情页导航到第一页内容
                                         viewModel.navigateToContent()
                                     },
@@ -271,10 +267,7 @@ fun ReaderPage(
                                             if (size.width > 0 && size.height > 0) {
                                                 viewModel.updateContainerSize(size, density)
                                             }
-                                        },
-                                    currentChapterIndex = uiState.currentChapterIndex,
-                                    totalChapters = uiState.chapterList.size,
-                                    useNewImplementation = true // 启用新的策略模式优化
+                                        }
                                 )
                             }
                         } else {
@@ -381,6 +374,73 @@ fun ReaderPage(
                 }
             }
         }
+    }
+}
+
+/**
+ * 策略模式分发容器
+ */
+@Composable
+private fun IntegratedPageFlipContainer(
+    modifier: Modifier = Modifier,
+    uiState: ReaderUiState,
+    readerSettings: ReaderSettings,
+    onPageChange: (FlipDirection) -> Unit,
+    onChapterChange: (FlipDirection) -> Unit,
+    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
+    onSwipeBack: (() -> Unit)? = null,
+    onVerticalScrollPageChange: (Int) -> Unit,
+    onClick: () -> Unit
+) {
+    when (readerSettings.pageFlipEffect) {
+        PageFlipEffect.NONE -> NoAnimationContainer(
+            uiState = uiState,
+            readerSettings = readerSettings,
+            onPageChange = onPageChange,
+            onChapterChange = onChapterChange,
+            onNavigateToReader = onNavigateToReader,
+            onSwipeBack = onSwipeBack,
+            onClick = onClick
+        )
+
+        PageFlipEffect.COVER -> CoverFlipContainer(
+            uiState = uiState,
+            readerSettings = readerSettings,
+            onPageChange = onPageChange,
+            onChapterChange = onChapterChange,
+            onNavigateToReader = onNavigateToReader,
+            onSwipeBack = onSwipeBack,
+            onClick = onClick
+        )
+
+        PageFlipEffect.SLIDE -> SlideFlipContainer(
+            uiState = uiState,
+            readerSettings = readerSettings,
+            onPageChange = onPageChange,
+            onChapterChange = onChapterChange,
+            onSwipeBack = onSwipeBack,
+            onClick = onClick
+        )
+
+        PageFlipEffect.PAGECURL -> PageCurlFlipContainer(
+            uiState = uiState,
+            readerSettings = readerSettings,
+            onPageChange = onPageChange,
+            onChapterChange = onChapterChange,
+            onNavigateToReader = onNavigateToReader,
+            onSwipeBack = onSwipeBack,
+            onClick = onClick
+        )
+
+        PageFlipEffect.VERTICAL -> VerticalScrollContainer(
+            uiState = uiState,
+            readerSettings = readerSettings,
+            onChapterChange = onChapterChange,
+            onNavigateToReader = onNavigateToReader,
+            onSwipeBack = onSwipeBack,
+            onVerticalScrollPageChange = onVerticalScrollPageChange,
+            onClick = onClick
+        )
     }
 }
 

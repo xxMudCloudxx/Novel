@@ -126,10 +126,10 @@ fun SlideFlipContainer(
                     // 当前章节内翻页
                     else -> {
                         onPageChange(direction)
-                    }
-                }
-            }
+                                }
+        }
     }
+}
 
     HorizontalPager(
         state = pagerState,
