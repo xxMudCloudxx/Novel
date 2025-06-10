@@ -81,9 +81,7 @@ fun ReaderPage(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val density = LocalDensity.current
-    
-    // 获取从BookDetailPage传递的FlipBookController
-//    val flipController = remember { NavViewModel.flipBookController }
+
     val coroutineScope = rememberCoroutineScope()
 
     // 定义返回函数，供多处调用
@@ -94,14 +92,6 @@ fun ReaderPage(
             }
             NavViewModel.setFlipBookController(null)
         }
-//        {
-//            coroutineScope.launch {
-//                flipBookController?.triggerReverseAnimation()
-//            }
-//            NavViewModel.navigateBack()
-//            // 清理，避免下次误用
-//            NavViewModel.setFlipBookController(null)
-//        }
     }
 
     // 系统返回键处理
@@ -121,15 +111,6 @@ fun ReaderPage(
     LaunchedEffect(bookId, chapterId) {
         viewModel.initReader(bookId, chapterId)
     }
-
-//    LaunchedEffect(uiState.isSuccess, uiState.currentPageIndex) {
-//        if (uiState.isSuccess && uiState.currentPageIndex == -1) {
-//            // When reader opens on the book detail page, automatically trigger
-//            // an animated flip to the first content page.
-//            delay(300) // Delay to allow UI to settle before animating
-//            viewModel.onPageChange(FlipDirection.NEXT)
-//        }
-//    }
 
     // 清理controller的DisposableEffect
     DisposableEffect(Unit) {

@@ -14,6 +14,10 @@ enum class NovelUserDefaultsKey(val key: String) {
     TOKEN_EXPIRES_AT("tokenExpiresAt"),
     USER_ID("uid"),
     PAGE_FLIP_EFFECT("pageFlipEffect"),
+    BRIGHTNESS("brightness"),
+    FONT_SIZE("fontSize"),
+    TEXT_COLOR("textColor"),
+    BACKGROUND_COLOR("backgroundColor")
 }
 
 /**

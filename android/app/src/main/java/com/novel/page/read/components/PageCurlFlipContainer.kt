@@ -1,16 +1,12 @@
 package com.novel.page.read.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -24,9 +20,9 @@ import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
-import com.novel.utils.wdp
 import com.novel.utils.SwipeBackContainer
 import androidx.compose.runtime.snapshotFlow
+import com.novel.page.login.LoginPage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -59,6 +55,8 @@ fun PageCurlFlipContainer(
     val virtualPages = uiState.virtualPages
     val virtualPageIndex = uiState.virtualPageIndex
     val loadedChapters = uiState.loadedChapterData
+
+    Log.d("PageCurlFlipContainer", "virtualPages: $virtualPages, virtualPageIndex: $virtualPageIndex")
 
     if (virtualPages.isEmpty()) {
         // 如果虚拟页面为空（例如，初始加载时），显示一个空白或加载指示器
@@ -244,14 +242,4 @@ fun PageCurlFlipContainer(
             }
         }
     }
-}
-
-/**
- * 虚拟页面类型，用于统一处理章节边界和书籍详情页
- */
-private sealed class VirtualPageLegacy {
-    data class PreviousChapter(val chapterData: PageData) : VirtualPageLegacy()
-    data class CurrentChapter(val pageIndex: Int) : VirtualPageLegacy()
-    data class NextChapter(val chapterData: PageData) : VirtualPageLegacy()
-    data object BookDetailPage : VirtualPageLegacy() // 新增：书籍详情页
 }
