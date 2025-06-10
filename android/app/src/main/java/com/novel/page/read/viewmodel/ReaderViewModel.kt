@@ -18,7 +18,9 @@ import com.novel.page.read.repository.BookCacheData
 import com.novel.page.read.repository.BookCacheManager
 import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.repository.ProgressiveCalculationState
+import com.novel.page.read.repository.ReadingProgressData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 /**
@@ -150,7 +152,8 @@ sealed class ReaderIntent {
 class ReaderViewModel @Inject constructor(
     private val bookService: BookService,
     private val userDefaults: com.novel.utils.Store.UserDefaults.NovelUserDefaults,
-    private val bookCacheManager: BookCacheManager
+    private val bookCacheManager: BookCacheManager,
+    private val readingProgressRepository: com.novel.page.read.repository.ReadingProgressRepository
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(ReaderUiState())
@@ -174,8 +177,8 @@ class ReaderViewModel @Inject constructor(
     private val maxPreloadRange = 4           // 最大预加载范围：前后各4章
     
     init {
-        // 初始化时加载保存的翻页方式
-        loadSavedPageFlipEffect()
+        // 初始化时加载所有保存的阅读器设置
+        loadAllSavedSettings()
     }
 
     /**
@@ -201,11 +204,93 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
+     * 加载所有保存的阅读器设置
+     */
+    private fun loadAllSavedSettings() {
+        try {
+            val currentSettings = _uiState.value.readerSettings
+            var newSettings = currentSettings
+            
+            // 加载翻页效果
+            userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)?.let { savedEffect ->
+                try {
+                    newSettings = newSettings.copy(pageFlipEffect = PageFlipEffect.valueOf(savedEffect))
+                } catch (e: Exception) {
+                    // 解析失败，使用默认值
+                }
+            }
+            
+            // 加载字体大小
+            userDefaults.get<Int>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.FONT_SIZE)?.let { fontSize ->
+                newSettings = newSettings.copy(fontSize = fontSize)
+            }
+            
+            // 加载亮度
+            userDefaults.get<Float>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BRIGHTNESS)?.let { brightness ->
+                newSettings = newSettings.copy(brightness = brightness)
+            }
+            
+            // 加载背景色
+            userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)?.let { colorString ->
+                try {
+                    val color = android.graphics.Color.parseColor(colorString)
+                    newSettings = newSettings.copy(backgroundColor = androidx.compose.ui.graphics.Color(color))
+                } catch (e: Exception) {
+                    // 颜色解析失败，使用默认值
+                }
+            }
+            
+            // 加载文本色
+            userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)?.let { colorString ->
+                try {
+                    val color = android.graphics.Color.parseColor(colorString)
+                    newSettings = newSettings.copy(textColor = androidx.compose.ui.graphics.Color(color))
+                } catch (e: Exception) {
+                    // 颜色解析失败，使用默认值
+                }
+            }
+            
+            _uiState.value = _uiState.value.copy(readerSettings = newSettings)
+        } catch (e: Exception) {
+            // 如果加载失败，使用默认值
+            _uiState.value = _uiState.value.copy(
+                readerSettings = _uiState.value.readerSettings.copy(pageFlipEffect = PageFlipEffect.PAGECURL)
+            )
+        }
+    }
+
+    /**
      * 保存翻页方式
      */
     private fun savePageFlipEffect(pageFlipEffect: com.novel.page.read.components.PageFlipEffect) {
         try {
             userDefaults.set(pageFlipEffect.name, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
+        } catch (e: Exception) {
+            // 保存失败时静默处理
+        }
+    }
+
+    /**
+     * 保存所有阅读器设置到 UserDefaults
+     */
+    private fun saveAllReaderSettings(settings: ReaderSettings) {
+        try {
+            // 保存翻页效果
+            userDefaults.set(settings.pageFlipEffect.name, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
+            
+            // 保存字体大小
+            userDefaults.set(settings.fontSize, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.FONT_SIZE)
+            
+            // 保存亮度
+            userDefaults.set(settings.brightness, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BRIGHTNESS)
+            
+            // 保存背景色（转换为字符串）
+            val backgroundColorString = String.format("#%08X", settings.backgroundColor.value.toInt())
+            userDefaults.set(backgroundColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
+            
+            // 保存文本色（转换为字符串）
+            val textColorString = String.format("#%08X", settings.textColor.value.toInt())
+            userDefaults.set(textColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
         } catch (e: Exception) {
             // 保存失败时静默处理
         }
@@ -271,6 +356,8 @@ class ReaderViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(currentPageIndex = page)
             // 同时更新阅读进度，用于纵向滚动模式的进度计算
             updateReadingProgressFromPageIndex(page)
+            // 保存阅读进度
+            saveCurrentReadingProgress()
         }
     }
 
@@ -304,7 +391,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 初始化阅读器 - 支持书籍详情页
+     * 初始化阅读器 - 支持书籍详情页和阅读进度恢复
      */
     private fun initReaderInternal(bookId: String, chapterId: String?) {
         viewModelScope.launchWithLoading {
@@ -318,19 +405,48 @@ class ReaderViewModel @Inject constructor(
                 // 加载章节列表
                 loadChapterListInternal()
 
-                // 如果指定了章节ID，加载该章节；否则加载第一章
-                val targetChapterId = chapterId ?: _uiState.value.chapterList.firstOrNull()?.id
-                if (targetChapterId != null) {
-                    // 如果是第一章且没有指定章节ID，从书籍详情页开始
-                    val isFirstChapter = _uiState.value.chapterList.firstOrNull()?.id == targetChapterId
-                    val shouldStartFromBookDetail = isFirstChapter && chapterId == null
-                    
-                    if (shouldStartFromBookDetail) {
-                        // 设置为书籍详情页（索引-1）
-                        _uiState.value = _uiState.value.copy(currentPageIndex = -1, virtualPageIndex = 0)
+                // 优先尝试恢复上次阅读进度
+                val savedProgress = if (chapterId == null) {
+                    readingProgressRepository.getReadingProgress(bookId)
+                } else null
+
+                // 确定目标章节和页面索引
+                val (targetChapterId, targetPageIndex, targetPageFlipEffect) = when {
+                    // 指定了章节ID，使用指定的章节
+                    chapterId != null -> Triple(chapterId, 0, null)
+                    // 有保存的进度，恢复到保存的位置
+                    savedProgress != null -> Triple(
+                        savedProgress.chapterId, 
+                        savedProgress.pageIndex,
+                        savedProgress.pageFlipEffect
+                    )
+                    // 都没有，使用第一章
+                    else -> {
+                        val firstChapterId = _uiState.value.chapterList.firstOrNull()?.id
+                        Triple(firstChapterId, -1, null) // -1表示从书籍详情页开始
                     }
+                }
+
+                if (targetChapterId != null) {
+                    // 如果有保存的翻页模式，先应用设置
+                    if (targetPageFlipEffect != null) {
+                        val currentSettings = _uiState.value.readerSettings
+                        _uiState.value = _uiState.value.copy(
+                            readerSettings = currentSettings.copy(pageFlipEffect = targetPageFlipEffect)
+                        )
+                    }
+
+                    // 设置初始页面索引
+                    _uiState.value = _uiState.value.copy(
+                        currentPageIndex = targetPageIndex,
+                        virtualPageIndex = if (targetPageIndex == -1) 0 else targetPageIndex
+                    )
                     
-                    loadChapterContentInternal(targetChapterId)
+                    loadChapterContentInternal(
+                        chapterId = targetChapterId,
+                        initialPageIndex = targetPageIndex,
+                        preserveVirtualIndex = false
+                    )
 
                     // 在后台获取全本内容并开始计算分页
                     fetchAllBookContentInBackground(bookId)
@@ -1108,16 +1224,19 @@ class ReaderViewModel @Inject constructor(
                             currentPageData = newChapterCache.pageData
                         )
                         
-                        // 触发动态预加载
+                        // 保存进度并触发动态预加载
+                        saveCurrentReadingProgress()
                         performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
                     }
                 } else {
                     // 同章节内翻页
                     _uiState.value = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
+                    saveCurrentReadingProgress()
                 }
             }
             is VirtualPage.BookDetailPage -> {
                 _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+                saveCurrentReadingProgress()
             }
             is VirtualPage.ChapterSection -> {
                 // 章节模式暂不支持
@@ -1367,11 +1486,19 @@ class ReaderViewModel @Inject constructor(
     private fun updateSettingsInternal(settings: ReaderSettings) {
         val oldSettings = _uiState.value.readerSettings
         val oldState = _uiState.value // Capture state before change
+        
+        // 检查翻页模式是否发生变化
+        val pageFlipEffectChanged = oldSettings.pageFlipEffect != settings.pageFlipEffect
+        
         _uiState.value = _uiState.value.copy(readerSettings = settings)
 
-        // 如果翻页方式发生改变，保存到本地存储
-        if (oldSettings.pageFlipEffect != settings.pageFlipEffect) {
-            savePageFlipEffect(settings.pageFlipEffect)
+        // 保存所有设置到 UserDefaults
+        saveAllReaderSettings(settings)
+        
+        // 如果翻页方式发生改变，更新阅读进度记录
+        if (pageFlipEffectChanged) {
+            // 保存当前阅读进度并更新翻页模式
+            saveCurrentReadingProgress(newPageFlipEffect = settings.pageFlipEffect)
         }
 
         // 如果字体大小、背景色或翻页模式发生变化，需要重新计算分页
@@ -1381,14 +1508,15 @@ class ReaderViewModel @Inject constructor(
                 (oldSettings.pageFlipEffect != PageFlipEffect.VERTICAL && settings.pageFlipEffect == PageFlipEffect.VERTICAL)
 
         if (needsRecalculation) {
-            // Font size changed, need to maintain reading position
+            // 保留当前阅读上下文
+            val currentChapterId = oldState.currentChapter?.id
             val oldPages = oldState.currentPageData?.pages ?: emptyList()
             val chapterProgress = if (oldPages.isNotEmpty() && oldState.currentPageIndex >= 0) {
                 (oldState.currentPageIndex.toFloat() + 1) / oldPages.size.toFloat()
             } else 0f
 
-            // Re-split content, restoring progress
-            splitContent(restoreProgress = chapterProgress)
+            // 重新分页，恢复进度
+            splitContent(restoreProgress = chapterProgress, preserveVirtualIndex = true)
 
             if (settings.pageFlipEffect != PageFlipEffect.VERTICAL) {
                 viewModelScope.launch {
@@ -1399,7 +1527,7 @@ class ReaderViewModel @Inject constructor(
                 }
             }
         } else if (_uiState.value.currentChapter != null) {
-            // Settings other than font size changed, just re-split
+            // 其他设置改变，只需重新分页
             splitContent()
         }
     }
@@ -1748,7 +1876,8 @@ class ReaderViewModel @Inject constructor(
                             currentPageData = newChapterCache.pageData
                         )
                         
-                        // 章节切换时触发预加载
+                        // 章节切换时保存进度并触发预加载
+                        saveCurrentReadingProgress()
                         performDynamicPreload(newVirtualPage.chapterId, triggerExpansion = false)
                     } else {
                         // 章节数据未加载，只更新索引
@@ -1760,6 +1889,8 @@ class ReaderViewModel @Inject constructor(
                         virtualPageIndex = newIndex,
                         currentPageIndex = newVirtualPage.pageIndex
                     )
+                    // 页面变化时保存进度
+                    saveCurrentReadingProgress()
                 }
             }
             is VirtualPage.BookDetailPage -> {
@@ -1767,9 +1898,11 @@ class ReaderViewModel @Inject constructor(
                     virtualPageIndex = newIndex,
                     currentPageIndex = -1
                 )
+                saveCurrentReadingProgress()
             }
             is VirtualPage.ChapterSection -> {
                 _uiState.value = state.copy(virtualPageIndex = newIndex)
+                saveCurrentReadingProgress()
             }
         }
         
@@ -1788,6 +1921,65 @@ class ReaderViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 保存当前阅读进度
+     */
+    fun saveCurrentReadingProgress(newPageFlipEffect: PageFlipEffect? = null) {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val currentChapter = state.currentChapter ?: return@launch
+            
+            val progressData = ReadingProgressData(
+                bookId = state.bookId,
+                chapterId = currentChapter.id,
+                pageIndex = state.currentPageIndex,
+                globalPageIndex = calculateGlobalPageIndex(),
+                chapterProgress = calculateChapterProgress(),
+                globalProgress = state.computedReadingProgress,
+                pageFlipEffect = newPageFlipEffect ?: state.readerSettings.pageFlipEffect
+            )
+            
+            try {
+                readingProgressRepository.saveReadingProgress(progressData)
+            } catch (e: Exception) {
+                // 保存失败时静默处理，不影响阅读体验
+            }
+        }
+    }
+
+    /**
+     * 计算全书页码索引
+     */
+    private fun calculateGlobalPageIndex(): Int {
+        val state = _uiState.value
+        val pageCountCache = state.pageCountCache
+        val currentChapter = state.currentChapter ?: return 0
+        
+        if (pageCountCache != null) {
+            val chapterRange = pageCountCache.chapterPageRanges.find { it.chapterId == currentChapter.id }
+            if (chapterRange != null) {
+                return chapterRange.startPage + state.currentPageIndex.coerceAtLeast(0)
+            }
+        }
+        
+        return state.currentPageIndex.coerceAtLeast(0)
+    }
+
+    /**
+     * 计算章节内进度
+     */
+    private fun calculateChapterProgress(): Float {
+        val state = _uiState.value
+        val currentPageData = state.currentPageData ?: return 0f
+        val pageIndex = state.currentPageIndex
+        
+        return when {
+            pageIndex == -1 -> 0f // 书籍详情页
+            currentPageData.pages.isEmpty() -> 0f
+            else -> (pageIndex + 1).toFloat() / currentPageData.pages.size.toFloat()
         }
     }
 } 

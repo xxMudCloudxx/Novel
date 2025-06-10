@@ -108,8 +108,19 @@ fun ReaderPage(
     // 设置面板显示状态
     var showSettings by remember { mutableStateOf(false) }
 
+    // 阅读位置恢复状态
+    var showProgressRestoredHint by remember { mutableStateOf(false) }
+
     LaunchedEffect(bookId, chapterId) {
         viewModel.initReader(bookId, chapterId)
+        
+        // 如果是恢复阅读进度（没有指定章节），显示恢复提示
+        if (chapterId == null) {
+            delay(1000) // 等待内容加载完成
+            showProgressRestoredHint = true
+            delay(3000) // 显示3秒后自动隐藏
+            showProgressRestoredHint = false
+        }
     }
 
     // 清理controller的DisposableEffect
@@ -298,6 +309,9 @@ fun ReaderPage(
                                     currentChapterId = uiState.currentChapter?.id ?: "",
                                     backgroundColor = uiState.readerSettings.backgroundColor,
                                     onChapterSelected = { chapter ->
+                                        // 保存当前进度
+                                        viewModel.saveCurrentReadingProgress()
+                                        // 切换章节
                                         viewModel.switchToChapter(chapter.id)
                                         showChapterList = false
                                     },
@@ -330,6 +344,34 @@ fun ReaderPage(
                         }
 
                         // —— 最后再绘制"控制面板" ——
+                        // 阅读进度恢复提示
+                        AnimatedVisibility(
+                            visible = showProgressRestoredHint,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+                            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.wdp),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = NovelColors.NovelMain.copy(alpha = 0.9f)
+                                    ),
+                                    shape = RoundedCornerShape(8.wdp)
+                                ) {
+                                    Text(
+                                        text = "已恢复上次阅读位置",
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.padding(horizontal = 16.wdp, vertical = 8.wdp)
+                                    )
+                                }
+                            }
+                        }
+
                         AnimatedVisibility(
                             visible = showControls,  // 只要 showControls，就展示 ReaderControls
                             enter = fadeIn(),
