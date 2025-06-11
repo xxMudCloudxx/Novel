@@ -1,7 +1,7 @@
 package com.novel.page.search.service
 
 import android.util.Log
-import com.novel.page.search.SearchRankingItem
+import com.novel.page.search.component.SearchRankingItem
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService as ApiSearchService
 import javax.inject.Inject

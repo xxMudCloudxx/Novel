@@ -12,6 +12,7 @@ import com.novel.page.MainPage
 import com.novel.page.login.LoginPage
 import com.novel.page.book.BookDetailPage
 import com.novel.page.read.ReaderPage
+import com.novel.page.search.SearchPage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -40,6 +41,17 @@ fun NavigationSetup() {
         }
         composable("login") {
             LoginPage()
+        }
+        composable("search?query={query}") { backStackEntry ->
+            val query = backStackEntry.arguments?.getString("query") ?: ""
+            SearchPage(
+                onNavigateBack = {
+                    NavViewModel.navigateBack()
+                },
+                onNavigateToBookDetail = { bookId ->
+                    NavViewModel.navigateToBookDetail(bookId.toString(), fromRank = false)
+                }
+            )
         }
         composable("book_detail/{bookId}?fromRank={fromRank}") { backStackEntry ->
             val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
@@ -88,6 +100,25 @@ object NavViewModel : ViewModel() {
 
     fun setFlipBookController(controller: FlipBookAnimationController?) {
         flipBookController = controller
+    }
+    
+    /**
+     * 导航到搜索页面
+     * @param query 搜索关键词（可选）
+     */
+    fun navigateToSearch(query: String = "") {
+        Log.d("NavViewModel", "===== 导航到搜索页面 =====")
+        Log.d("NavViewModel", "query: $query")
+        
+        val route = if (query.isNotBlank()) {
+            "search?query=$query"
+        } else {
+            "search"
+        }
+        
+        navController.value?.navigate(route)
+        Log.d("NavViewModel", "✅ 导航到搜索页面命令已发送")
+        Log.d("NavViewModel", "==============================")
     }
     
     /**

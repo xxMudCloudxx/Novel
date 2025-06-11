@@ -32,6 +32,7 @@ import com.novel.utils.ssp
 import kotlinx.coroutines.launch
 import com.novel.page.component.rememberBookClickHandler
 import androidx.compose.ui.graphics.Color
+import com.novel.page.component.RankingNumber
 
 /**
  * 首页榜单面板组件 - 连续滚动但带精确距离控制，支持3D翻书动画
@@ -138,7 +139,7 @@ private fun RankBooksScrollableGrid(
             val columnWidth = remember(columnIndex, bookColumns.size) {
                 if (columnIndex != bookColumns.size - 1) 200.wdp else 312.wdp
             }
-            
+
             RankBookColumn(
                 books = bookColumns[columnIndex],
                 startRank = columnIndex * 4 + 1,
@@ -241,8 +242,8 @@ private fun RankBookGridItem(
     flipBookController: FlipBookAnimationController? = null
 ) {
     // 优化：使用单个状态存储位置和尺寸信息
-    var positionInfo by remember { 
-        mutableStateOf(Pair(Offset.Zero, Size.Zero)) 
+    var positionInfo by remember {
+        mutableStateOf(Pair(Offset.Zero, Size.Zero))
     }
 
     // 创建翻书动画点击处理器
@@ -282,28 +283,26 @@ private fun RankBookGridItem(
                         coordinates.size.width.toFloat(),
                         coordinates.size.height.toFloat()
                     )
-                    
+
                     val currentInfo = positionInfo
                     if ((newPosition - currentInfo.first).getDistanceSquared() > 1f ||
                         kotlin.math.abs(newSize.width - currentInfo.second.width) > 1f ||
-                        kotlin.math.abs(newSize.height - currentInfo.second.height) > 1f) {
-                        
+                        kotlin.math.abs(newSize.height - currentInfo.second.height) > 1f
+                    ) {
+
                         positionInfo = newPosition to newSize
                     }
                 }
-        ) { 
-            BookCoverImage(book = book, flipBookController = flipBookController) 
+        ) {
+            BookCoverImage(book = book, flipBookController = flipBookController)
         }
 
         Spacer(modifier = Modifier.width(4.wdp))
 
         // 排名数字
-        NovelText(
-            modifier = Modifier.padding(top = 2.wdp),
-            text = rank.toString(),
-            fontSize = 16.ssp,
-            fontWeight = FontWeight.Bold,
-            color = NovelColors.NovelMain
+        RankingNumber(
+            rank = rank,
+            fontSize = 16.ssp
         )
 
         Spacer(modifier = Modifier.width(4.wdp))
@@ -350,9 +349,9 @@ private fun BookCoverImage(
     // 优化：检查是否当前书籍正在进行动画，减少重复计算
     val isCurrentBookAnimating = remember(flipBookController?.animationState) {
         flipBookController?.animationState?.let { animState ->
-            animState.isAnimating && 
-            animState.hideOriginalImage && 
-            animState.bookId == book.id.toString()
+            animState.isAnimating &&
+                    animState.hideOriginalImage &&
+                    animState.bookId == book.id.toString()
         } ?: false
     }
 

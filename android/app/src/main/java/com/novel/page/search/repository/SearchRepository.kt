@@ -2,12 +2,12 @@ package com.novel.page.search.repository
 
 import android.content.Context
 import android.util.Log
-import com.novel.page.search.SearchRankingItem
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.novel.page.search.component.SearchRankingItem
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

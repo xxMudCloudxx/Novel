@@ -3,6 +3,8 @@ package com.novel.di
 import android.content.Context
 import com.novel.page.read.repository.BookCacheManager
 import com.novel.utils.network.api.front.BookService
+import com.novel.utils.network.api.front.SearchService
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,5 +28,17 @@ object NetworkModule {
     @Singleton
     fun provideBookService(): BookService {
         return BookService()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideSearchService(): SearchService {
+        return SearchService()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return Gson()
     }
 } 

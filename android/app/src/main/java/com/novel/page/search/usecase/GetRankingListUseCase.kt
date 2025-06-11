@@ -1,6 +1,5 @@
 package com.novel.page.search.usecase
 
-import com.novel.page.search.SearchRankingItem
 import com.novel.page.search.repository.RankingData
 import com.novel.page.search.service.SearchService
 import kotlinx.coroutines.async

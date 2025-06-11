@@ -21,6 +21,7 @@ import com.novel.page.home.viewmodel.HomeViewModel
 import com.novel.page.component.rememberFlipBookAnimationController
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
+import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.novel.page.component.FlipBookAnimationController
@@ -35,7 +36,6 @@ import androidx.compose.ui.platform.LocalDensity
 fun HomePage(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToCategory: (Long) -> Unit = {},
-    onNavigateToSearch: (String) -> Unit = {},
     onNavigateToCategoryPage: () -> Unit = {},
     // 接收全局动画控制器
     globalFlipBookController: FlipBookAnimationController? = null
@@ -71,7 +71,10 @@ fun HomePage(
                     // 不再跳转，书籍内容在动画中显示
                 }
                 is HomeEvent.NavigateToCategory -> onNavigateToCategory(event.categoryId)
-                is HomeEvent.NavigateToSearch -> onNavigateToSearch(event.query)
+                is HomeEvent.NavigateToSearch -> {
+                    // 直接调用NavViewModel导航到搜索页面
+                    NavViewModel.navigateToSearch(event.query)
+                }
                 is HomeEvent.NavigateToCategoryPage -> onNavigateToCategoryPage()
                 is HomeEvent.ShowToast -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
