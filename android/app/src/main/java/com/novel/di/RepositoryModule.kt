@@ -2,6 +2,7 @@ package com.novel.di
 
 import com.novel.repository.CachedBookRepository
 import com.novel.utils.network.api.front.BookService
+import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.NetworkCacheManager
 import dagger.Module
 import dagger.Provides
@@ -17,8 +18,9 @@ object RepositoryModule {
     @Singleton
     fun provideCachedBookRepository(
         bookService: BookService,
+        searchService: SearchService,
         cacheManager: NetworkCacheManager
     ): CachedBookRepository {
-        return CachedBookRepository(bookService, cacheManager)
+        return CachedBookRepository(bookService, searchService, cacheManager)
     }
 } 

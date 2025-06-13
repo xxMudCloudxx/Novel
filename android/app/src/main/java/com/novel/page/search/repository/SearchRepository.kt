@@ -18,6 +18,7 @@ import com.novel.utils.network.cache.searchBooksCached
 import com.novel.utils.network.cache.onSuccess
 import com.novel.utils.network.cache.onError
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
+import com.novel.repository.CachedBookRepository
 
 /**
  * 搜索历史数据结构
@@ -67,7 +68,8 @@ class SearchRepository @Inject constructor(
     private val bookService: BookService,
     private val userDefaults: NovelUserDefaults,
     private val gson: Gson,
-    private val cacheManager: NetworkCacheManager
+    private val cacheManager: NetworkCacheManager,
+    private val cachedBookRepository: CachedBookRepository
 ) {
     
     companion object {
@@ -168,53 +170,40 @@ class SearchRepository @Inject constructor(
     // region 榜单数据获取
     
     /**
-     * 获取推荐榜单数据
+     * 获取推荐榜单数据 - 使用缓存优先策略
      */
     suspend fun getNovelRanking(): List<SearchRankingItem> {
         return try {
             Log.d(TAG, "获取推荐榜单数据")
-            val response = bookService.getVisitRankBooksBlocking()
+            val rankBooks = cachedBookRepository.getVisitRankBooks(CacheStrategy.CACHE_FIRST)
             
-            if (response.ok == true && response.data != null) {
-                val realData = response.data.mapIndexed { index, book ->
-                    SearchRankingItem(
-                        id = book.id,
-                        title = book.bookName,
-                        author = book.authorName,
-                        rank = index + 1
-                    )
-                }
+            val realData = rankBooks.mapIndexed { index, book ->
+                SearchRankingItem(
+                    id = book.id,
+                    title = book.bookName,
+                    author = book.authorName,
+                    rank = index + 1
+                )
+            }
+            
+            // 如果数据不足15条，添加一些测试数据
+            if (realData.size < 20) {
+                val testData = mutableListOf<SearchRankingItem>()
+                testData.addAll(realData)
                 
-                // 如果数据不足15条，添加一些测试数据
-                if (realData.size < 20) {
-                    val testData = mutableListOf<SearchRankingItem>()
-                    testData.addAll(realData)
-                    
-                    for (i in realData.size until 20) {
-                        testData.add(
-                            SearchRankingItem(
-                                id = 1000L + i,
-                                title = "测试小说${i + 1}",
-                                author = "测试作者${i + 1}",
-                                rank = i + 1
-                            )
+                for (i in realData.size until 20) {
+                    testData.add(
+                        SearchRankingItem(
+                            id = 1000L + i,
+                            title = "测试小说${i + 1}",
+                            author = "测试作者${i + 1}",
+                            rank = i + 1
                         )
-                    }
-                    testData
-                } else {
-                    realData
-                }
-            } else {
-                Log.w(TAG, "获取推荐榜单失败: ${response.message}")
-                // 返回测试数据
-                (1..20).map { i ->
-                    SearchRankingItem(
-                        id = 1000L + i,
-                        title = "测试小说$i",
-                        author = "测试作者$i",
-                        rank = i
                     )
                 }
+                testData
+            } else {
+                realData
             }
         } catch (e: Exception) {
             Log.e(TAG, "获取推荐榜单失败", e)
@@ -231,53 +220,40 @@ class SearchRepository @Inject constructor(
     }
     
     /**
-     * 获取热搜短剧榜数据
+     * 获取热搜短剧榜数据 - 使用缓存优先策略
      */
     suspend fun getDramaRanking(): List<SearchRankingItem> {
         return try {
             Log.d(TAG, "获取热搜短剧榜数据")
-            val response = bookService.getUpdateRankBooksBlocking()
+            val rankBooks = cachedBookRepository.getUpdateRankBooks(CacheStrategy.CACHE_FIRST)
             
-            if (response.ok == true && response.data != null) {
-                val realData = response.data.mapIndexed { index, book ->
-                    SearchRankingItem(
-                        id = book.id,
-                        title = book.bookName,
-                        author = book.authorName,
-                        rank = index + 1
-                    )
-                }
+            val realData = rankBooks.mapIndexed { index, book ->
+                SearchRankingItem(
+                    id = book.id,
+                    title = book.bookName,
+                    author = book.authorName,
+                    rank = index + 1
+                )
+            }
+            
+            // 如果数据不足20条，添加一些测试数据
+            if (realData.size < 20) {
+                val testData = mutableListOf<SearchRankingItem>()
+                testData.addAll(realData)
                 
-                // 如果数据不足20条，添加一些测试数据
-                if (realData.size < 20) {
-                    val testData = mutableListOf<SearchRankingItem>()
-                    testData.addAll(realData)
-                    
-                    for (i in realData.size until 20) {
-                        testData.add(
-                            SearchRankingItem(
-                                id = 2000L + i,
-                                title = "热门短剧${i + 1}",
-                                author = "短剧作者${i + 1}",
-                                rank = i + 1
-                            )
+                for (i in realData.size until 20) {
+                    testData.add(
+                        SearchRankingItem(
+                            id = 2000L + i,
+                            title = "热门短剧${i + 1}",
+                            author = "短剧作者${i + 1}",
+                            rank = i + 1
                         )
-                    }
-                    testData
-                } else {
-                    realData
-                }
-            } else {
-                Log.w(TAG, "获取热搜短剧榜失败: ${response.message}")
-                // 返回测试数据
-                (1..20).map { i ->
-                    SearchRankingItem(
-                        id = 2000L + i,
-                        title = "热门短剧$i",
-                        author = "短剧作者$i",
-                        rank = i
                     )
                 }
+                testData
+            } else {
+                realData
             }
         } catch (e: Exception) {
             Log.e(TAG, "获取热搜短剧榜失败", e)
@@ -294,53 +270,40 @@ class SearchRepository @Inject constructor(
     }
     
     /**
-     * 获取新书榜单数据
+     * 获取新书榜单数据 - 使用缓存优先策略
      */
     suspend fun getNewBookRanking(): List<SearchRankingItem> {
         return try {
             Log.d(TAG, "获取新书榜单数据")
-            val response = bookService.getNewestRankBooksBlocking()
+            val rankBooks = cachedBookRepository.getNewestRankBooks(CacheStrategy.CACHE_FIRST)
             
-            if (response.ok == true && response.data != null) {
-                val realData = response.data.mapIndexed { index, book ->
-                    SearchRankingItem(
-                        id = book.id,
-                        title = book.bookName,
-                        author = book.authorName,
-                        rank = index + 1
-                    )
-                }
+            val realData = rankBooks.mapIndexed { index, book ->
+                SearchRankingItem(
+                    id = book.id,
+                    title = book.bookName,
+                    author = book.authorName,
+                    rank = index + 1
+                )
+            }
+            
+            // 如果数据不足20条，添加一些测试数据
+            if (realData.size < 20) {
+                val testData = mutableListOf<SearchRankingItem>()
+                testData.addAll(realData)
                 
-                // 如果数据不足20条，添加一些测试数据
-                if (realData.size < 20) {
-                    val testData = mutableListOf<SearchRankingItem>()
-                    testData.addAll(realData)
-                    
-                    for (i in realData.size until 20) {
-                        testData.add(
-                            SearchRankingItem(
-                                id = 3000L + i,
-                                title = "新书推荐${i + 1}",
-                                author = "新人作者${i + 1}",
-                                rank = i + 1
-                            )
+                for (i in realData.size until 20) {
+                    testData.add(
+                        SearchRankingItem(
+                            id = 3000L + i,
+                            title = "新书推荐${i + 1}",
+                            author = "新人作者${i + 1}",
+                            rank = i + 1
                         )
-                    }
-                    testData
-                } else {
-                    realData
-                }
-            } else {
-                Log.w(TAG, "获取新书榜单失败: ${response.message}")
-                // 返回测试数据
-                (1..20).map { i ->
-                    SearchRankingItem(
-                        id = 3000L + i,
-                        title = "新书推荐$i",
-                        author = "新人作者$i",
-                        rank = i
                     )
                 }
+                testData
+            } else {
+                realData
             }
         } catch (e: Exception) {
             Log.e(TAG, "获取新书榜单失败", e)

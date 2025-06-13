@@ -1,5 +1,6 @@
 package com.novel.page.read.viewmodel
 
+import android.annotation.SuppressLint
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.viewModelScope
 import com.novel.page.read.components.Chapter
@@ -22,6 +23,7 @@ import com.novel.page.read.repository.ReadingProgressData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import javax.inject.Inject
+import androidx.core.graphics.toColorInt
 
 /**
  * 翻页状态
@@ -207,6 +209,7 @@ class ReaderViewModel @Inject constructor(
     /**
      * 加载所有保存的阅读器设置
      */
+    @SuppressLint("UseKtx")
     private fun loadAllSavedSettings() {
         try {
             val currentSettings = _uiState.value.readerSettings
@@ -234,7 +237,7 @@ class ReaderViewModel @Inject constructor(
             // 加载背景色
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)?.let { colorString ->
                 try {
-                    val color = android.graphics.Color.parseColor(colorString)
+                    val color = colorString.toColorInt()
                     newSettings = newSettings.copy(backgroundColor = androidx.compose.ui.graphics.Color(color))
                 } catch (e: Exception) {
                     // 颜色解析失败，使用默认值
@@ -244,7 +247,7 @@ class ReaderViewModel @Inject constructor(
             // 加载文本色
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)?.let { colorString ->
                 try {
-                    val color = android.graphics.Color.parseColor(colorString)
+                    val color = colorString.toColorInt()
                     newSettings = newSettings.copy(textColor = androidx.compose.ui.graphics.Color(color))
                 } catch (e: Exception) {
                     // 颜色解析失败，使用默认值
@@ -1750,7 +1753,7 @@ class ReaderViewModel @Inject constructor(
     /**
      * 统一的翻页状态更新方法 - 确保所有翻页模式的状态一致性
      */
-    fun updateFlipState(
+    private fun updateFlipState(
         newVirtualPageIndex: Int,
         newChapterId: String? = null,
         newPageIndexInChapter: Int? = null,

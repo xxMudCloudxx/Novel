@@ -1,5 +1,6 @@
 package com.novel.page.search
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -246,6 +247,7 @@ private fun CategoryFilterRow(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.wdp)
         ) {
+            Log.d("CategoryFilterRow", "categories: $categories")
             categories.forEach { category ->
                 SearchFilterChip(
                     text = category.name ?: "未知分类",
@@ -258,16 +260,16 @@ private fun CategoryFilterRow(
             }
         }
         // 筛选按钮
-        IconButton(
-            onClick = onFilterClick,
-            modifier = Modifier.size(40.wdp).align(Alignment.CenterEnd)
-        ) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = "筛选",
-                tint = NovelColors.NovelMain,
-                modifier = Modifier.size(20.wdp)
-            )
-        }
+//        IconButton(
+//            onClick = onFilterClick,
+//            modifier = Modifier.size(40.wdp).align(Alignment.CenterEnd)
+//        ) {
+//            Icon(
+//                Icons.Default.MoreVert,
+//                contentDescription = "筛选",
+//                tint = NovelColors.NovelMain,
+//                modifier = Modifier.size(20.wdp)
+//            )
+//        }
     }
 }

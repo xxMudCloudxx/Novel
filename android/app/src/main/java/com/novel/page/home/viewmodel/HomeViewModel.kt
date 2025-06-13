@@ -17,6 +17,7 @@ import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import com.novel.page.home.dao.toEntity
+import com.novel.repository.CachedBookRepository
 
 /**
  * 分类数据
@@ -136,7 +137,8 @@ sealed class HomeEvent {
 class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val homeService: HomeService,
-    private val searchService: SearchService
+    private val searchService: SearchService,
+    private val cachedBookRepository: CachedBookRepository
 ) : ViewModel() {
     
     companion object {
@@ -371,7 +373,7 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 加载首页推荐书籍 - 改进的分页策略
+     * 加载首页推荐书籍 - 改进的分页策略，使用缓存优先
      */
     private fun loadHomeRecommendBooks(isRefresh: Boolean = false) {
         viewModelScope.launch {
@@ -385,13 +387,12 @@ class HomeViewModel @Inject constructor(
             try {
                 // 如果是刷新或者缓存为空，重新获取数据
                 if (isRefresh || cachedHomeBooks.isEmpty()) {
-                    val response = homeService.getHomeBooksBlocking()
+                    val homeBooks = homeRepository.getHomeBooks(
+                        strategy = if (isRefresh) com.novel.utils.network.cache.CacheStrategy.NETWORK_ONLY 
+                                 else com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST
+                    )
                     
-                    if (response.ok == true && response.data != null) {
-                        cachedHomeBooks = response.data
-                    } else {
-                        throw Exception(response.message ?: "获取推荐书籍失败")
-                    }
+                    cachedHomeBooks = homeBooks
                 }
                 
                 // 基于缓存数据进行分页
@@ -434,7 +435,7 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 根据分类加载推荐书籍
+     * 根据分类加载推荐书籍 - 使用缓存策略
      */
     private fun loadRecommendByCategory(categoryName: String) {
         if (categoryName == "推荐") {
@@ -463,33 +464,30 @@ class HomeViewModel @Inject constructor(
                 val categoryId = currentState.categoryFilters
                     .find { it.name == categoryName }?.id?.toIntOrNull() ?: 1
                 
-                val response = searchService.searchBooksBlocking(
-                    SearchService.SearchRequest(
-                        categoryId = categoryId,
-                        pageNum = 1,
-                        pageSize = RECOMMEND_PAGE_SIZE
-                    )
+                // 使用CachedBookRepository进行搜索，它已经实现了缓存策略
+                val booksData = cachedBookRepository.searchBooks(
+                    categoryId = categoryId,
+                    pageNum = 1,
+                    pageSize = RECOMMEND_PAGE_SIZE,
+                    strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST
                 )
                 
-                if (response.ok == true && response.data != null) {
-                    val hasMore = response.data.list.size >= RECOMMEND_PAGE_SIZE
-                    
-                    // 更新缓存
-                    categoryRecommendCache[categoryName] = response.data.list
-                    
-                    updateState { 
-                        it.copy(
-                            recommendBooks = response.data.list,
-                            recommendLoading = false,
-                            hasMoreRecommend = hasMore,
-                            totalRecommendPages = response.data.pages.toInt(),
-                            recommendPage = 1,
-                            isRefreshing = false // 确保停止刷新状态
-                        ) 
-                    }
-                } else {
-                    throw Exception(response.message ?: "搜索书籍失败")
+                val hasMore = booksData.list.size >= RECOMMEND_PAGE_SIZE
+                
+                // 更新缓存
+                categoryRecommendCache[categoryName] = booksData.list
+                
+                updateState { 
+                    it.copy(
+                        recommendBooks = booksData.list,
+                        recommendLoading = false,
+                        hasMoreRecommend = hasMore,
+                        totalRecommendPages = booksData.pages.toInt(),
+                        recommendPage = 1,
+                        isRefreshing = false // 确保停止刷新状态
+                    ) 
                 }
+                
             } catch (e: Exception) {
                 Log.e(TAG, "根据分类加载推荐书籍失败", e)
                 updateState { 
@@ -504,7 +502,7 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 加载更多推荐书籍
+     * 加载更多推荐书籍 - 使用缓存策略
      */
     private fun loadMoreRecommend() {
         if (currentState.isRecommendMode || currentState.recommendLoading || !currentState.hasMoreRecommend) {
@@ -519,30 +517,27 @@ class HomeViewModel @Inject constructor(
                     .find { it.name == currentState.selectedCategoryFilter }?.id?.toIntOrNull() ?: 1
                 
                 val nextPage = currentState.recommendPage + 1
-                val response = searchService.searchBooksBlocking(
-                    SearchService.SearchRequest(
-                        categoryId = categoryId,
-                        pageNum = nextPage,
-                        pageSize = RECOMMEND_PAGE_SIZE
-                    )
+                
+                // 使用CachedBookRepository进行搜索，它已经实现了缓存策略
+                val booksData = cachedBookRepository.searchBooks(
+                    categoryId = categoryId,
+                    pageNum = nextPage,
+                    pageSize = RECOMMEND_PAGE_SIZE,
+                    strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST
                 )
                 
-                if (response.ok == true && response.data != null) {
-                    val newBooks = response.data.list
-                    val hasMore = newBooks.size >= RECOMMEND_PAGE_SIZE
-                    
-                    updateState { 
-                        it.copy(
-                            recommendBooks = it.recommendBooks + newBooks,
-                            recommendLoading = false,
-                            hasMoreRecommend = hasMore,
-                            recommendPage = nextPage
-                        ) 
-                    }
-
-                } else {
-                    throw Exception(response.message ?: "加载更多失败")
+                val newBooks = booksData.list
+                val hasMore = newBooks.size >= RECOMMEND_PAGE_SIZE
+                
+                updateState { 
+                    it.copy(
+                        recommendBooks = it.recommendBooks + newBooks,
+                        recommendLoading = false,
+                        hasMoreRecommend = hasMore,
+                        recommendPage = nextPage
+                    ) 
                 }
+
             } catch (e: Exception) {
                 Log.e(TAG, "加载更多推荐书籍失败", e)
                 updateState { 
@@ -892,7 +887,7 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 预加载指定分类的数据
+     * 预加载指定分类的数据 - 使用缓存策略
      */
     private fun preloadCategoryData(categoryName: String) {
         // 如果是推荐分类或已经在加载中或已有缓存，则跳过
@@ -909,18 +904,17 @@ class HomeViewModel @Inject constructor(
                 val categoryId = currentState.categoryFilters
                     .find { it.name == categoryName }?.id?.toIntOrNull() ?: 1
                 
-                val response = searchService.searchBooksBlocking(
-                    SearchService.SearchRequest(
-                        categoryId = categoryId,
-                        pageNum = 1,
-                        pageSize = RECOMMEND_PAGE_SIZE
-                    )
+                // 使用CachedBookRepository进行搜索，它已经实现了缓存策略
+                val booksData = cachedBookRepository.searchBooks(
+                    categoryId = categoryId,
+                    pageNum = 1,
+                    pageSize = RECOMMEND_PAGE_SIZE,
+                    strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST
                 )
                 
-                if (response.ok == true && response.data != null) {
-                    categoryRecommendCache[categoryName] = response.data.list
-                    Log.d(TAG, "预加载分类 $categoryName 数据成功，共${response.data.list.size}本书")
-                }
+                categoryRecommendCache[categoryName] = booksData.list
+                Log.d(TAG, "预加载分类 $categoryName 数据成功，共${booksData.list.size}本书")
+                
             } catch (e: Exception) {
                 Log.e(TAG, "预加载分类 $categoryName 数据失败", e)
             } finally {

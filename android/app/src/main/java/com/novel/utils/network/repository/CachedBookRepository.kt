@@ -2,6 +2,7 @@ package com.novel.repository
 
 import android.util.Log
 import com.novel.utils.network.api.front.BookService
+import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.NetworkCacheManager
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.cache.CacheResult
@@ -12,6 +13,7 @@ import com.novel.utils.network.cache.getVisitRankBooksCached
 import com.novel.utils.network.cache.getUpdateRankBooksCached
 import com.novel.utils.network.cache.getNewestRankBooksCached
 import com.novel.utils.network.cache.getBookCategoriesCached
+import com.novel.utils.network.cache.searchBooksCached
 import com.novel.utils.network.cache.onSuccess
 import com.novel.utils.network.cache.onError
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +34,7 @@ import javax.inject.Singleton
 @Singleton
 class CachedBookRepository @Inject constructor(
     private val bookService: BookService,
+    private val searchService: SearchService,
     private val cacheManager: NetworkCacheManager
 ) {
     companion object {
@@ -329,6 +332,63 @@ class CachedBookRepository @Inject constructor(
      */
     fun clearError() {
         _error.value = null
+    }
+    
+    /**
+     * 搜索书籍 - 使用缓存优先策略
+     */
+    suspend fun searchBooks(
+        keyword: String? = null,
+        workDirection: Int? = null,
+        categoryId: Int? = null,
+        isVip: Int? = null,
+        bookStatus: Int? = null,
+        wordCountMin: Int? = null,
+        wordCountMax: Int? = null,
+        updateTimeMin: String? = null,
+        sort: String? = null,
+        pageNum: Int = 1,
+        pageSize: Int = 20,
+        strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
+    ): SearchService.PageResponse<SearchService.BookInfo> {
+        return executeWithLoading {
+            searchService.searchBooksCached(
+                keyword = keyword,
+                workDirection = workDirection,
+                categoryId = categoryId,
+                isVip = isVip,
+                bookStatus = bookStatus,
+                wordCountMin = wordCountMin,
+                wordCountMax = wordCountMax,
+                updateTimeMin = updateTimeMin,
+                sort = sort,
+                pageNum = pageNum,
+                pageSize = pageSize,
+                cacheManager = cacheManager,
+                strategy = strategy,
+                onCacheUpdate = { response ->
+                    Log.d(TAG, "Search books cache updated for keyword: $keyword")
+                }
+            ).onSuccess { response, fromCache ->
+                Log.d(TAG, "Search books loaded from ${if (fromCache) "cache" else "network"} for keyword: $keyword")
+            }.onError { error, cachedData ->
+                Log.e(TAG, "Failed to search books for keyword: $keyword", error)
+                _error.value = error.message
+            }.let { result ->
+                when (result) {
+                    is CacheResult.Success -> result.data.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                    is CacheResult.Error -> result.cachedData?.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                }
+            }
+        } ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+    }
+    
+    /**
+     * 清理搜索缓存
+     */
+    suspend fun clearSearchCache() {
+        // 这里可以根据需要实现更具体的搜索缓存清理逻辑
+        Log.d(TAG, "Search cache cleared")
     }
     
     /**
