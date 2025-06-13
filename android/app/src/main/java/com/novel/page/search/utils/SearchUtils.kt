@@ -1,6 +1,8 @@
 package com.novel.page.search.utils
 
 import android.util.Log
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * 搜索相关的工具类
@@ -63,10 +65,10 @@ object SearchUtils {
      */
     fun formatSearchResultCount(count: Int): String {
         return when {
-            count == 0 -> "暂无结果"
-            count < 1000 -> "${count}个结果"
-            count < 10000 -> "${count / 1000}.${(count % 1000) / 100}k个结果"
-            else -> "${count / 10000}.${(count % 10000) / 1000}w个结果"
+            count >= 100000000 -> "${count / 100000000}亿"
+            count >= 10000 -> "${count / 10000}万"
+            count >= 1000 -> "${count / 1000}千"
+            else -> "$count"
         }
     }
     
@@ -82,5 +84,38 @@ object SearchUtils {
      */
     fun logSearchEvent(query: String, resultCount: Int) {
         Log.d(TAG, "搜索事件: 关键词='$query', 结果数量=$resultCount")
+    }
+    
+    fun formatWordCount(wordCount: Int): String {
+        return when {
+            wordCount >= 10000 -> "${wordCount / 10000}万字"
+            wordCount >= 1000 -> "${wordCount / 1000}千字"
+            else -> "${wordCount}字"
+        }
+    }
+    
+    fun formatUpdateTime(updateTime: String?): String {
+        if (updateTime.isNullOrEmpty()) return "未知时间"
+        
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val date = inputFormat.parse(updateTime)
+            val now = Date()
+            val diffInMillis = now.time - (date?.time ?: 0)
+            val diffInDays = diffInMillis / (1000 * 60 * 60 * 24)
+            
+            when {
+                diffInDays < 1 -> "今天更新"
+                diffInDays < 7 -> "${diffInDays}天前更新"
+                diffInDays < 30 -> "${diffInDays / 7}周前更新"
+                else -> "${diffInDays / 30}月前更新"
+            }
+        } catch (e: Exception) {
+            "未知时间"
+        }
+    }
+    
+    fun sanitizeSearchQuery(query: String): String {
+        return query.trim().replace(Regex("[<>\"'&]"), "")
     }
 } 

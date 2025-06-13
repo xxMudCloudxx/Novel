@@ -17,6 +17,7 @@ import com.novel.page.search.component.SearchHistorySection
 import com.novel.page.search.component.RankingSection
 import com.novel.page.search.component.SearchTopBar
 import com.novel.ui.theme.NovelColors
+import com.novel.utils.NavViewModel
 import com.novel.utils.wdp
 
 /**
@@ -41,6 +42,9 @@ fun SearchPage(
                 is SearchEvent.NavigateToBookDetail -> {
                     onNavigateToBookDetail(event.bookId)
                 }
+
+                is SearchEvent.NavigateToSearchResult ->              // ⬅️ 新增
+                    NavViewModel.navigateToSearchResult(event.query)  //   调用全局导航
 
                 is SearchEvent.NavigateBack -> {
                     onNavigateBack()

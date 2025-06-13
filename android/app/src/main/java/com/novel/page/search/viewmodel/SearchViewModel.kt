@@ -50,6 +50,7 @@ sealed class SearchAction {
  */
 sealed class SearchEvent {
     data class NavigateToBookDetail(val bookId: Long) : SearchEvent()
+    data class NavigateToSearchResult(val query: String) : SearchEvent()
     data object NavigateBack : SearchEvent()
     data class ShowToast(val message: String) : SearchEvent()
 }
@@ -173,7 +174,7 @@ class SearchViewModel @Inject constructor(
                 updateState { it.copy(searchHistory = updatedHistory) }
                 
                 // TODO: 导航到搜索结果页面
-                sendEvent(SearchEvent.ShowToast("搜索功能开发中"))
+                sendEvent(SearchEvent.NavigateToSearchResult(query.trim()))
                 
             } catch (e: Exception) {
                 Log.e(TAG, "搜索失败", e)

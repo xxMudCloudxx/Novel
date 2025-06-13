@@ -62,26 +62,10 @@ fun HomeTopBar(
 
                 Spacer(modifier = Modifier.width(8.wdp))
 
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    modifier = Modifier.weight(1f),
-                    textStyle = TextStyle(
-                        fontSize = 14.ssp,
-                        color = NovelColors.NovelText
-                    ),
-                    cursorBrush = SolidColor(NovelColors.NovelMain),
-                    singleLine = true,
-                    decorationBox = { innerTextField ->
-                        if (searchQuery.isEmpty()) {
-                            NovelText(
-                                text = "搜索书名、作者",
-                                fontSize = 14.ssp,
-                                color = NovelColors.NovelTextGray
-                            )
-                        }
-                        innerTextField()
-                    }
+                NovelText(
+                    text = "搜索书名、作者",
+                    fontSize = 14.ssp,
+                    color = NovelColors.NovelTextGray
                 )
             }
         }

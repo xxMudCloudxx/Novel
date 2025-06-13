@@ -8,6 +8,7 @@ import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.novel.page.search.component.SearchRankingItem
+import com.novel.page.search.viewmodel.BookInfoRespDto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,6 +28,27 @@ data class RankingData(
     val novelRanking: List<SearchRankingItem> = emptyList(),
     val dramaRanking: List<SearchRankingItem> = emptyList(),
     val newBookRanking: List<SearchRankingItem> = emptyList()
+)
+
+/**
+ * REST响应包装类 for 分页书籍信息
+ */
+data class RestRespPageRespDtoBookInfoRespDto(
+    val code: Int? = null,
+    val message: String? = null,
+    val data: PageRespDtoBookInfoRespDto? = null,
+    val ok: Boolean? = null
+)
+
+/**
+ * 分页响应DTO for 书籍信息
+ */
+data class PageRespDtoBookInfoRespDto(
+    val pageNum: Long? = null,
+    val pageSize: Long? = null,
+    val total: Long? = null,
+    val list: List<BookInfoRespDto> = emptyList(),
+    val pages: Long? = null
 )
 
 @Singleton
@@ -242,30 +264,65 @@ class SearchRepository @Inject constructor(
      */
     suspend fun searchBooks(
         keyword: String,
+        workDirection: Int? = null,
+        categoryId: Int? = null,
+        isVip: Int? = null,
+        bookStatus: Int? = null,
+        wordCountMin: Int? = null,
+        wordCountMax: Int? = null,
+        updateTimeMin: String? = null,
+        sort: String? = null,
         pageNum: Int = 1,
-        pageSize: Int = 10
-    ): List<SearchRankingItem> {
-        return try {
-            Log.d(TAG, "搜索小说: $keyword")
-            val response = searchService.searchBooksByKeywordBlocking(keyword, pageNum, pageSize)
-            
-            if (response.ok == true && response.data?.list != null) {
-                response.data.list.mapIndexed { index, book ->
-                    SearchRankingItem(
-                        id = book.id,
-                        title = book.bookName,
-                        author = book.authorName,
-                        rank = index + 1
-                    )
-                }
-            } else {
-                Log.w(TAG, "搜索小说失败: ${response.message}")
-                emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "搜索小说失败", e)
-            emptyList()
-        }
+        pageSize: Int = 20
+    ): RestRespPageRespDtoBookInfoRespDto {
+        val response = searchService.searchBooksBlocking(
+            keyword = keyword,
+            workDirection = workDirection,
+            categoryId = categoryId,
+            isVip = isVip,
+            bookStatus = bookStatus,
+            wordCountMin = wordCountMin,
+            wordCountMax = wordCountMax,
+            updateTimeMin = updateTimeMin,
+            sort = sort,
+            pageNum = pageNum,
+            pageSize = pageSize
+        )
+        
+        // 将API响应转换为我们的数据模型
+        return RestRespPageRespDtoBookInfoRespDto(
+            code = response.code?.toIntOrNull(),
+            message = response.message,
+            data = response.data?.let { apiData ->
+                PageRespDtoBookInfoRespDto(
+                    pageNum = apiData.pageNum,
+                    pageSize = apiData.pageSize,
+                    total = apiData.total,
+                    pages = apiData.pages,
+                    list = apiData.list.map { apiBook ->
+                        BookInfoRespDto(
+                            id = apiBook.id,
+                            categoryId = apiBook.categoryId,
+                            categoryName = apiBook.categoryName,
+                            picUrl = apiBook.picUrl,
+                            bookName = apiBook.bookName,
+                            authorId = apiBook.authorId,
+                            authorName = apiBook.authorName,
+                            bookDesc = apiBook.bookDesc,
+                            bookStatus = apiBook.bookStatus,
+                            visitCount = apiBook.visitCount,
+                            wordCount = apiBook.wordCount,
+                            commentCount = apiBook.commentCount,
+                            firstChapterId = apiBook.firstChapterId,
+                            lastChapterId = apiBook.lastChapterId,
+                            lastChapterName = apiBook.lastChapterName,
+                            updateTime = apiBook.updateTime
+                        )
+                    }
+                )
+            },
+            ok = response.ok
+        )
     }
     
     // endregion

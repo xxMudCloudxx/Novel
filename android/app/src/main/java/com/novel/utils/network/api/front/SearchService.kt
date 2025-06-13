@@ -193,6 +193,38 @@ class SearchService @Inject constructor() {
         )
         return searchBooksBlocking(request)
     }
+
+    /**
+     * 完整搜索方法 - 支持所有筛选参数
+     */
+    suspend fun searchBooksBlocking(
+        keyword: String? = null,
+        workDirection: Int? = null,
+        categoryId: Int? = null,
+        isVip: Int? = null,
+        bookStatus: Int? = null,
+        wordCountMin: Int? = null,
+        wordCountMax: Int? = null,
+        updateTimeMin: String? = null,
+        sort: String? = null,
+        pageNum: Int = 1,
+        pageSize: Int = 20
+    ): BookSearchResponse {
+        val request = SearchRequest(
+            keyword = keyword,
+            workDirection = workDirection,
+            categoryId = categoryId,
+            isVip = isVip,
+            bookStatus = bookStatus,
+            wordCountMin = wordCountMin,
+            wordCountMax = wordCountMax,
+            updateTimeMin = updateTimeMin,
+            sort = sort,
+            pageNum = pageNum,
+            pageSize = pageSize
+        )
+        return searchBooksBlocking(request)
+    }
     // endregion
 
     // region 响应处理
