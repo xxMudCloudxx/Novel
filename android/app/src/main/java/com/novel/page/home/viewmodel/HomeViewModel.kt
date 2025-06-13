@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
+import com.novel.page.home.dao.toEntity
 
 /**
  * 分类数据
@@ -234,14 +235,14 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 加载分类筛选器数据 - 使用Repository
+     * 加载分类筛选器数据 - 使用缓存策略
      */
     private fun loadCategoryFilters() {
         viewModelScope.launch {
             updateState { it.copy(categoryFiltersLoading = true) }
             
             try {
-                homeRepository.getBookCategories()
+                homeRepository.getBookCategories(strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST)
                     .catch { e ->
                         Log.e(TAG, "加载分类筛选器失败", e)
                         updateState { 
@@ -469,28 +470,18 @@ class HomeViewModel @Inject constructor(
             updateState { it.copy(rankLoading = true) }
             
             try {
-                homeRepository.getRankBooks(rankType)
-                    .catch { e ->
-                        Log.e(TAG, "加载榜单书籍失败", e)
-                        updateState { 
-                            it.copy(
-                                rankLoading = false,
-                                error = "加载榜单失败：${e.localizedMessage}"
-                            ) 
-                        }
-                    }
-                    .collect { rankBooks ->
-                        // 更新缓存
-                        rankBooksCache[rankType] = rankBooks
-                        
-                        updateState { 
-                            it.copy(
-                                rankBooks = rankBooks,
-                                rankLoading = false
-                            ) 
-                        }
-                        Log.d(TAG, "$rankType 数据加载完成，共${rankBooks.size}本书")
-                    }
+                val rankBooks = homeRepository.getRankBooks(rankType)
+                
+                // 更新缓存
+                rankBooksCache[rankType] = rankBooks
+                
+                updateState { 
+                    it.copy(
+                        rankBooks = rankBooks,
+                        rankLoading = false
+                    ) 
+                }
+                Log.d(TAG, "$rankType 数据加载完成，共${rankBooks.size}本书")
             } catch (e: Exception) {
                 Log.e(TAG, "加载榜单书籍异常", e)
                 updateState { 
@@ -573,7 +564,16 @@ class HomeViewModel @Inject constructor(
                     Log.e(TAG, "加载分类失败", e)
                     updateState { it.copy(categoryLoading = false) }
                 }
-                .collect { categories ->
+                .collect { apiCategories ->
+                    // 转换为Entity
+                    val categories = apiCategories.map { category ->
+                        HomeCategoryEntity(
+                            id = category.id,
+                            name = category.name,
+                            iconUrl = null,
+                            sortOrder = 0
+                        )
+                    }
                     updateState { 
                         it.copy(
                             categories = categories,
@@ -601,17 +601,23 @@ class HomeViewModel @Inject constructor(
                 
                 // 合并所有Flow
                 combine(carouselFlow, hotFlow, newFlow, vipFlow) { carousel, hot, new, vip ->
+                    // 转换为Entity
+                    val carouselEntities = carousel.map { it.toEntity("carousel") }
+                    val hotEntities = hot.map { it.toEntity("hot") }
+                    val newEntities = new.map { it.toEntity("new") }
+                    val vipEntities = vip.map { it.toEntity("vip") }
+                    
                     updateState { 
                         it.copy(
-                            carouselBooks = carousel,
-                            hotBooks = hot,
-                            newBooks = new,
-                            vipBooks = vip,
+                            carouselBooks = carouselEntities,
+                            hotBooks = hotEntities,
+                            newBooks = newEntities,
+                            vipBooks = vipEntities,
                             booksLoading = false,
                             isLoading = false
                         ) 
                     }
-                    Log.d(TAG, "书籍数据加载完成：轮播${carousel.size}，热门${hot.size}，最新${new.size}，VIP${vip.size}")
+                    Log.d(TAG, "书籍数据加载完成：轮播${carouselEntities.size}，热门${hotEntities.size}，最新${newEntities.size}，VIP${vipEntities.size}")
                 }.catch { e ->
                     Log.e(TAG, "加载书籍数据失败", e)
                     updateState { 
@@ -866,14 +872,11 @@ class HomeViewModel @Inject constructor(
             rankLoadingSet.add(rankType)
             
             try {
-                homeRepository.getRankBooks(rankType)
-                    .catch { e ->
-                        Log.e(TAG, "预加载榜单 $rankType 数据失败", e)
-                    }
-                    .collect { rankBooks ->
-                        rankBooksCache[rankType] = rankBooks
-                        Log.d(TAG, "预加载榜单 $rankType 数据成功，共${rankBooks.size}本书")
-                    }
+                val rankBooks = homeRepository.getRankBooks(rankType)
+                rankBooksCache[rankType] = rankBooks
+                Log.d(TAG, "预加载榜单 $rankType 数据成功，共${rankBooks.size}本书")
+            } catch (e: Exception) {
+                Log.e(TAG, "预加载榜单 $rankType 数据失败", e)
             } finally {
                 rankLoadingSet.remove(rankType)
             }

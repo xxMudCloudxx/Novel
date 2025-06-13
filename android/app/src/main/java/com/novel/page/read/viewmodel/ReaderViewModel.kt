@@ -153,7 +153,8 @@ class ReaderViewModel @Inject constructor(
     private val bookService: BookService,
     private val userDefaults: com.novel.utils.Store.UserDefaults.NovelUserDefaults,
     private val bookCacheManager: BookCacheManager,
-    private val readingProgressRepository: com.novel.page.read.repository.ReadingProgressRepository
+    private val readingProgressRepository: com.novel.page.read.repository.ReadingProgressRepository,
+    private val cachedBookRepository: com.novel.repository.CachedBookRepository
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(ReaderUiState())
@@ -482,25 +483,24 @@ class ReaderViewModel @Inject constructor(
 
         try {
             val bookIdLong = bookId.toLong()
-            val response = bookService.getBookChaptersBlocking(bookIdLong)
-
-            if (response.code == "00000" && response.data != null) {
-                val chapters = response.data.map { chapter ->
-                    Chapter(
-                        id = chapter.id.toString(),
-                        chapterName = chapter.chapterName,
-                        chapterNum = chapter.chapterNum.toString(),
-                        isVip = if (chapter.isVip == 1) "1" else "0"
-                    )
-                }
-
-                _uiState.value = _uiState.value.copy(chapterList = chapters)
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    hasError = true,
-                    error = response.message ?: "加载章节列表失败"
+            
+            // 使用缓存策略获取章节列表
+            val chaptersData = cachedBookRepository.getBookChapters(
+                bookId = bookIdLong,
+                strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST
+            )
+            
+            val chapters = chaptersData.map { chapter ->
+                Chapter(
+                    id = chapter.id.toString(),
+                    chapterName = chapter.chapterName,
+                    chapterNum = chapter.chapterNum.toString(),
+                    isVip = if (chapter.isVip == 1) "1" else "0"
                 )
             }
+
+            _uiState.value = _uiState.value.copy(chapterList = chapters)
+            
         } catch (e: Exception) {
             _uiState.value = _uiState.value.copy(
                 hasError = true,
@@ -1618,14 +1618,19 @@ class ReaderViewModel @Inject constructor(
 
             chaptersToFetch.forEach { chapter ->
                 try {
-                    val response = bookService.getBookContentBlocking(chapter.id.toLong())
-                    if (response.code == "00000" && response.data != null) {
+                    // 使用缓存策略获取章节内容
+                    val contentData = cachedBookRepository.getBookContent(
+                        chapterId = chapter.id.toLong(),
+                        strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST
+                    )
+                    
+                    if (contentData != null) {
                         cachedChapters.add(
                             BookCacheData.ChapterContentData(
-                                chapterId = response.data.chapterInfo.id.toString(),
-                                chapterName = response.data.chapterInfo.chapterName,
-                                content = response.data.bookContent,
-                                chapterNum = response.data.chapterInfo.chapterNum
+                                chapterId = contentData.chapterInfo.id.toString(),
+                                chapterName = contentData.chapterInfo.chapterName,
+                                content = contentData.bookContent,
+                                chapterNum = contentData.chapterInfo.chapterNum
                             )
                         )
                     }

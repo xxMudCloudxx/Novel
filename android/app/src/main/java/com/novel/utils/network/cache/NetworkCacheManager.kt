@@ -76,7 +76,7 @@ class NetworkCacheManager @Inject constructor(
     private val memoryCache = mutableMapOf<String, CacheEntry<*>>()
     
     // 缓存更新状态
-    private val _cacheUpdateState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    internal val _cacheUpdateState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val cacheUpdateState: StateFlow<Map<String, Boolean>> = _cacheUpdateState.asStateFlow()
     
     init {
@@ -93,12 +93,12 @@ class NetworkCacheManager @Inject constructor(
      * @param strategy 缓存策略
      * @param onCacheUpdate 缓存更新回调
      */
-    suspend inline fun <reified T> getCachedData(
+    suspend fun <T> getCachedData(
         key: String,
         config: CacheConfig = CacheConfig(),
-        noinline networkCall: suspend () -> T,
+        networkCall: suspend () -> T,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST,
-        noinline onCacheUpdate: ((T) -> Unit)? = null
+        onCacheUpdate: ((T) -> Unit)? = null
     ): CacheResult<T> = withContext(Dispatchers.IO) {
         
         when (strategy) {
@@ -162,7 +162,7 @@ class NetworkCacheManager @Inject constructor(
     /**
      * 异步更新缓存
      */
-    private suspend fun <T> updateCacheAsync(
+    internal suspend fun <T> updateCacheAsync(
         key: String,
         config: CacheConfig,
         networkCall: suspend () -> T,
@@ -192,7 +192,8 @@ class NetworkCacheManager @Inject constructor(
     /**
      * 内部获取缓存数据
      */
-    private suspend inline fun <reified T> getCachedDataInternal(
+    @Suppress("UNCHECKED_CAST")
+    internal suspend fun <T> getCachedDataInternal(
         key: String,
         config: CacheConfig
     ): T? = withContext(Dispatchers.IO) {
@@ -231,7 +232,7 @@ class NetworkCacheManager @Inject constructor(
     /**
      * 保存缓存数据
      */
-    private suspend fun <T> saveCacheData(
+    internal suspend fun <T> saveCacheData(
         key: String,
         data: T,
         config: CacheConfig
@@ -276,7 +277,7 @@ class NetworkCacheManager @Inject constructor(
     /**
      * 更新缓存状态
      */
-    private fun updateCacheState(key: String, isUpdating: Boolean) {
+    internal fun updateCacheState(key: String, isUpdating: Boolean) {
         val currentState = _cacheUpdateState.value.toMutableMap()
         if (isUpdating) {
             currentState[key] = true

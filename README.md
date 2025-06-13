@@ -24,6 +24,12 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - **OkHttp 5 + Retrofit** - 网络请求
 - **Coil-Compose** - 图片加载
 
+### 缓存系统
+- **NetworkCacheManager** - 通用网络缓存管理器，支持内存+磁盘双重缓存
+- **CachedServiceExtensions** - 为所有Service提供缓存扩展方法
+- **CachedBookRepository** - Repository模式实现，封装缓存逻辑
+- **Cache-First策略** - 先从缓存获取数据，然后异步更新网络数据
+
 ## 📱 已实现功能
 
 ### ✅ 混合架构核心
@@ -31,6 +37,7 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - **Hilt 依赖注入** - 模块化依赖管理
 - **React Native Bridge** - 原生与RN双向通信
 - **NavigationPackage** - 自定义RN原生模块
+- **智能缓存系统** - Cache-First策略，离线优先 & 实时同步
 
 ### ✅ Android Compose 原生实现
 
@@ -202,7 +209,19 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - [ ] 搜索功能优化
 - [ ] 阅读进度云同步
 
-### ✅ 最新完成 (v1.5.1)
+### ✅ 最新完成 (v1.6.0) - **智能缓存系统**
+- [x] **NetworkCacheManager** - **新增** 通用网络缓存管理器，支持内存+磁盘双重缓存
+- [x] **CachedServiceExtensions** - **新增** 为所有Service提供缓存扩展方法
+- [x] **CachedBookRepository** - **新增** Repository模式实现，封装缓存逻辑和状态管理
+- [x] **Cache-First策略** - **核心功能** 先从缓存获取数据，然后异步更新网络数据
+- [x] **BookDetailViewModel缓存集成** - 书籍详情页使用缓存优先策略
+- [x] **HomeRepository缓存优化** - 首页数据使用智能缓存策略
+- [x] **SearchRepository缓存支持** - 搜索结果缓存，提升搜索体验
+- [x] **ReaderViewModel缓存增强** - 阅读器章节和内容使用缓存策略
+- [x] **依赖注入配置** - 完整的Hilt模块配置，支持缓存系统
+- [x] **缓存管理功能** - 支持缓存清理、强制刷新、缓存状态检查
+
+### ✅ v1.5.1 完成内容
 - [x] **API架构调整** - **重大修复** 将不存在的全书API改为使用现有getBookChapters + getBookContent逐个获取
 - [x] **逐章获取优化** - 先获取章节列表，再逐个获取章节内容，支持增量更新和容错处理
 - [x] **缓存兼容性** - 保持原有缓存架构，支持部分缓存的增量更新机制

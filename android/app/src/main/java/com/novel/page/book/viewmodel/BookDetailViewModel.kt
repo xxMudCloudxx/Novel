@@ -3,7 +3,8 @@ package com.novel.page.book.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.novel.page.component.BaseViewModel
 import com.novel.page.component.StateHolderImpl
-import com.novel.utils.network.api.front.BookService
+import com.novel.repository.CachedBookRepository
+import com.novel.utils.network.cache.CacheStrategy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +13,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BookDetailViewModel @Inject constructor(
-    private val bookService: BookService
+    private val cachedBookRepository: CachedBookRepository
 ) : BaseViewModel() {
     
     private val _uiState = MutableStateFlow(
@@ -24,52 +25,47 @@ class BookDetailViewModel @Inject constructor(
     )
     val uiState: StateFlow<StateHolderImpl<BookDetailUiState>> = _uiState.asStateFlow()
 
-    fun loadBookDetail(bookId: String) {
+    fun loadBookDetail(bookId: String, useCache: Boolean = true) {
         viewModelScope.launchWithLoading {
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                 
-                // 加载书籍信息
-                val bookResponse = bookService.getBookByIdBlocking(bookId.toLong())
-                if (bookResponse.ok == true && bookResponse.data != null) {
-                    val bookInfo = BookDetailUiState.BookInfo(
-                        id = bookResponse.data.id.toString(),
-                        bookName = bookResponse.data.bookName,
-                        authorName = bookResponse.data.authorName,
-                        bookDesc = bookResponse.data.bookDesc,
-                        picUrl = bookResponse.data.picUrl,
-                        visitCount = bookResponse.data.visitCount,
-                        wordCount = bookResponse.data.wordCount,
-                        categoryName = bookResponse.data.categoryName
+                val strategy = if (useCache) CacheStrategy.CACHE_FIRST else CacheStrategy.NETWORK_ONLY
+                
+                // 使用缓存优先策略加载书籍信息
+                val bookInfo = cachedBookRepository.getBookInfo(
+                    bookId = bookId.toLong(),
+                    strategy = strategy
+                )
+                
+                if (bookInfo != null) {
+                    val bookDetailInfo = BookDetailUiState.BookInfo(
+                        id = bookInfo.id.toString(),
+                        bookName = bookInfo.bookName,
+                        authorName = bookInfo.authorName,
+                        bookDesc = bookInfo.bookDesc,
+                        picUrl = bookInfo.picUrl,
+                        visitCount = bookInfo.visitCount,
+                        wordCount = bookInfo.wordCount,
+                        categoryName = bookInfo.categoryName
                     )
                     
-                    // 加载最新章节信息
-                    var lastChapter: BookDetailUiState.LastChapter? = null
-                    try {
-                        val chapterResponse = bookService.getLastChapterAboutBlocking(bookId.toLong())
-                        if (chapterResponse.ok == true && chapterResponse.data != null) {
-                            lastChapter = BookDetailUiState.LastChapter(
-                                chapterName = chapterResponse.data.chapterInfo.chapterName,
-                                chapterUpdateTime = chapterResponse.data.chapterInfo.chapterUpdateTime
-                            )
-                        }
-                    } catch (e: Exception) {
-                        // 忽略章节加载错误，继续显示书籍信息
-                    }
-                    
-                    // 生成模拟书评数据
+                    // 生成模拟书评数据（这部分还没有API，暂时保留模拟数据）
                     val reviews = generateMockReviews()
                     
                     _uiState.value = _uiState.value.copy(
                         data = BookDetailUiState(
-                            bookInfo = bookInfo,
-                            lastChapter = lastChapter,
+                            bookInfo = bookDetailInfo,
+                            lastChapter = null, // 需要从章节列表中获取
                             reviews = reviews,
                             isDescriptionExpanded = false
                         ),
                         isLoading = false,
                         error = null
                     )
+                    
+                    // 异步加载最新章节信息
+                    loadLastChapterInfo(bookId.toLong())
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -82,6 +78,51 @@ class BookDetailViewModel @Inject constructor(
                     error = e.message ?: "未知错误"
                 )
             }
+        }
+    }
+    
+    /**
+     * 异步加载最新章节信息
+     */
+    private fun loadLastChapterInfo(bookId: Long) {
+        viewModelScope.launchWithLoading {
+            try {
+                val chapters = cachedBookRepository.getBookChapters(
+                    bookId = bookId,
+                    strategy = CacheStrategy.CACHE_FIRST
+                )
+                
+                if (chapters.isNotEmpty()) {
+                    val lastChapter = chapters.last()
+                    val lastChapterInfo = BookDetailUiState.LastChapter(
+                        chapterName = lastChapter.chapterName,
+                        chapterUpdateTime = lastChapter.chapterUpdateTime
+                    )
+                    
+                    val currentData = _uiState.value.data
+                    _uiState.value = _uiState.value.copy(
+                        data = currentData.copy(lastChapter = lastChapterInfo)
+                    )
+                }
+            } catch (e: Exception) {
+                // 章节信息加载失败，不影响书籍信息显示
+            }
+        }
+    }
+    
+    /**
+     * 强制刷新书籍信息（绕过缓存）
+     */
+    fun refreshBookDetail(bookId: String) {
+        loadBookDetail(bookId, useCache = false)
+    }
+    
+    /**
+     * 清理书籍缓存
+     */
+    fun clearBookCache(bookId: String) {
+        viewModelScope.launchWithLoading {
+            cachedBookRepository.clearBookCache(bookId.toLong())
         }
     }
 

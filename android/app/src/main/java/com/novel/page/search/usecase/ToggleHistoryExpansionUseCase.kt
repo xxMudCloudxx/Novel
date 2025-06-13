@@ -17,7 +17,7 @@ class ToggleHistoryExpansionUseCase @Inject constructor(
      */
     suspend operator fun invoke(currentState: Boolean): Boolean {
         val newState = !currentState
-        searchRepository.saveHistoryExpandedState(newState)
+        searchRepository.saveHistoryExpansionState(newState)
         return newState
     }
 } 

@@ -31,10 +31,38 @@ class SearchBooksUseCase @Inject constructor(
                 pageSize = pageSize
             )
             
-            if (response.ok == true) {
-                Result.success(response.data ?: PageRespDtoBookInfoRespDto())
+            if (response?.ok == true && response.data != null) {
+                // 转换SearchService的响应数据为期望的类型
+                val pageResp = PageRespDtoBookInfoRespDto(
+                    pageNum = response.data.pageNum,
+                    pageSize = response.data.pageSize,
+                    total = response.data.total,
+                    list = response.data.list.map { searchBook ->
+                        // 转换SearchService.BookInfo为BookInfoRespDto
+                        com.novel.page.search.viewmodel.BookInfoRespDto(
+                            id = searchBook.id,
+                            categoryId = searchBook.categoryId ?: 0L,
+                            categoryName = searchBook.categoryName ?: "",
+                            picUrl = searchBook.picUrl ?: "",
+                            bookName = searchBook.bookName ?: "",
+                            authorId = searchBook.authorId ?: 0L,
+                            authorName = searchBook.authorName ?: "",
+                            bookDesc = searchBook.bookDesc ?: "",
+                            bookStatus = searchBook.bookStatus ?: 0,
+                            visitCount = searchBook.visitCount ?: 0L,
+                            wordCount = (searchBook.wordCount ?: 0L).toInt(),
+                            commentCount = searchBook.commentCount ?: 0,
+                            firstChapterId = searchBook.firstChapterId ?: 0L,
+                            lastChapterId = searchBook.lastChapterId ?: 0L,
+                            lastChapterName = searchBook.lastChapterName ?: "",
+                            updateTime = searchBook.updateTime ?: ""
+                        )
+                    },
+                    pages = response.data.pages
+                )
+                Result.success(pageResp)
             } else {
-                Result.failure(Exception(response.message ?: "搜索失败"))
+                Result.failure(Exception(response?.message ?: "搜索失败"))
             }
         } catch (e: Exception) {
             Result.failure(e)
