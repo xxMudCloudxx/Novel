@@ -11,6 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
@@ -25,8 +30,6 @@ import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.novel.page.component.FlipBookAnimationController
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 
 /**
  * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
@@ -41,7 +44,7 @@ fun HomePage(
     globalFlipBookController: FlipBookAnimationController? = null
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
@@ -49,6 +52,18 @@ fun HomePage(
     
     // 使用传入的全局动画控制器，如果没有则创建本地控制器
     val flipBookController = globalFlipBookController ?: rememberFlipBookAnimationController()
+    
+    // 生命周期感知 - 页面恢复时检查数据
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
+                super.onStart(owner)
+                // 页面恢复可见时检查并恢复数据
+                viewModel.onAction(HomeAction.RestoreData)
+            }
+        })
+    }
     
     // 下拉刷新状态
     val swipeRefreshState = rememberSwipeRefreshState(
@@ -70,12 +85,18 @@ fun HomePage(
                 is HomeEvent.NavigateToBook -> {
                     // 不再跳转，书籍内容在动画中显示
                 }
+                is HomeEvent.NavigateToBookDetail -> {
+                    // 不再跳转，书籍内容在动画中显示
+                }
                 is HomeEvent.NavigateToCategory -> onNavigateToCategory(event.categoryId)
                 is HomeEvent.NavigateToSearch -> {
                     // 直接调用NavViewModel导航到搜索页面
                     NavViewModel.navigateToSearch(event.query)
                 }
                 is HomeEvent.NavigateToCategoryPage -> onNavigateToCategoryPage()
+                is HomeEvent.NavigateToFullRanking -> {
+                    // 导航到完整榜单页面 - 待实现
+                }
                 is HomeEvent.ShowToast -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }

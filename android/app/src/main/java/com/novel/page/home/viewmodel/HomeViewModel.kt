@@ -82,17 +82,39 @@ data class HomeUiState(
  * 首页用户操作
  */
 sealed class HomeAction {
-    data object Refresh : HomeAction()
     data object LoadInitialData : HomeAction()
-    data class OnSearchQueryChange(val query: String) : HomeAction()
-    data class OnRankBookClick(val bookId: Long) : HomeAction()
-    data class OnRecommendBookClick(val bookId: Long) : HomeAction()
-    data class OnCategoryFilterSelected(val filter: String) : HomeAction()
-    data class OnRankTypeSelected(val rankType: String) : HomeAction()
-    data object OnSearchClick : HomeAction()
-    data object OnCategoryButtonClick : HomeAction()
+    data object RefreshData : HomeAction()
+    data class UpdateSearchQuery(val query: String) : HomeAction()
+    data class SelectCategoryFilter(val categoryName: String) : HomeAction()
     data object LoadMoreRecommend : HomeAction()
     data object LoadMoreHomeRecommend : HomeAction()
+    data class SelectRankType(val rankType: String) : HomeAction()
+    data class NavigateToSearch(val query: String) : HomeAction()
+    data class NavigateToBookDetail(val bookId: Long) : HomeAction()
+    data class NavigateToCategory(val categoryId: Long) : HomeAction()
+    data class NavigateToFullRanking(val rankType: String) : HomeAction()
+    data object RestoreData : HomeAction()
+    
+    // 兼容旧版本的动作
+    @Deprecated("Use RefreshData instead")
+    data object Refresh : HomeAction()
+    @Deprecated("Use UpdateSearchQuery instead")
+    data class OnSearchQueryChange(val query: String) : HomeAction()
+    @Deprecated("Use NavigateToBookDetail instead")
+    data class OnRankBookClick(val bookId: Long) : HomeAction()
+    @Deprecated("Use NavigateToBookDetail instead")
+    data class OnRecommendBookClick(val bookId: Long) : HomeAction()
+    @Deprecated("Use SelectCategoryFilter instead")
+    data class OnCategoryFilterSelected(val filter: String) : HomeAction()
+    @Deprecated("Use SelectRankType instead")
+    data class OnRankTypeSelected(val rankType: String) : HomeAction()
+    @Deprecated("Use NavigateToSearch instead")
+    data object OnSearchClick : HomeAction()
+    @Deprecated("Use NavigateToCategory instead")
+    data object OnCategoryButtonClick : HomeAction()
+    @Deprecated("Use LoadMoreRecommend instead")
+    data object LoadMoreRecommendByCategory : HomeAction()
+    @Deprecated("Use RefreshData instead")
     data object RefreshRecommend : HomeAction()
     data object ClearError : HomeAction()
 }
@@ -106,6 +128,8 @@ sealed class HomeEvent {
     data class NavigateToSearch(val query: String = "") : HomeEvent()
     data object NavigateToCategoryPage : HomeEvent()
     data class ShowToast(val message: String) : HomeEvent()
+    data class NavigateToBookDetail(val bookId: Long) : HomeEvent()
+    data class NavigateToFullRanking(val rankType: String) : HomeEvent()
 }
 
 @HiltViewModel
@@ -167,18 +191,87 @@ class HomeViewModel @Inject constructor(
      */
     fun onAction(action: HomeAction) {
         when (action) {
-            is HomeAction.LoadInitialData -> loadInitialData()
+            is HomeAction.LoadInitialData -> {
+                loadInitialData()
+            }
+            is HomeAction.RefreshData -> {
+                refreshData()
+            }
+            is HomeAction.UpdateSearchQuery -> {
+                updateState { it.copy(searchQuery = action.query) }
+            }
+            is HomeAction.SelectCategoryFilter -> {
+                selectCategoryFilter(action.categoryName)
+            }
+            is HomeAction.LoadMoreRecommend -> {
+                if (currentState.isRecommendMode) {
+                    loadMoreHomeRecommend()
+                } else {
+                    loadMoreRecommend()
+                }
+            }
+            is HomeAction.SelectRankType -> {
+                selectRankType(action.rankType)
+            }
+            is HomeAction.NavigateToSearch -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToSearch(action.query))
+                }
+            }
+            is HomeAction.NavigateToBookDetail -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToBookDetail(action.bookId))
+                }
+            }
+            is HomeAction.NavigateToCategory -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToCategory(action.categoryId))
+                }
+            }
+            is HomeAction.NavigateToFullRanking -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToFullRanking(action.rankType))
+                }
+            }
+            is HomeAction.RestoreData -> {
+                // 新增：页面恢复时的数据检查和恢复
+                restoreDataIfNeeded()
+            }
+            is HomeAction.LoadMoreHomeRecommend -> {
+                loadMoreHomeRecommend()
+            }
+            
+            // 兼容旧版本的动作处理
             is HomeAction.Refresh -> refreshData()
-            is HomeAction.OnSearchQueryChange -> updateSearchQuery(action.query)
-            is HomeAction.OnRankBookClick -> navigateToRankBook(action.bookId)
-            is HomeAction.OnRecommendBookClick -> navigateToRecommendBook(action.bookId)
+            is HomeAction.OnSearchQueryChange -> updateState { it.copy(searchQuery = action.query) }
+            is HomeAction.OnRankBookClick -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToBookDetail(action.bookId))
+                }
+            }
+            is HomeAction.OnRecommendBookClick -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToBookDetail(action.bookId))
+                }
+            }
             is HomeAction.OnCategoryFilterSelected -> selectCategoryFilter(action.filter)
             is HomeAction.OnRankTypeSelected -> selectRankType(action.rankType)
-            is HomeAction.OnSearchClick -> navigateToSearch()
-            is HomeAction.OnCategoryButtonClick -> navigateToCategoryPage()
-            is HomeAction.LoadMoreRecommend -> loadMoreRecommend()
-            is HomeAction.LoadMoreHomeRecommend -> loadMoreHomeRecommend()
-            is HomeAction.RefreshRecommend -> refreshRecommend()
+            is HomeAction.OnSearchClick -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToSearch(currentState.searchQuery))
+                }
+            }
+            is HomeAction.OnCategoryButtonClick -> {
+                viewModelScope.launch {
+                    _events.send(HomeEvent.NavigateToCategory(0))
+                }
+            }
+            is HomeAction.LoadMoreRecommendByCategory -> {
+                if (!currentState.isRecommendMode) {
+                    loadMoreRecommend()
+                }
+            }
+            is HomeAction.RefreshRecommend -> refreshData()
             is HomeAction.ClearError -> clearError()
         }
     }
@@ -952,6 +1045,48 @@ class HomeViewModel @Inject constructor(
         
         // 榜单缓存相对较少，暂不清理
         Log.d(TAG, "缓存清理完成，分类缓存剩余：${categoryRecommendCache.size}个")
+    }
+    
+    /**
+     * 页面恢复时检查并恢复数据
+     */
+    private fun restoreDataIfNeeded() {
+        viewModelScope.launch {
+            // 检查榜单数据是否为空
+            if (currentState.rankBooks.isEmpty()) {
+                Log.d(TAG, "检测到榜单数据为空，尝试恢复数据")
+                
+                // 先尝试从内存缓存恢复
+                val currentRankType = currentState.selectedRankType
+                if (rankBooksCache.containsKey(currentRankType)) {
+                    rankBooksCache[currentRankType]?.let { cachedBooks ->
+                        updateState { 
+                            it.copy(
+                                rankBooks = cachedBooks,
+                                rankLoading = false
+                            ) 
+                        }
+                        Log.d(TAG, "从内存缓存恢复榜单数据：$currentRankType，共${cachedBooks.size}本书")
+                        return@launch
+                    }
+                }
+                
+                // 内存缓存为空，从持久化缓存或网络加载
+                loadRankBooksFromCacheOrNetwork(currentRankType)
+            }
+            
+            // 检查分类数据是否为空
+            if (currentState.categoryFilters.size <= 1) { // 只有"推荐"分类
+                Log.d(TAG, "检测到分类数据不完整，重新加载")
+                loadCategoryFilters()
+            }
+            
+            // 检查推荐数据是否为空
+            if (currentState.isRecommendMode && currentState.homeRecommendBooks.isEmpty()) {
+                Log.d(TAG, "检测到推荐数据为空，重新加载")
+                loadHomeRecommendBooks()
+            }
+        }
     }
     
     // endregion

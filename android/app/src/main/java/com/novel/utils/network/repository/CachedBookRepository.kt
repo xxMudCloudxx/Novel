@@ -223,25 +223,43 @@ class CachedBookRepository @Inject constructor(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): List<BookService.BookRank> {
         return executeWithLoading {
-            bookService.getNewestRankBooksCached(
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
+            try {
+                bookService.getNewestRankBooksCached(
+                    cacheManager = cacheManager,
+                    strategy = strategy,
+                    onCacheUpdate = { response ->
+                        response.data?.let { _newestRankBooks.value = it }
+                        Log.d(TAG, "Newest rank books cache updated")
+                    }
+                ).onSuccess { response, fromCache ->
                     response.data?.let { _newestRankBooks.value = it }
-                    Log.d(TAG, "Newest rank books cache updated")
+                    Log.d(TAG, "Newest rank books loaded from ${if (fromCache) "cache" else "network"}")
+                }.onError { error, cachedData ->
+                    Log.e(TAG, "Failed to load newest rank books", error)
+                    cachedData?.data?.let { _newestRankBooks.value = it }
+                    _error.value = error.message
+                }.let { result ->
+                    when (result) {
+                        is CacheResult.Success -> result.data.data ?: emptyList()
+                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                    }
                 }
-            ).onSuccess { response, fromCache ->
-                response.data?.let { _newestRankBooks.value = it }
-                Log.d(TAG, "Newest rank books loaded from ${if (fromCache) "cache" else "network"}")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load newest rank books", error)
-                cachedData?.data?.let { _newestRankBooks.value = it }
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data ?: emptyList()
-                    is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "ClassCastException in getNewestRankBooks, attempting direct network call", e)
+                // 如果缓存反序列化失败，直接从网络获取
+                try {
+                    val response = bookService.getNewestRankBooksBlocking()
+                    response.data?.let { books ->
+                        _newestRankBooks.value = books
+                        books
+                    } ?: emptyList()
+                } catch (networkError: Exception) {
+                    Log.e(TAG, "Network fallback also failed for newest rank books", networkError)
+                    emptyList()
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in getNewestRankBooks", e)
+                emptyList()
             }
         } ?: emptyList()
     }
@@ -295,6 +313,15 @@ class CachedBookRepository @Inject constructor(
         cacheManager.clearCache("update_rank_books")
         cacheManager.clearCache("newest_rank_books")
         Log.d(TAG, "Rank cache cleared")
+    }
+    
+    /**
+     * 清理新书榜缓存 - 用于解决缓存反序列化问题
+     */
+    suspend fun clearNewestRankCache() {
+        cacheManager.clearCache("newest_rank_books")
+        _newestRankBooks.value = emptyList()
+        Log.d(TAG, "Newest rank cache cleared")
     }
     
     /**

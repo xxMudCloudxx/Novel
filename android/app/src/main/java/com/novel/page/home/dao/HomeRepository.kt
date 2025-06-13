@@ -59,7 +59,17 @@ class HomeRepository @Inject constructor(
             when (rankType) {
                 RANK_TYPE_VISIT -> cachedBookRepository.getVisitRankBooks(strategy)
                 RANK_TYPE_UPDATE -> cachedBookRepository.getUpdateRankBooks(strategy)
-                RANK_TYPE_NEWEST -> cachedBookRepository.getNewestRankBooks(strategy)
+                RANK_TYPE_NEWEST -> {
+                    try {
+                        cachedBookRepository.getNewestRankBooks(strategy)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "新书榜首次加载失败，清理缓存后重试: ${e.message}")
+                        // 清理新书榜缓存
+                        cachedBookRepository.clearNewestRankCache()
+                        // 使用网络优先策略重试
+                        cachedBookRepository.getNewestRankBooks(CacheStrategy.NETWORK_ONLY)
+                    }
+                }
                 else -> {
                     Log.w(TAG, "未知榜单类型: $rankType, 使用默认点击榜")
                     cachedBookRepository.getVisitRankBooks(strategy)
