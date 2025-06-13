@@ -24,7 +24,8 @@ fun RankingSection(
     novelRanking: List<SearchRankingItem>,
     dramaRanking: List<SearchRankingItem>,
     newBookRanking: List<SearchRankingItem>,
-    onRankingItemClick: (Long) -> Unit
+    onRankingItemClick: (Long) -> Unit,
+    onViewFullRanking: (String) -> Unit
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.wdp),
@@ -36,21 +37,24 @@ fun RankingSection(
             RankingSectionItem(
                 title = "点击榜",
                 items = novelRanking,
-                onItemClick = onRankingItemClick
+                onItemClick = onRankingItemClick,
+                onViewFullRanking = { onViewFullRanking("点击榜") }
             )
         }
         item {
             RankingSectionItem(
                 title = "推荐榜",
                 items = dramaRanking,
-                onItemClick = onRankingItemClick
+                onItemClick = onRankingItemClick,
+                onViewFullRanking = { onViewFullRanking("推荐榜") }
             )
         }
         item {
             RankingSectionItem(
                 title = "新书榜",
                 items = newBookRanking,
-                onItemClick = onRankingItemClick
+                onItemClick = onRankingItemClick,
+                onViewFullRanking = { onViewFullRanking("新书榜") }
             )
         }
         item {
@@ -66,7 +70,8 @@ fun RankingSection(
 private fun RankingSectionItem(
     title: String,
     items: List<SearchRankingItem>,
-    onItemClick: (Long) -> Unit
+    onItemClick: (Long) -> Unit,
+    onViewFullRanking: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -89,7 +94,8 @@ private fun RankingSectionItem(
         // 榜单列表
         RankingList(
             items = items,
-            onItemClick = onItemClick
+            onItemClick = onItemClick,
+            onViewFullRanking = onViewFullRanking
         )
     }
 }
@@ -113,6 +119,7 @@ data class SearchRankingItem(
 fun RankingList(
     items: List<SearchRankingItem>,
     onItemClick: (Long) -> Unit,
+    onViewFullRanking: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -123,6 +130,21 @@ fun RankingList(
             RankingListItem(
                 item = item,
                 onClick = { onItemClick(item.id) }
+            )
+        }
+        
+        // 如果超过15个且提供了完整榜单回调，显示"查看完整榜单>"链接
+        if (items.size > 15) {
+            Spacer(modifier = Modifier.height(4.wdp))
+            NovelText(
+                text = "查看完整榜单 >",
+                fontSize = 13.ssp,
+                fontWeight = FontWeight.Medium,
+                color = NovelColors.NovelMain,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .debounceClickable(onClick = onViewFullRanking)
+                    .padding(vertical = 8.wdp, horizontal = 4.wdp)
             )
         }
     }

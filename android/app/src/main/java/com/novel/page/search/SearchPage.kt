@@ -142,6 +142,15 @@ fun SearchPage(
                     newBookRanking = uiState.newBookRanking,
                     onRankingItemClick = { bookId ->
                         viewModel.onAction(SearchAction.NavigateToBookDetail(bookId))
+                    },
+                    onViewFullRanking = { rankingType ->
+                        val rankingItems = when (rankingType) {
+                            "点击榜" -> uiState.novelRanking
+                            "推荐榜" -> uiState.dramaRanking
+                            "新书榜" -> uiState.newBookRanking
+                            else -> emptyList()
+                        }
+                        NavViewModel.navigateToFullRanking(rankingType, rankingItems)
                     }
                 )
                 Spacer(modifier = Modifier.height(24.wdp))

@@ -76,7 +76,7 @@ class NetworkCacheManager @Inject constructor(
     private val memoryCache = mutableMapOf<String, CacheEntry<*>>()
     
     // 缓存更新状态
-    internal val _cacheUpdateState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    private val _cacheUpdateState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val cacheUpdateState: StateFlow<Map<String, Boolean>> = _cacheUpdateState.asStateFlow()
     
     init {
@@ -104,7 +104,7 @@ class NetworkCacheManager @Inject constructor(
         when (strategy) {
             CacheStrategy.CACHE_FIRST -> {
                 // 先从缓存获取
-                val cachedData = getCachedDataInternal<T>(key, config)
+                val cachedData = getCachedDataInternal<T>(key)
                 
                 if (cachedData != null) {
                     // 有缓存数据，异步更新网络数据
@@ -130,7 +130,7 @@ class NetworkCacheManager @Inject constructor(
                     return@withContext CacheResult.Success(networkData, false)
                 } catch (e: Exception) {
                     Log.e(TAG, "Network request failed, trying cache for key: $key", e)
-                    val cachedData = getCachedDataInternal<T>(key, config)
+                    val cachedData = getCachedDataInternal<T>(key)
                     if (cachedData != null) {
                         return@withContext CacheResult.Success(cachedData, true)
                     } else {
@@ -140,7 +140,7 @@ class NetworkCacheManager @Inject constructor(
             }
             
             CacheStrategy.CACHE_ONLY -> {
-                val cachedData = getCachedDataInternal<T>(key, config)
+                val cachedData = getCachedDataInternal<T>(key)
                 if (cachedData != null) {
                     return@withContext CacheResult.Success(cachedData, true)
                 } else {
@@ -162,7 +162,7 @@ class NetworkCacheManager @Inject constructor(
     /**
      * 异步更新缓存
      */
-    internal suspend fun <T> updateCacheAsync(
+    private suspend fun <T> updateCacheAsync(
         key: String,
         config: CacheConfig,
         networkCall: suspend () -> T,
@@ -193,9 +193,8 @@ class NetworkCacheManager @Inject constructor(
      * 内部获取缓存数据
      */
     @Suppress("UNCHECKED_CAST")
-    internal suspend fun <T> getCachedDataInternal(
-        key: String,
-        config: CacheConfig
+    private suspend fun <T> getCachedDataInternal(
+        key: String
     ): T? = withContext(Dispatchers.IO) {
         try {
             // 先从内存缓存获取
@@ -257,7 +256,7 @@ class NetworkCacheManager @Inject constructor(
             // 检查内存缓存大小，如果超过限制则清理最老的条目
             if (memoryCache.size > config.maxEntries) {
                 val oldestKey = memoryCache.entries
-                    .minByOrNull { (it.value as CacheEntry<*>).cacheTime }?.key
+                    .minByOrNull { it.value.cacheTime }?.key
                 oldestKey?.let { memoryCache.remove(it) }
             }
             
@@ -312,7 +311,7 @@ class NetworkCacheManager @Inject constructor(
             
             // 清理内存缓存
             val expiredKeys = memoryCache.entries
-                .filter { isCacheExpired((it.value as CacheEntry<*>).expiryTime) }
+                .filter { isCacheExpired(it.value.expiryTime) }
                 .map { it.key }
             
             expiredKeys.forEach { memoryCache.remove(it) }
@@ -355,7 +354,7 @@ class NetworkCacheManager @Inject constructor(
     suspend fun isCacheExists(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             // 检查内存缓存
-            val memoryCacheEntry = memoryCache[key] as? CacheEntry<*>
+            val memoryCacheEntry = memoryCache[key]
             if (memoryCacheEntry != null && !isCacheExpired(memoryCacheEntry.expiryTime)) {
                 return@withContext true
             }

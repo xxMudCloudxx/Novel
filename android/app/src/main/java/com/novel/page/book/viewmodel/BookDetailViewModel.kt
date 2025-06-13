@@ -3,7 +3,7 @@ package com.novel.page.book.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.novel.page.component.BaseViewModel
 import com.novel.page.component.StateHolderImpl
-import com.novel.repository.CachedBookRepository
+ import com.novel.repository.CachedBookRepository
 import com.novel.utils.network.cache.CacheStrategy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
