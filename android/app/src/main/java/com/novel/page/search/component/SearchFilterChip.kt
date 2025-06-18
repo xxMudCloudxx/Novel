@@ -30,42 +30,57 @@ fun SearchFilterChip(
     val backgroundColor = if (selected) {
         NovelColors.NovelMain.copy(alpha = 0.1f)
     } else {
-        Color.Transparent
-    }
-
-    val borderColor = if (selected) {
-        NovelColors.NovelMain
-    } else {
-        NovelColors.NovelTextGray.copy(alpha = 0.3f)
+        NovelColors.NovelTextGray.copy(alpha = 0.1f)
     }
 
     val textColor = if (selected) {
-        NovelColors.NovelText
+        NovelColors.NovelMain
     } else {
-        NovelColors.NovelTextGray
+        NovelColors.NovelText
     }
 
     Box(
         modifier = modifier
             .background(
                 color = backgroundColor,
-                shape = RoundedCornerShape(16.wdp)
-            )
-            .border(
-                width = 1.wdp,
-                color = borderColor,
-                shape = RoundedCornerShape(16.wdp)
+                shape = RoundedCornerShape(5.wdp)
             )
             .debounceClickable(onClick = onClick)
-            .padding(horizontal = 12.wdp, vertical = 6.wdp),
+            .padding(vertical = 2.wdp),
         contentAlignment = Alignment.Center
     ) {
         NovelText(
             text = text,
             fontSize = 13.ssp,
             color = textColor,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-            modifier = Modifier.padding(horizontal = 12.wdp, vertical = 6.wdp).debounceClickable(onClick = onClick),
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier
         )
     }
+}
+
+/**
+ * 无边框的分类筛选标签组件（用于搜索结果页面）
+ */
+@Composable
+fun CategoryFilterChip(
+    text: String,
+    selected: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val textColor = if (selected) {
+        NovelColors.NovelMain
+    } else {
+        NovelColors.NovelTextGray
+    }
+
+    NovelText(
+        text = text,
+        fontSize = 13.ssp,
+        color = textColor,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        modifier = modifier
+            .debounceClickable(onClick = onClick)
+    )
 } 

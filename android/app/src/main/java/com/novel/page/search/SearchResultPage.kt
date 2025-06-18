@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +52,7 @@ fun SearchResultPage(
                 is SearchResultEvent.NavigateToDetail -> {
                     NavViewModel.navigateToBookDetail(event.bookId, fromRank = false)
                 }
+
                 is SearchResultEvent.NavigateBack -> {
                     NavViewModel.navigateBack()
                 }
@@ -71,11 +73,13 @@ fun SearchResultPage(
         snapshotFlow { listState.layoutInfo }
             .collect { layoutInfo ->
                 val totalItemsNumber = layoutInfo.totalItemsCount
-                val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+                val lastVisibleItemIndex =
+                    (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
 
-                if (lastVisibleItemIndex > (totalItemsNumber - 3) && 
-                    uiState.data.hasMore && 
-                    !uiState.isLoading) {
+                if (lastVisibleItemIndex > (totalItemsNumber - 3) &&
+                    uiState.data.hasMore &&
+                    !uiState.isLoading
+                ) {
                     viewModel.onAction(SearchResultAction.LoadNextPage)
                 }
             }
@@ -163,7 +167,7 @@ fun SearchResultPage(
                                             fontSize = 14.ssp,
                                             color = NovelColors.NovelTextGray,
                                             modifier = Modifier.debounceClickable(
-                                                onClick =  {
+                                                onClick = {
                                                     viewModel.onAction(SearchResultAction.LoadNextPage)
                                                 }
                                             )
@@ -240,6 +244,7 @@ private fun CategoryFilterRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.wdp, vertical = 8.wdp),
+        contentAlignment = Alignment.CenterStart
     ) {
         // 分类标签
         Row(
@@ -249,7 +254,8 @@ private fun CategoryFilterRow(
         ) {
             Log.d("CategoryFilterRow", "categories: $categories")
             categories.forEach { category ->
-                SearchFilterChip(
+                CategoryFilterChip(
+                    modifier = Modifier.align(Alignment.CenterVertically),
                     text = category.name ?: "未知分类",
                     selected = selectedCategoryId == category.id || (selectedCategoryId == null && category.id == -1),
                     onClick = {
@@ -260,16 +266,23 @@ private fun CategoryFilterRow(
             }
         }
         // 筛选按钮
-//        IconButton(
-//            onClick = onFilterClick,
-//            modifier = Modifier.size(40.wdp).align(Alignment.CenterEnd)
-//        ) {
-//            Icon(
-//                Icons.Default.MoreVert,
-//                contentDescription = "筛选",
-//                tint = NovelColors.NovelMain,
-//                modifier = Modifier.size(20.wdp)
-//            )
-//        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .background(Color.White)
+                .size(40.wdp)
+                .align(Alignment.CenterEnd)
+                .debounceClickable(
+                    onClick = onFilterClick
+                )
+        ) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = "筛选",
+                tint = NovelColors.NovelMain,
+                modifier = Modifier.size(20.wdp)
+            )
+        }
     }
 }

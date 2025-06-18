@@ -84,13 +84,15 @@ class SearchResultViewModel @Inject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
+                        val loadedFilters = _uiState.value.data.categoryFilters
                         _uiState.value = _uiState.value.copy(
                             data = currentData.copy(
                                 query = query,
                                 books = response.list,
                                 totalResults = response.total?.toInt() ?: 0,
                                 hasMore = response.list.size >= 20,
-                                isEmpty = response.list.isEmpty()
+                                isEmpty = response.list.isEmpty(),
+                                categoryFilters = loadedFilters
                             ),
                             isLoading = false,
                             error = null
@@ -179,11 +181,13 @@ class SearchResultViewModel @Inject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
+                        val loadedFilters = _uiState.value.data.categoryFilters
                         val newBooks = response.list
                         _uiState.value = _uiState.value.copy(
                             data = currentData.copy(
                                 books = currentData.books + newBooks,
-                                hasMore = newBooks.size >= 20
+                                hasMore = newBooks.size >= 20,
+                                categoryFilters = loadedFilters
                             )
                         )
                     },
@@ -251,7 +255,7 @@ class SearchResultViewModel @Inject constructor(
  */
 data class SearchResultUiState(
     val query: String = "",
-    val books: List<BookInfoRespDto> = emptyList(),
+    val books: List<BookInfoRespDto> = emptyList(),                     
     val totalResults: Int = 0,
     val hasMore: Boolean = false,
     val isEmpty: Boolean = false,
