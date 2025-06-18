@@ -23,6 +23,7 @@ import com.novel.page.home.component.*
 import com.novel.page.home.viewmodel.HomeAction
 import com.novel.page.home.viewmodel.HomeEvent
 import com.novel.page.home.viewmodel.HomeViewModel
+import com.novel.page.home.skeleton.HomePageSkeleton
 import com.novel.page.component.rememberFlipBookAnimationController
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
@@ -121,11 +122,15 @@ fun HomePage(
         }
     }
     
-    SwipeRefresh(
-        state = swipeRefreshState,
-        onRefresh = { viewModel.onAction(HomeAction.RefreshRecommend) },
-        modifier = Modifier.fillMaxSize()
-    ) {
+    // 显示骨架屏或正常内容
+    if (uiState.isLoading && uiState.homeRecommendBooks.isEmpty() && uiState.recommendBooks.isEmpty()) {
+        HomePageSkeleton()
+    } else {
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = { viewModel.onAction(HomeAction.RefreshRecommend) },
+            modifier = Modifier.fillMaxSize()
+        ) {
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -323,5 +328,6 @@ fun HomePage(
                 }
             }
         }
+    }
     }
 }

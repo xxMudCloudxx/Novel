@@ -30,8 +30,7 @@ class BookDetailViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                 
-                // 使用智能兜底策略确保数据可用性
-                val strategy = if (useCache) CacheStrategy.SMART_FALLBACK else CacheStrategy.NETWORK_ONLY
+                val strategy = if (useCache) CacheStrategy.CACHE_FIRST else CacheStrategy.NETWORK_ONLY
                 
                 // 使用缓存优先策略加载书籍信息
                 val bookInfo = cachedBookRepository.getBookInfo(

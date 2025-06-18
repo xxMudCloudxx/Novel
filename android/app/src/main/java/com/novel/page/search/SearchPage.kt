@@ -16,6 +16,7 @@ import com.novel.page.search.viewmodel.SearchViewModel
 import com.novel.page.search.component.SearchHistorySection
 import com.novel.page.search.component.RankingSection
 import com.novel.page.search.component.SearchTopBar
+import com.novel.page.search.skeleton.SearchPageSkeleton
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.NavViewModel
 import com.novel.utils.wdp
@@ -90,6 +91,10 @@ fun SearchPage(
         modifier = Modifier.fillMaxSize(),
         backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f)
     ) {
+        // 显示骨架屏或正常内容
+        if (uiState.isLoading) {
+            SearchPageSkeleton()
+        } else {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -155,6 +160,7 @@ fun SearchPage(
                 )
                 Spacer(modifier = Modifier.height(24.wdp))
             }
+        }
         }
     }
 }

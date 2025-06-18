@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.novel.page.component.LoadingStateComponent
 import com.novel.page.component.NovelText
 import com.novel.page.search.component.*
+import com.novel.page.search.skeleton.SearchResultPageSkeleton
 import com.novel.page.search.viewmodel.*
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.NavViewModel
@@ -118,16 +119,8 @@ fun SearchResultPage(
         // 结果列表
         Box(modifier = Modifier.weight(1f)) {
             if (uiState.isLoading && uiState.data.books.isEmpty()) {
-                // 显示加载状态
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = NovelColors.NovelMain,
-                        modifier = Modifier.size(32.wdp)
-                    )
-                }
+                // 显示骨架屏
+                SearchResultPageSkeleton()
             } else {
                 if (uiState.data.books.isNotEmpty()) {
                     LazyColumn(

@@ -32,6 +32,7 @@ import androidx.compose.ui.zIndex
 import com.novel.page.component.NovelText
 import com.novel.page.component.RankingNumber
 import com.novel.page.search.component.SearchRankingItem
+import com.novel.page.search.skeleton.FullRankingPageSkeleton
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
 import java.text.SimpleDateFormat
@@ -171,15 +172,8 @@ fun FullRankingPage(
         }
     ) { innerPadding ->
         if (rankingItems.isEmpty()) {
-            /* 空状态 */
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                NovelText("暂无榜单数据", fontSize = 16.sp, color = NovelColors.NovelTextGray)
-            }
+            /* 显示骨架屏或空状态 */
+            FullRankingPageSkeleton()
         } else {
             /* 榜单列表 - 性能优化 */
             LazyColumn(
