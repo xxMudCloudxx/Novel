@@ -40,7 +40,8 @@ enum class CacheStrategy {
     CACHE_FIRST,    // 先从缓存获取，然后异步更新
     NETWORK_FIRST,  // 先从网络获取，失败时从缓存获取
     CACHE_ONLY,     // 只从缓存获取
-    NETWORK_ONLY    // 只从网络获取
+    NETWORK_ONLY,   // 只从网络获取
+    SMART_FALLBACK  // 智能兜底：缓存优先，失败时网络重试，最后使用过期缓存
 }
 
 /**
@@ -86,7 +87,7 @@ class NetworkCacheManager @Inject constructor(
     }
     
     /**
-     * 获取缓存数据（支持cache-first策略）
+     * 获取缓存数据（支持cache-first策略，增强兜底机制）
      * @param key 缓存键
      * @param config 缓存配置
      * @param networkCall 网络请求函数
@@ -106,18 +107,43 @@ class NetworkCacheManager @Inject constructor(
                 // 先从缓存获取
                 val cachedData = getCachedDataInternal<T>(key)
                 
-                if (cachedData != null) {
-                    // 有缓存数据，异步更新网络数据
+                if (cachedData != null && isValidData(cachedData)) {
+                    // 有有效缓存数据，异步更新网络数据
                     updateCacheAsync(key, config, networkCall, onCacheUpdate)
                     return@withContext CacheResult.Success(cachedData, true)
                 } else {
-                    // 无缓存数据，同步获取网络数据
+                    // 缓存数据无效或不存在，同步获取网络数据
+                    Log.d(TAG, "Cache data invalid or missing for key: $key, fetching from network")
                     try {
                         val networkData = networkCall()
-                        saveCacheData(key, networkData, config)
-                        return@withContext CacheResult.Success(networkData, false)
+                        // 检查网络数据是否为有效数据（兜底检查）
+                        if (isValidData(networkData)) {
+                            saveCacheData(key, networkData, config)
+                            return@withContext CacheResult.Success(networkData, false)
+                        } else {
+                            Log.w(TAG, "Network data is invalid for key: $key, retrying...")
+                            // 如果网络数据无效，稍作延迟后重试一次
+                            kotlinx.coroutines.delay(1000)
+                            val retryNetworkData = networkCall()
+                            if (isValidData(retryNetworkData)) {
+                                saveCacheData(key, retryNetworkData, config)
+                                return@withContext CacheResult.Success(retryNetworkData, false)
+                            } else {
+                                // 如果网络重试仍失败，尝试返回过期的缓存数据作为兜底
+                                if (cachedData != null) {
+                                    Log.w(TAG, "Using expired cache data as fallback for key: $key")
+                                    return@withContext CacheResult.Success(cachedData, true)
+                                }
+                                return@withContext CacheResult.Error(Exception("Network data is invalid after retry"))
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Network request failed for key: $key", e)
+                        // 网络失败时，尝试返回缓存数据（即使可能过期）作为兜底
+                        if (cachedData != null) {
+                            Log.w(TAG, "Using cached data as fallback for key: $key")
+                            return@withContext CacheResult.Error(e, cachedData)
+                        }
                         return@withContext CacheResult.Error(e)
                     }
                 }
@@ -126,8 +152,18 @@ class NetworkCacheManager @Inject constructor(
             CacheStrategy.NETWORK_FIRST -> {
                 try {
                     val networkData = networkCall()
-                    saveCacheData(key, networkData, config)
-                    return@withContext CacheResult.Success(networkData, false)
+                    if (isValidData(networkData)) {
+                        saveCacheData(key, networkData, config)
+                        return@withContext CacheResult.Success(networkData, false)
+                    } else {
+                        Log.w(TAG, "Network data is invalid for key: $key, falling back to cache")
+                        val cachedData = getCachedDataInternal<T>(key)
+                        if (cachedData != null) {
+                            return@withContext CacheResult.Success(cachedData, true)
+                        } else {
+                            return@withContext CacheResult.Error(Exception("Both network and cache data unavailable"))
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Network request failed, trying cache for key: $key", e)
                     val cachedData = getCachedDataInternal<T>(key)
@@ -141,19 +177,104 @@ class NetworkCacheManager @Inject constructor(
             
             CacheStrategy.CACHE_ONLY -> {
                 val cachedData = getCachedDataInternal<T>(key)
-                if (cachedData != null) {
+                if (cachedData != null && isValidData(cachedData)) {
                     return@withContext CacheResult.Success(cachedData, true)
                 } else {
-                    return@withContext CacheResult.Error(Exception("No cached data found"))
+                    return@withContext CacheResult.Error(Exception("No valid cached data found"))
                 }
             }
             
             CacheStrategy.NETWORK_ONLY -> {
                 try {
                     val networkData = networkCall()
-                    return@withContext CacheResult.Success(networkData, false)
+                    if (isValidData(networkData)) {
+                        return@withContext CacheResult.Success(networkData, false)
+                    } else {
+                        Log.w(TAG, "Network data is invalid for key: $key, retrying...")
+                        kotlinx.coroutines.delay(1000)
+                        val retryNetworkData = networkCall()
+                        if (isValidData(retryNetworkData)) {
+                            return@withContext CacheResult.Success(retryNetworkData, false)
+                        } else {
+                            return@withContext CacheResult.Error(Exception("Network data is invalid after retry"))
+                        }
+                    }
                 } catch (e: Exception) {
                     return@withContext CacheResult.Error(e)
+                }
+            }
+            
+            CacheStrategy.SMART_FALLBACK -> {
+                // 智能兜底策略：先尝试有效缓存，再尝试网络，最后使用任何可用缓存
+                val cachedData = getCachedDataInternal<T>(key)
+                
+                // 如果有有效缓存，使用缓存并异步更新
+                if (cachedData != null && isValidData(cachedData)) {
+                    updateCacheAsync(key, config, networkCall, onCacheUpdate)
+                    return@withContext CacheResult.Success(cachedData, true)
+                }
+                
+                // 尝试网络请求
+                try {
+                    val networkData = networkCall()
+                    if (isValidData(networkData)) {
+                        saveCacheData(key, networkData, config)
+                        return@withContext CacheResult.Success(networkData, false)
+                    } else {
+                        Log.w(TAG, "Network data invalid, retrying for key: $key")
+                        kotlinx.coroutines.delay(1000)
+                        val retryData = networkCall()
+                        if (isValidData(retryData)) {
+                            saveCacheData(key, retryData, config)
+                            return@withContext CacheResult.Success(retryData, false)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Network failed in SMART_FALLBACK for key: $key", e)
+                }
+                
+                // 最后兜底：尝试获取过期的缓存数据
+                val expiredCachedData = getCachedDataInternal<T>(key, allowExpired = true)
+                if (expiredCachedData != null) {
+                    Log.w(TAG, "Using expired cache data as last resort for key: $key")
+                    return@withContext CacheResult.Error(Exception("Using expired cache data as fallback"), expiredCachedData)
+                }
+                
+                return@withContext CacheResult.Error(Exception("All fallback options exhausted"))
+            }
+        }
+    }
+    
+    /**
+     * 检查数据是否有效
+     * 用于兜底检查，防止缓存或返回无效数据
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> isValidData(data: T): Boolean {
+        return when (data) {
+            null -> false
+            is String -> data.isNotBlank()
+            is Collection<*> -> data.isNotEmpty()
+            is Array<*> -> data.isNotEmpty()
+            is Map<*, *> -> data.isNotEmpty()
+            // 对于自定义对象，检查关键字段
+            else -> {
+                try {
+                    // 通过反射检查对象是否包含有效数据
+                    val fields = data::class.java.declaredFields
+                    fields.any { field ->
+                        field.isAccessible = true
+                        val value = field.get(data)
+                        value != null && when (value) {
+                            is String -> value.isNotBlank()
+                            is Collection<*> -> value.isNotEmpty()
+                            is Number -> value != 0
+                            else -> true
+                        }
+                    }
+                } catch (e: Exception) {
+                    // 如果反射检查失败，假设数据有效
+                    true
                 }
             }
         }
@@ -190,17 +311,20 @@ class NetworkCacheManager @Inject constructor(
     }
     
     /**
-     * 内部获取缓存数据
+     * 内部获取缓存数据（支持获取过期缓存）
      */
     @Suppress("UNCHECKED_CAST")
     private suspend fun <T> getCachedDataInternal(
-        key: String
+        key: String,
+        allowExpired: Boolean = false
     ): T? = withContext(Dispatchers.IO) {
         try {
             // 先从内存缓存获取
             val memoryCacheEntry = memoryCache[key] as? CacheEntry<T>
-            if (memoryCacheEntry != null && !isCacheExpired(memoryCacheEntry.expiryTime)) {
-                return@withContext memoryCacheEntry.data
+            if (memoryCacheEntry != null) {
+                if (!isCacheExpired(memoryCacheEntry.expiryTime) || allowExpired) {
+                    return@withContext memoryCacheEntry.data
+                }
             }
             
             // 从磁盘缓存获取
@@ -213,6 +337,10 @@ class NetworkCacheManager @Inject constructor(
                 if (!isCacheExpired(cacheEntry.expiryTime)) {
                     // 更新内存缓存
                     memoryCache[key] = cacheEntry
+                    return@withContext cacheEntry.data
+                } else if (allowExpired) {
+                    // 允许过期缓存时，仍然返回数据但不更新内存缓存
+                    Log.d(TAG, "Returning expired cache data for key: $key")
                     return@withContext cacheEntry.data
                 } else {
                     // 过期则删除

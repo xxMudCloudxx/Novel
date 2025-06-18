@@ -30,6 +30,7 @@ import javax.inject.Singleton
  * 2. 自动处理缓存更新回调
  * 3. 统一的错误处理
  * 4. 数据状态管理
+ * 5. 增强的兜底机制和自动重试
  */
 @Singleton
 class CachedBookRepository @Inject constructor(
@@ -39,6 +40,8 @@ class CachedBookRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "CachedBookRepository"
+        private const val MAX_RETRY_COUNT = 2 // 最大重试次数
+        private const val RETRY_DELAY_MS = 1500L // 重试延迟
     }
     
     // 数据状态流
@@ -67,95 +70,157 @@ class CachedBookRepository @Inject constructor(
     val error: StateFlow<String?> = _error.asStateFlow()
     
     /**
-     * 获取书籍信息
+     * 增强的数据获取方法，支持自动重试和兜底机制
+     */
+    private suspend fun <T> getDataWithFallback(
+        operation: suspend () -> CacheResult<T>,
+        extractData: (T) -> Any?,
+        updateState: (Any?) -> Unit,
+        operationName: String
+    ): T? {
+        var lastError: Throwable? = null
+        
+        repeat(MAX_RETRY_COUNT) { attempt ->
+            try {
+                val result = operation()
+                when (result) {
+                    is CacheResult.Success -> {
+                        val data = extractData(result.data)
+                        if (data != null && isValidBusinessData(data)) {
+                            updateState(data)
+                            Log.d(TAG, "$operationName succeeded on attempt ${attempt + 1}")
+                            return result.data
+                        } else {
+                            Log.w(TAG, "$operationName returned invalid data on attempt ${attempt + 1}")
+                            if (attempt < MAX_RETRY_COUNT - 1) {
+                                kotlinx.coroutines.delay(RETRY_DELAY_MS)
+                            }
+                        }
+                    }
+                    is CacheResult.Error -> {
+                        lastError = result.error
+                        Log.w(TAG, "$operationName failed on attempt ${attempt + 1}: ${result.error.message}")
+                        
+                        // 如果有缓存数据，尝试使用缓存数据
+                        result.cachedData?.let { cachedData ->
+                            val data = extractData(cachedData)
+                            if (data != null) {
+                                updateState(data)
+                                Log.d(TAG, "$operationName using cached data as fallback")
+                                return cachedData
+                            }
+                        }
+                        
+                        if (attempt < MAX_RETRY_COUNT - 1) {
+                            kotlinx.coroutines.delay(RETRY_DELAY_MS)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                lastError = e
+                Log.e(TAG, "$operationName exception on attempt ${attempt + 1}", e)
+                if (attempt < MAX_RETRY_COUNT - 1) {
+                    kotlinx.coroutines.delay(RETRY_DELAY_MS)
+                }
+            }
+        }
+        
+        _error.value = lastError?.message ?: "Data retrieval failed after $MAX_RETRY_COUNT attempts"
+        Log.e(TAG, "$operationName failed after $MAX_RETRY_COUNT attempts")
+        return null
+    }
+    
+    /**
+     * 检查业务数据是否有效
+     */
+    private fun isValidBusinessData(data: Any?): Boolean {
+        return when (data) {
+            null -> false
+            is String -> data.isNotBlank()
+            is Collection<*> -> data.isNotEmpty()
+            is BookService.BookInfo -> data.bookName.isNotBlank() && data.id > 0
+            is BookService.BookContentAbout -> data.bookContent.isNotBlank()
+            else -> true
+        }
+    }
+    
+    /**
+     * 获取书籍信息（增强兜底机制）
      */
     suspend fun getBookInfo(
         bookId: Long,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): BookService.BookInfo? {
         return executeWithLoading {
-            bookService.getBookByIdCached(
-                bookId = bookId,
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
-                    response.data?.let { _bookInfo.value = it }
-                    Log.d(TAG, "Book info cache updated for bookId: $bookId")
-                }
-            ).onSuccess { response, fromCache ->
-                response.data?.let { _bookInfo.value = it }
-                Log.d(TAG, "Book info loaded from ${if (fromCache) "cache" else "network"} for bookId: $bookId")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load book info for bookId: $bookId", error)
-                cachedData?.data?.let { _bookInfo.value = it }
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data
-                    is CacheResult.Error -> result.cachedData?.data
-                }
-            }
+            getDataWithFallback(
+                operation = {
+                    bookService.getBookByIdCached(
+                        bookId = bookId,
+                        cacheManager = cacheManager,
+                        strategy = strategy,
+                        onCacheUpdate = { response ->
+                            response.data?.let { _bookInfo.value = it }
+                            Log.d(TAG, "Book info cache updated for bookId: $bookId")
+                        }
+                    )
+                },
+                extractData = { response -> response.data },
+                updateState = { data -> _bookInfo.value = data as? BookService.BookInfo },
+                operationName = "getBookInfo(bookId=$bookId)"
+            )?.data
         }
     }
     
     /**
-     * 获取书籍章节列表
+     * 获取书籍章节列表（增强兜底机制）
      */
     suspend fun getBookChapters(
         bookId: Long,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): List<BookService.BookChapter> {
         return executeWithLoading {
-            bookService.getBookChaptersCached(
-                bookId = bookId,
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
-                    response.data?.let { _bookChapters.value = it }
-                    Log.d(TAG, "Book chapters cache updated for bookId: $bookId")
-                }
-            ).onSuccess { response, fromCache ->
-                response.data?.let { _bookChapters.value = it }
-                Log.d(TAG, "Book chapters loaded from ${if (fromCache) "cache" else "network"} for bookId: $bookId")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load book chapters for bookId: $bookId", error)
-                cachedData?.data?.let { _bookChapters.value = it }
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data ?: emptyList()
-                    is CacheResult.Error -> result.cachedData?.data ?: emptyList()
-                }
-            }
+            getDataWithFallback(
+                operation = {
+                    bookService.getBookChaptersCached(
+                        bookId = bookId,
+                        cacheManager = cacheManager,
+                        strategy = strategy,
+                        onCacheUpdate = { response ->
+                            response.data?.let { _bookChapters.value = it }
+                            Log.d(TAG, "Book chapters cache updated for bookId: $bookId")
+                        }
+                    )
+                },
+                extractData = { response -> response.data },
+                updateState = { data -> _bookChapters.value = (data as? List<BookService.BookChapter>) ?: emptyList() },
+                operationName = "getBookChapters(bookId=$bookId)"
+            )?.data
         } ?: emptyList()
     }
     
     /**
-     * 获取书籍内容
+     * 获取书籍内容（增强兜底机制）
      */
     suspend fun getBookContent(
         chapterId: Long,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): BookService.BookContentAbout? {
         return executeWithLoading {
-            bookService.getBookContentCached(
-                chapterId = chapterId,
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
-                    Log.d(TAG, "Book content cache updated for chapterId: $chapterId")
-                }
-            ).onSuccess { response, fromCache ->
-                Log.d(TAG, "Book content loaded from ${if (fromCache) "cache" else "network"} for chapterId: $chapterId")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load book content for chapterId: $chapterId", error)
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data
-                    is CacheResult.Error -> result.cachedData?.data
-                }
-            }
+            getDataWithFallback(
+                operation = {
+                    bookService.getBookContentCached(
+                        chapterId = chapterId,
+                        cacheManager = cacheManager,
+                        strategy = strategy,
+                        onCacheUpdate = { response ->
+                            Log.d(TAG, "Book content cache updated for chapterId: $chapterId")
+                        }
+                    )
+                },
+                extractData = { response -> response.data },
+                updateState = { _ -> /* 书籍内容不需要更新状态流 */ },
+                operationName = "getBookContent(chapterId=$chapterId)"
+            )?.data
         }
     }
     
