@@ -43,7 +43,7 @@ class NativeEventListener {
       'onUserDataReceived',
       (data: NativeUserData) => {
         console.log('[RN] 📱 收到用户数据:', data);
-        
+
         // 直接调用Zustand store方法
         useUserStore.getState().handleNativeUserData(data);
       }
@@ -58,7 +58,7 @@ class NativeEventListener {
       'onRecommendBooksReceived',
       (data: NativeBookData) => {
         console.log('[RN] 📚 收到推荐书籍数据:', data);
-        
+
         // 更新首页推荐书籍
         if (data.books && data.books.length > 0) {
           useHomeStore.getState().setRecommendBooks(data.books);
@@ -103,4 +103,4 @@ class NativeEventListener {
 export const nativeEventListener = new NativeEventListener();
 
 // 默认导出类本身，方便其他地方使用静态方法
-export default NativeEventListener; 
+export default NativeEventListener;

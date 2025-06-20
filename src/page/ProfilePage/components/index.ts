@@ -5,4 +5,4 @@ export { BookItem } from './BookItem';
 export { LoadMoreIndicator } from './LoadMoreIndicator';
 export { ScrollableArea } from './ScrollableArea';
 export { BottomBox } from './BottomBox';
-export { WaterfallGrid } from './WaterfallGrid'; 
+export { WaterfallGrid } from './WaterfallGrid';

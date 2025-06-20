@@ -45,7 +45,7 @@ const initialState: UserState = {
 export const useUserStore = create<UserStore>()(
   immer((set) => ({
     ...initialState,
-    
+
     loginSuccess: (userData) => set((state) => {
       state.uid = userData.uid;
       state.token = userData.token;
@@ -54,7 +54,7 @@ export const useUserStore = create<UserStore>()(
       state.sex = userData.sex || null;
       state.isLoggedIn = true;
     }),
-    
+
     handleNativeUserData: (userData) => set((state) => {
       state.uid = userData.uid;
       state.token = userData.token;
@@ -64,4 +64,4 @@ export const useUserStore = create<UserStore>()(
       state.isLoggedIn = true;
     }),
   }))
-); 
+);

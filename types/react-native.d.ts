@@ -1,6 +1,6 @@
 declare module 'react-native' {
   export * from 'react-native-web';
-  
+
   // Web端DeviceEventEmitter实现
   export const DeviceEventEmitter: {
     addListener: (eventType: string, listener: (...args: any[]) => void) => {
@@ -9,7 +9,7 @@ declare module 'react-native' {
     emit: (eventType: string, ...args: any[]) => void;
     removeAllListeners: (eventType?: string) => void;
   };
-  
+
   // Web端NativeModules空实现
   export const NativeModules: Record<string, any>;
-} 
+}

@@ -19,16 +19,16 @@ export const RefreshIndicator: React.FC<RefreshIndicatorProps> = ({
   threshold,
   spinStyle,
 }) => {
-  if (!isPullingDown && !isRefreshing) return null;
-  
+  if (!isPullingDown && !isRefreshing) {return null;}
+
   const getRefreshText = () => {
-    if (isRefreshing) return '正在刷新...';
-    if (pullDistance > threshold) return '释放刷新';
+    if (isRefreshing) {return '正在刷新...';}
+    if (pullDistance > threshold) {return '释放刷新';}
     return '下拉刷新';
   };
-  
+
   const shouldShowSpinner = isRefreshing || pullDistance > threshold;
-  
+
   return (
     <View style={styles.refreshIndicator}>
       <View style={styles.refreshContent}>
@@ -43,4 +43,4 @@ export const RefreshIndicator: React.FC<RefreshIndicatorProps> = ({
       </View>
     </View>
   );
-}; 
+};

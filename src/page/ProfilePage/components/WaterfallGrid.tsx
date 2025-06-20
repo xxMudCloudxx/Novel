@@ -44,9 +44,9 @@ export const WaterfallGrid: React.FC<WaterfallGridProps> = ({
         {/* 左列 */}
         <View style={styles.waterfallColumn}>
           {leftColumnBooks.map((book, index) => (
-            <BookItem 
+            <BookItem
               key={`left-${book.id}`}
-              book={book} 
+              book={book}
               index={index * 2}
               onPress={() => handleBookPress(book)}
               styles={styles}
@@ -57,9 +57,9 @@ export const WaterfallGrid: React.FC<WaterfallGridProps> = ({
         {/* 右列 */}
         <View style={styles.waterfallColumn}>
           {rightColumnBooks.map((book, index) => (
-            <BookItem 
+            <BookItem
               key={`right-${book.id}`}
-              book={book} 
+              book={book}
               index={index * 2 + 1}
               onPress={() => handleBookPress(book)}
               styles={styles}
@@ -67,13 +67,13 @@ export const WaterfallGrid: React.FC<WaterfallGridProps> = ({
           ))}
         </View>
       </View>
-      
-      <LoadMoreIndicator 
-        loading={loading} 
-        hasMore={hasMore} 
+
+      <LoadMoreIndicator
+        loading={loading}
+        hasMore={hasMore}
         styles={styles}
         spinStyle={spinStyle}
       />
     </View>
   );
-}; 
+};

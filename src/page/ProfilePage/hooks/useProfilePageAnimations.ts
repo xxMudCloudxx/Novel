@@ -14,7 +14,7 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
       [MIN_HEIGHT, MAX_HEIGHT, MAX_HEIGHT],
       Extrapolate.CLAMP
     );
-    
+
     return {
       height: height,
     };
@@ -28,7 +28,7 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
       [1, 0.3, 0.3],
       Extrapolate.CLAMP
     );
-    
+
     return {
       opacity: opacity,
     };
@@ -42,7 +42,7 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
       [0.3, 0.3, 1, 0.3, 0.3],
       Extrapolate.CLAMP
     );
-    
+
     return {
       opacity: opacity,
     };
@@ -56,7 +56,7 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
       [0.3, 0.3, 1],
       Extrapolate.CLAMP
     );
-    
+
     return {
       opacity: opacity,
     };
@@ -70,14 +70,14 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
       [1, 0, 0],
       Extrapolate.CLAMP
     );
-    
+
     const translateY = interpolate(
       scrollX.value,
       [0, PAGE_WIDTH * 0.5, PAGE_WIDTH],
       [0, -20, -20],
       Extrapolate.CLAMP
     );
-    
+
     return {
       opacity: opacity,
       transform: [{ translateY: translateY }],
@@ -87,7 +87,7 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
   // 转圈动画控制
   useEffect(() => {
     const shouldSpin = isRefreshing || (isPullingDown && pullDistance > PULL_THRESHOLD);
-    
+
     if (shouldSpin) {
       const startRotation = () => {
         spinValue.value = withTiming(360, { duration: 1000 }, (finished) => {
@@ -101,7 +101,7 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
     } else {
       spinValue.value = 0;
     }
-  }, [isRefreshing, isPullingDown, pullDistance, spinValue]);
+  }, [isRefreshing, isPullingDown, pullDistance, spinValue, PULL_THRESHOLD]);
 
   // 创建旋转动画样式
   const spinStyle = useAnimatedStyle(() => {
@@ -119,4 +119,4 @@ export const useProfilePageAnimations = (isRefreshing: boolean, isPullingDown: b
     firstPageAdStyle,
     spinStyle,
   };
-}; 
+};

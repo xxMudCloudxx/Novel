@@ -9,12 +9,12 @@ interface LoginBarProps {
   onLogin: () => void;
 }
 
-export const LoginBar: React.FC<LoginBarProps> = ({ 
-  styles, 
-  photo, 
-  isLoggedIn, 
-  nickname, 
-  onLogin 
+export const LoginBar: React.FC<LoginBarProps> = ({
+  styles,
+  photo,
+  isLoggedIn,
+  nickname,
+  onLogin,
 }) => (
   <View style={styles.loginBar}>
     <View style={styles.avatar}>
@@ -30,4 +30,4 @@ export const LoginBar: React.FC<LoginBarProps> = ({
       </Text>
     </TouchableOpacity>
   </View>
-); 
+);

@@ -3,7 +3,7 @@ declare module 'react-native-web' {
       registerComponent: (appName: string, componentProvider: () => React.ComponentType<any>) => void;
       runApplication: (appName: string, appParameters: any) => void;
     };
-    
+
     export const View: React.ComponentType<any>;
     export const Text: React.ComponentType<any>;
     export const TouchableOpacity: React.ComponentType<any>;

@@ -8,11 +8,11 @@ interface LoadMoreIndicatorComponentProps extends LoadMoreIndicatorProps {
   spinStyle: any;
 }
 
-export const LoadMoreIndicator: React.FC<LoadMoreIndicatorComponentProps> = React.memo(({ 
-  loading, 
-  hasMore, 
-  styles, 
-  spinStyle 
+export const LoadMoreIndicator: React.FC<LoadMoreIndicatorComponentProps> = React.memo(({
+  loading,
+  hasMore,
+  styles,
+  spinStyle,
 }) => {
   if (loading) {
     return (
@@ -36,4 +36,4 @@ export const LoadMoreIndicator: React.FC<LoadMoreIndicatorComponentProps> = Reac
   }
 
   return null;
-}); 
+});

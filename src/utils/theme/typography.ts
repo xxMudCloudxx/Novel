@@ -20,7 +20,7 @@ export const NovelFontFamily = {
     semiBold: 'PingFangSC-Semibold',
     heavy: 'PingFangSC-Heavy',
   } as const;
-  
+
   /**
    * 字号单位，可根据需求定义基于屏幕适配的函数
    */
@@ -32,7 +32,7 @@ export const NovelFontFamily = {
     labelSmall: 12,
     bodySmall: 16,
   } as const;
-  
+
   /**
    * Novel 应用的排版样式集
    */
@@ -76,4 +76,3 @@ export const NovelFontFamily = {
       fontSize: FontSizes.labelSmall,
     },
   };
-  

@@ -24,7 +24,7 @@ export const wp = (size: number): number => {
 };
 
 /**
- * 高度适配函数 - 基于852px设计稿  
+ * 高度适配函数 - 基于852px设计稿
  * @param size 设计稿中的高度
  * @returns 适配后的高度
  */
@@ -70,12 +70,12 @@ export const commonSizes = {
   iconSize: sp(24),
   iconSizeSmall: sp(16),
   iconSizeLarge: sp(32),
-  
+
   // 基于852px高度的常用尺寸
   headerHeight: hp(60),
   tabBarHeight: hp(80),
   buttonHeight: hp(44),
-  
+
   // 字体尺寸
   fontSizeSmall: fp(12),
   fontSizeNormal: fp(14),
@@ -92,4 +92,4 @@ export default {
   sp,
   deviceInfo,
   commonSizes,
-}; 
+};

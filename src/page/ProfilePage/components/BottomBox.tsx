@@ -36,11 +36,11 @@ export const BottomBox: React.FC<BottomBoxProps> = ({ styles, coins, balance }) 
           <Text style={styles.withdrawText}>微信提现 &gt;</Text>
         </TouchableOpacity>
       </View>
-      
+
       {/* 第二行：广告 */}
       <View style={styles.bottomAd}>
         {renderAdvertisement()}
       </View>
     </View>
   );
-}; 
+};

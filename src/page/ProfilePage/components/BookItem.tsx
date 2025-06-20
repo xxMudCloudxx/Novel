@@ -8,11 +8,10 @@ interface BookItemComponentProps extends BookItemProps {
   styles: any;
 }
 
-export const BookItem: React.FC<BookItemComponentProps> = React.memo(({ 
-  book, 
-  onPress, 
-  index, 
-  styles 
+export const BookItem: React.FC<BookItemComponentProps> = React.memo(({
+  book,
+  onPress,
+  styles,
 }) => {
   const imageHeight = React.useMemo(() => {
     return calculateBookItemHeight(book.id);
@@ -27,7 +26,7 @@ export const BookItem: React.FC<BookItemComponentProps> = React.memo(({
   }, []);
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.waterfallBookItem, { width: itemWidth }]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -35,8 +34,8 @@ export const BookItem: React.FC<BookItemComponentProps> = React.memo(({
       {/* 书籍封面 */}
       <View style={[styles.waterfallBookCover, { height: imageHeight }]}>
         {book.coverUrl ? (
-          <Image 
-            source={{ uri: book.coverUrl }} 
+          <Image
+            source={{ uri: book.coverUrl }}
             style={styles.waterfallCoverImage}
             resizeMode="cover"
           />
@@ -46,30 +45,30 @@ export const BookItem: React.FC<BookItemComponentProps> = React.memo(({
           </View>
         )}
       </View>
-      
+
       {/* 书籍信息 */}
       <View style={styles.waterfallBookInfo}>
         {/* 书名 */}
-        <Text 
+        <Text
           style={styles.waterfallBookTitle}
           numberOfLines={2}
           ellipsizeMode="tail"
         >
           {book.title}
         </Text>
-        
+
         {/* 作者 */}
-        <Text 
+        <Text
           style={styles.waterfallBookAuthor}
           numberOfLines={1}
           ellipsizeMode="tail"
         >
           {book.author}
         </Text>
-        
+
         {/* 描述 */}
         {book.description && (
-          <Text 
+          <Text
             style={styles.waterfallBookDescription}
             numberOfLines={descriptionLines}
             ellipsizeMode="tail"
@@ -80,4 +79,4 @@ export const BookItem: React.FC<BookItemComponentProps> = React.memo(({
       </View>
     </TouchableOpacity>
   );
-}); 
+});

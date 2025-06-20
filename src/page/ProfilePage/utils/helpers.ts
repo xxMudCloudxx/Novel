@@ -41,13 +41,13 @@ export const calculateBookItemHeight = (bookId: number): number => {
 
 // 根据描述长度决定显示行数
 export const getDescriptionLines = (description?: string): number => {
-  if (!description) return 1;
-  if (description.length > 80) return 3;
-  if (description.length > 40) return 2;
+  if (!description) {return 1;}
+  if (description.length > 80) {return 3;}
+  if (description.length > 40) {return 2;}
   return 1;
 };
 
 // 计算瀑布流书籍项目宽度
 export const getBookItemWidth = (): number => {
   return (screenWidth - wp(45)) / 2;
-}; 
+};

@@ -32,15 +32,15 @@ interface IconProps {
   color?: string;
 }
 
-const IconComponent: React.FC<IconProps> = ({ 
-  name, 
-  width = 24, 
-  height = 24, 
-  color = '#333333' 
+const IconComponent: React.FC<IconProps> = ({
+  name,
+  width = 24,
+  height = 24,
+  color = '#333333',
 }) => {
   const renderIcon = () => {
     const iconProps = { width, height, fill: color };
-    
+
     switch (name) {
       case 'qrscan':
         return <QrCodeIcon {...iconProps} />;
@@ -102,4 +102,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default IconComponent; 
+export default IconComponent;

@@ -24,7 +24,7 @@ export const ICONS_DATA: IconData[] = [
   { id: 'download', name: '我的下载', icon: 'download', onPress: () => console.log('下载') },
   { id: 'history', name: '游戏中心', icon: 'history', onPress: () => console.log('历史') },
   { id: 'subscribe', name: '推书中心', icon: 'subscribe', onPress: () => console.log('订阅') },
-  
+
   // 第二页的15个图标
   { id: 'game', name: '我的', icon: 'game', onPress: () => console.log('游戏') },
   { id: 'my_preorder', name: '我的预约', icon: 'member', onPress: () => console.log('我的预约') },
@@ -41,7 +41,7 @@ export const ICONS_DATA: IconData[] = [
   { id: 'member_center', name: '会员中心', icon: 'member', onPress: () => console.log('会员中心') },
   { id: 'my_wallet2', name: '我的钱包', icon: 'wallet', onPress: () => console.log('我的钱包') },
   { id: 'feedback_help', name: '反馈与帮助', icon: 'feedback', onPress: () => console.log('反馈与帮助') },
-  
+
   // 第三页的剩余图标
   { id: 'my_wallet21', name: '我的钱包', icon: 'wallet', onPress: () => console.log('我的钱包') },
   { id: 'feedback_help1', name: '反馈与帮助', icon: 'feedback', onPress: () => console.log('反馈与帮助') },
@@ -58,4 +58,4 @@ export const getPageIcons = (pageIndex: number): IconData[] => {
   } else {
     return ICONS_DATA.slice(19, 23);
   }
-}; 
+};
