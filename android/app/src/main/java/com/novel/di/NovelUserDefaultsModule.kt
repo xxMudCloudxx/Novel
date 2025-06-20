@@ -8,6 +8,7 @@ import com.novel.utils.Store.UserDefaults.SharedPrefsUserDefaults
 import com.novel.utils.network.TokenProvider
 import com.novel.utils.StringProvider
 import com.novel.utils.AndroidStringProvider
+import com.novel.utils.SettingsUtils
 import java.time.Clock
 import dagger.Module
 import dagger.Provides
@@ -55,4 +56,13 @@ object NovelUserDefaultsModule {
     fun provideStringProvider(
         androidStringProvider: AndroidStringProvider
     ): StringProvider = androidStringProvider
+
+    // 添加SettingsUtils依赖
+    @Provides
+    @Singleton
+    fun provideSettingsUtils(
+        @ApplicationContext context: Context,
+        novelUserDefaults: NovelUserDefaults,
+        networkCacheManager: com.novel.utils.network.cache.NetworkCacheManager
+    ): SettingsUtils = SettingsUtils(context, novelUserDefaults, networkCacheManager)
 }

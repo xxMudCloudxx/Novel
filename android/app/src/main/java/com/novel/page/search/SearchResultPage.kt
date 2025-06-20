@@ -263,7 +263,7 @@ private fun CategoryFilterRow(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .background(Color.White)
+                .background(NovelColors.NovelBackground)
                 .size(40.wdp)
                 .align(Alignment.CenterEnd)
                 .debounceClickable(

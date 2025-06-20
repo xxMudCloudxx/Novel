@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -144,8 +143,8 @@ fun HomePage(
             item(key = "top_bar") {
                 HomeTopBar(
                     searchQuery = uiState.searchQuery,
-                    onSearchQueryChange = { viewModel.onAction(HomeAction.OnSearchQueryChange(it)) },
-                    onSearchClick = { viewModel.onAction(HomeAction.OnSearchClick) },
+                    onSearchQueryChange = { viewModel.onAction(HomeAction.UpdateSearchQuery(it)) },
+                    onSearchClick = { viewModel.onAction(HomeAction.NavigateToSearch(uiState.searchQuery)) },
                     onCategoryClick = { viewModel.onAction(HomeAction.OnCategoryButtonClick) },
                     modifier = Modifier.padding(horizontal = 15.wdp)
                 )
@@ -156,7 +155,7 @@ fun HomePage(
                 HomeFilterBar(
                     filters = uiState.categoryFilters,
                     selectedFilter = uiState.selectedCategoryFilter,
-                    onFilterSelected = { viewModel.onAction(HomeAction.OnCategoryFilterSelected(it)) }
+                    onFilterSelected = { viewModel.onAction(HomeAction.SelectCategoryFilter(it)) }
                 )
             }
             
@@ -173,7 +172,7 @@ fun HomePage(
                         HomeRankPanel(
                             rankBooks = uiState.rankBooks,
                             selectedRankType = uiState.selectedRankType,
-                            onRankTypeSelected = { viewModel.onAction(HomeAction.OnRankTypeSelected(it)) },
+                            onRankTypeSelected = { viewModel.onAction(HomeAction.SelectRankType(it)) },
                             onBookClick = { bookId, offset, size ->
                                 // 榜单点击触发翻书动画
                                 coroutineScope.launch {
@@ -203,7 +202,7 @@ fun HomePage(
                     // 推荐模式：显示首页推荐数据 - 使用放大透明动画
                     HomeRecommendGrid(
                         homeBooks = uiState.homeRecommendBooks,
-                        onBookClick = { viewModel.onAction(HomeAction.OnRecommendBookClick(it)) },
+                        onBookClick = { viewModel.onAction(HomeAction.NavigateToBookDetail(it)) },
                         onBookClickWithPosition = { bookId, offset, size ->
                             // 推荐流点击触发放大透明动画
                             coroutineScope.launch {

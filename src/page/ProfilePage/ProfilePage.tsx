@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, NativeModules } from 'react-native';
 import { useUserStore } from './store/userStore';
 import { useHomeStore } from './store/BookStore';
 import { useNovelColors } from '../../utils/theme/colors';
@@ -17,19 +17,22 @@ import {
   WaterfallGrid,
 } from './components';
 
+const { NavigationUtil } = NativeModules;
+
 const ProfilePage: React.FC = () => {
+
   // 使用Zustand stores
-  const { uid, nickname, photo, isLoggedIn, balance, coins } = useUserStore();
-  const { 
+  const { nickname, photo, isLoggedIn, balance, coins } = useUserStore();
+  const {
     homeRecommendBooks,
     homeRecommendLoading,
     isRefreshing,
     hasMoreHomeRecommend,
     loadHomeRecommendBooks,
     refreshBooks,
-    loadMoreBooks 
+    loadMoreBooks,
   } = useHomeStore();
-  
+
   const colors = useNovelColors();
   const styles = createHomePageStyles(colors);
 
@@ -71,9 +74,18 @@ const ProfilePage: React.FC = () => {
     // 这里可以导航到书籍详情页
   }, []);
 
+  // 设置按钮点击
+  const handleSettingsPress = useCallback(() => {
+    if (NavigationUtil?.navigateToSettings) {
+      NavigationUtil.navigateToSettings();
+    } else {
+      console.log('NavigationUtil.navigateToSettings not available');
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -91,9 +103,9 @@ const ProfilePage: React.FC = () => {
           threshold={refreshLogic.PULL_THRESHOLD}
           spinStyle={animations.spinStyle}
         />
-        
-        <TopBar styles={styles} />
-        
+
+        <TopBar styles={styles} onSettingsPress={handleSettingsPress} />
+
         <LoginBar
           styles={styles}
           photo={photo || undefined}
@@ -101,7 +113,7 @@ const ProfilePage: React.FC = () => {
           nickname={nickname || undefined}
           onLogin={toLogin}
         />
-        
+
         <ScrollableArea
           styles={styles}
           scrollX={animations.scrollX}
@@ -112,13 +124,13 @@ const ProfilePage: React.FC = () => {
           firstPageAdStyle={animations.firstPageAdStyle}
           colors={colors}
         />
-        
+
         <BottomBox
           styles={styles}
           coins={coins}
           balance={balance}
         />
-        
+
         <WaterfallGrid
           styles={styles}
           books={convertedBooks}
@@ -132,4 +144,4 @@ const ProfilePage: React.FC = () => {
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

@@ -103,6 +103,7 @@ private fun FilterChip(
     NovelText(
         text  = filter,
         style = sizeAnim,
-        modifier = pressModifier.padding(vertical = 8.wdp)
+        modifier = pressModifier.padding(vertical = 8.wdp),
+        color = NovelColors.NovelText
     )
 }

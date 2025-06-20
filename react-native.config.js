@@ -5,4 +5,3 @@ module.exports = {
     },
     assets: ['./assets/fonts'],  // 指向你的字体文件夹路径
   };
-  

@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { wp, fp, sp, commonSizes } from '../../../utils/theme/dimensions';
+import { wp, fp, sp } from '../../../utils/theme/dimensions';
 import { typography } from '../../../utils/theme/typography';
 import { NovelColors } from '../../../utils/theme/colors';
 import { PAGE_WIDTH } from '../utils/constants';
@@ -10,15 +10,15 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     backgroundColor: colors.novelBackground,
     paddingHorizontal: wp(15),
   },
-  
+
   scrollView: {
     flex: 1,
   },
-  
+
   scrollContent: {
     paddingBottom: wp(100),
   },
-  
+
   // 顶部Bar样式
   topBar: {
     flexDirection: 'row',
@@ -27,7 +27,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     paddingVertical: wp(10),
     gap: wp(15),
   },
-  
+
   // 登录栏样式
   loginBar: {
     flexDirection: 'row',
@@ -48,7 +48,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   defaultAvatar: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#000000',
+    backgroundColor: colors.novelMain,
     borderRadius: sp(25),
   },
   loginButton: {
@@ -58,13 +58,13 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.novelText,
   },
-  
+
   // 可滑动区域样式
   scrollableContainer: {
     borderRadius: sp(10),
     width: PAGE_WIDTH,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.novelSecondaryBackground,
     marginVertical: wp(10),
     paddingBottom: wp(15),
   },
@@ -78,7 +78,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     paddingHorizontal: wp(20),
     width: PAGE_WIDTH,
   },
-  
+
   // 第一页样式
   firstPageIcons: {
     flexDirection: 'row',
@@ -87,7 +87,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     gap: wp(10),
     marginBottom: wp(10),
   },
-  
+
   // 第二页网格布局
   gridContainer: {
     flexDirection: 'row',
@@ -95,7 +95,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     justifyContent: 'space-around',
     gap: wp(10),
   },
-  
+
   // 最后一页布局
   lastPageContainer: {
     flexDirection: 'row',
@@ -103,7 +103,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     justifyContent: 'flex-start',
     gap: wp(10),
   },
-  
+
   // 图标样式
   iconItem: {
     width: wp(60),
@@ -117,7 +117,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     lineHeight: fp(16),
     marginTop: wp(5),
   },
-  
+
   // 页面指示器
   pageIndicator: {
     flexDirection: 'row',
@@ -130,12 +130,12 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     borderRadius: sp(3),
     backgroundColor: colors.novelMain,
   },
-  
+
   // 广告组件样式
   advertisement: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.novelSecondaryBackground,
     borderRadius: sp(8),
     padding: wp(15),
     gap: wp(10),
@@ -143,7 +143,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   adBookCover: {
     width: wp(30),
     height: wp(20),
-    backgroundColor: '#000000',
+    backgroundColor: colors.novelMain,
     borderRadius: sp(5),
   },
   adContent: {
@@ -171,12 +171,12 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     color: colors.novelMain,
     fontWeight: '500',
   },
-  
+
   // 底部方框样式
   bottomBox: {
     width: PAGE_WIDTH,
     height: wp(200),
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.novelSecondaryBackground,
     borderRadius: sp(10),
     padding: wp(20),
     alignSelf: 'center',
@@ -199,7 +199,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   },
   withdrawText: {
     ...typography.labelSmall,
-    color: '#4caf50',
+    color: colors.novelMain,
     fontWeight: '500',
   },
   bottomAd: {
@@ -216,10 +216,10 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     flex: 1,
   },
   waterfallBookItem: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.novelSecondaryBackground,
     borderRadius: sp(8),
     marginBottom: wp(10),
-    shadowColor: '#000',
+    shadowColor: colors.novelText,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -228,7 +228,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   },
   waterfallBookCover: {
     width: '100%',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.novelDivider,
   },
   waterfallCoverImage: {
     width: '100%',
@@ -237,13 +237,14 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   waterfallPlaceholderCover: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.novelDivider,
     justifyContent: 'center',
     alignItems: 'center',
   },
   waterfallPlaceholderText: {
     fontSize: fp(12),
-    color: '#999999',
+    color: colors.novelText,
+    opacity: 0.5,
   },
   waterfallBookInfo: {
     padding: wp(10),
@@ -269,7 +270,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     lineHeight: fp(16),
     marginBottom: wp(5),
   },
-  
+
   // 空状态
   emptyContainer: {
     flex: 1,
@@ -282,7 +283,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     color: colors.novelText,
     opacity: 0.6,
   },
-  
+
   // 加载相关样式
   waterfallLoadingContainer: {
     flexDirection: 'row',
@@ -299,7 +300,7 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   waterfallEndLine: {
     width: wp(30),
     height: wp(1),
-    backgroundColor: '#CCCCCC',
+    backgroundColor: colors.novelDivider,
   },
   waterfallEndText: {
     ...typography.labelSmall,
@@ -307,14 +308,14 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
     opacity: 0.5,
     marginHorizontal: wp(10),
   },
-  
+
   // 刷新指示器样式
   refreshIndicator: {
     backgroundColor: colors.novelBackground,
     paddingVertical: wp(15),
     paddingHorizontal: wp(20),
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.novelDivider,
     marginBottom: wp(10),
   },
   refreshContent: {
@@ -327,15 +328,15 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   },
   spinnerText: {
     fontSize: fp(14),
-    color: '#333333',
+    color: colors.novelText,
     fontWeight: '500',
   },
   refreshText: {
     fontSize: fp(14),
-    color: '#333333',
+    color: colors.novelText,
     fontWeight: '500',
   },
-  
+
   // 底部加载指示器
   bottomLoadingContainer: {
     flexDirection: 'row',
@@ -345,7 +346,8 @@ export const createHomePageStyles = (colors: NovelColors) => StyleSheet.create({
   },
   loadingText: {
     fontSize: fp(14),
-    color: '#666666',
+    color: colors.novelText,
+    opacity: 0.6,
     fontWeight: '500',
   },
-}); 
+});

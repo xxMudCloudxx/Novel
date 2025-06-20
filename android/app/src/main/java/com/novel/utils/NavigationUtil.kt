@@ -14,6 +14,7 @@ import com.novel.page.book.BookDetailPage
 import com.novel.page.read.ReaderPage
 import com.novel.page.search.SearchPage
 import com.novel.page.search.SearchResultPage
+import com.novel.page.settings.SettingsPage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -101,6 +102,9 @@ fun NavigationSetup() {
                 bookId = bookId,
                 chapterId = chapterId
             )
+        }
+        composable("settings") {
+            SettingsPage()
         }
     }
 }
@@ -271,6 +275,16 @@ object NavViewModel : ViewModel() {
      */
     fun navigateToLogin() {
         navController.value?.navigate("login")
+    }
+    
+    /**
+     * 导航到设置页面
+     */
+    fun navigateToSettings() {
+        Log.d("NavViewModel", "===== 导航到设置页面 =====")
+        navController.value?.navigate("settings")
+        Log.d("NavViewModel", "✅ 导航到设置页面命令已发送")
+        Log.d("NavViewModel", "==============================")
     }
     
     /**

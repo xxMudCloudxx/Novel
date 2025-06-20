@@ -181,7 +181,7 @@ fun ReaderPage(
         LoadingStateComponent(
             component = loadingStateComponent,
             modifier = Modifier.fillMaxSize(),
-            backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f),
+            backgroundColor = NovelColors.NovelBookBackground,
             flipBookController = flipBookController,
             onLeftSwipeToReader = handleLeftSwipeToReader
         ) {

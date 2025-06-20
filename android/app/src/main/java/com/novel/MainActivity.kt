@@ -1,10 +1,13 @@
 package com.novel
 
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.novel.ui.theme.ThemeManager
+import kotlinx.coroutines.launch
 
 class MainActivity : ReactActivity() {
 
@@ -13,6 +16,19 @@ class MainActivity : ReactActivity() {
      * rendering of the component.
      */
     override fun getMainComponentName(): String = "Novel"
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // 监听主题变更并应用到Activity
+        lifecycleScope.launch {
+            val themeManager = ThemeManager.getInstance()
+            themeManager.isDarkMode.collect { isDarkMode ->
+                // 这里可以添加应用级别的主题变更逻辑
+                // 例如状态栏、导航栏的颜色调整
+            }
+        }
+    }
 
     /**
      * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]

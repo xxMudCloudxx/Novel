@@ -17,6 +17,43 @@ interface ScrollableAreaProps {
   colors: any;
 }
 
+/**
+ * 动画指示器组件
+ * 解决useAnimatedStyle在map回调中使用的Hook规则问题
+ */
+interface AnimatedDotProps {
+  index: number;
+  scrollX: any;
+  colors: any;
+  styles: any;
+}
+
+const AnimatedDot: React.FC<AnimatedDotProps> = ({ index, scrollX, colors, styles }) => {
+  const animatedDotStyle = useAnimatedStyle(() => {
+    const isActive = Math.round(scrollX.value / PAGE_WIDTH) === index;
+    return {
+      backgroundColor: withTiming(
+        isActive ? colors.novelMain : colors.novelDivider,
+        { duration: 200 }
+      ),
+      transform: [
+        {
+          scale: withTiming(
+            isActive ? 1.2 : 1,
+            { duration: 200 }
+          ),
+        },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[styles.dot, animatedDotStyle]}
+    />
+  );
+};
+
 export const ScrollableArea: React.FC<ScrollableAreaProps> = ({
   styles,
   scrollX,
@@ -27,14 +64,14 @@ export const ScrollableArea: React.FC<ScrollableAreaProps> = ({
   firstPageAdStyle,
   colors,
 }) => {
-  const [currentPage, setCurrentPage] = useState(0);
+  const [, setCurrentPage] = useState(0);
   const totalPages = 3;
 
   // 渲染图标
-  const renderIcon = (iconData: IconData, index: number) => (
-    <TouchableOpacity 
-      key={iconData.id} 
-      style={styles.iconItem} 
+  const renderIcon = (iconData: IconData) => (
+    <TouchableOpacity
+      key={iconData.id}
+      style={styles.iconItem}
       onPress={iconData.onPress}
     >
       <IconComponent name={iconData.icon} width={wp(25)} height={wp(25)} />
@@ -63,9 +100,9 @@ export const ScrollableArea: React.FC<ScrollableAreaProps> = ({
   return (
     <View style={styles.scrollableContainer}>
       <Animated.View style={[styles.scrollArea, animatedContainerStyle]}>
-        <ScrollView 
-          horizontal 
-          pagingEnabled 
+        <ScrollView
+          horizontal
+          pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={(event: any) => {
             const pageIndex = Math.round(event.nativeEvent.contentOffset.x / PAGE_WIDTH);
@@ -79,7 +116,7 @@ export const ScrollableArea: React.FC<ScrollableAreaProps> = ({
           {/* 第一页：4个图标 + 广告 */}
           <View style={[styles.page, { width: PAGE_WIDTH }]}>
             <Animated.View style={[styles.firstPageIcons, firstPageIconsStyle]}>
-              {getPageIcons(0).map((iconData, index) => renderIcon(iconData, index))}
+              {getPageIcons(0).map((iconData) => renderIcon(iconData))}
             </Animated.View>
             <Animated.View style={firstPageAdStyle}>
               {renderAdvertisement()}
@@ -89,49 +126,31 @@ export const ScrollableArea: React.FC<ScrollableAreaProps> = ({
           {/* 第二页：15个图标布局 */}
           <View style={[styles.page, { width: PAGE_WIDTH }]}>
             <Animated.View style={[styles.gridContainer, secondPageIconsStyle]}>
-              {getPageIcons(1).map((iconData, index) => renderIcon(iconData, index))}
+              {getPageIcons(1).map((iconData) => renderIcon(iconData))}
             </Animated.View>
           </View>
 
           {/* 第三页：剩余图标 */}
           <View style={[styles.page, { width: PAGE_WIDTH }]}>
             <Animated.View style={[styles.lastPageContainer, thirdPageIconsStyle]}>
-              {getPageIcons(2).map((iconData, index) => renderIcon(iconData, index))}
+              {getPageIcons(2).map((iconData) => renderIcon(iconData))}
             </Animated.View>
           </View>
         </ScrollView>
       </Animated.View>
-      
+
       {/* 动画页面指示器 */}
       <View style={styles.pageIndicator}>
-        {Array.from({ length: totalPages }).map((_, index) => {
-          // 为每个指示器创建动画样式
-          const animatedDotStyle = useAnimatedStyle(() => {
-            const isActive = Math.round(scrollX.value / PAGE_WIDTH) === index;
-            return {
-              backgroundColor: withTiming(
-                isActive ? colors.novelMain : '#cccccc',
-                { duration: 200 }
-              ),
-              transform: [
-                {
-                  scale: withTiming(
-                    isActive ? 1.2 : 1,
-                    { duration: 200 }
-                  )
-                }
-              ]
-            };
-          });
-
-          return (
-            <Animated.View
-              key={index}
-              style={[styles.dot, animatedDotStyle]}
-            />
-          );
-        })}
+        {Array.from({ length: totalPages }).map((_, index) => (
+          <AnimatedDot
+            key={index}
+            index={index}
+            scrollX={scrollX}
+            colors={colors}
+            styles={styles}
+          />
+        ))}
       </View>
     </View>
   );
-}; 
+};

@@ -19,10 +19,10 @@ if (typeof window !== 'undefined') {
       goToLogin: () => {
         console.log('🌐 Web端模拟登录导航');
         // 可以在这里打开一个模拟登录弹窗
-      }
-    }
+      },
+    },
   };
-  
+
   // 添加全局样式重置
   const style = document.createElement('style');
   style.textContent = `

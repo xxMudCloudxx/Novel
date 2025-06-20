@@ -2,6 +2,8 @@ package com.novel.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 
 object NovelColors {
@@ -41,5 +43,16 @@ object NovelColors {
 
 @Composable
 fun dynamicColor(light: Color, dark: Color): Color {
-    return if (isSystemInDarkTheme()) dark else light
+    val themeManager = ThemeManager.getInstance()
+    val isDarkMode by themeManager.isDarkMode.collectAsState()
+    val followSystemTheme by themeManager.followSystemTheme.collectAsState()
+    
+    // 如果跟随系统主题，使用系统设置；否则使用用户设置
+    val actualDarkMode = if (followSystemTheme) {
+        isSystemInDarkTheme()
+    } else {
+        isDarkMode
+    }
+    
+    return if (actualDarkMode) dark else light
 }

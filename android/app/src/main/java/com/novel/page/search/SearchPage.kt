@@ -98,7 +98,7 @@ fun SearchPage(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(NovelColors.NovelBackground)
         ) {
             // 顶部搜索栏
             SearchTopBar(
