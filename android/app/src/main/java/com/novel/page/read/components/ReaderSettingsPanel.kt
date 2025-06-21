@@ -1,6 +1,7 @@
 package com.novel.page.read.components
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -17,10 +18,25 @@ import kotlin.math.roundToInt
 data class ReaderSettings(
     val brightness: Float = 0.5f,          // 亮度 0.0-1.0
     val fontSize: Int = 16,                // 字体大小
-    val backgroundColor: Color = Color(0xFFF5F5DC),  // 背景颜色
-    val textColor: Color = Color.Black,    // 文字颜色
+    val backgroundColor: Color = Color(0xFFF5F5DC),  // 背景颜色（温暖黄）
+    val textColor: Color = Color(0xFF2E2E2E),    // 文字颜色（深灰）
     val pageFlipEffect: PageFlipEffect = PageFlipEffect.PAGECURL  // 翻页效果
-)
+) {
+    companion object {
+        /**
+         * 获取默认设置
+         */
+        fun getDefault(): ReaderSettings {
+            return ReaderSettings(
+                brightness = 0.5f,
+                fontSize = 16,
+                backgroundColor = Color(0xFFF5F5DC), // 温暖黄背景
+                textColor = Color(0xFF2E2E2E),       // 深灰文字
+                pageFlipEffect = PageFlipEffect.PAGECURL
+            )
+        }
+    }
+}
 
 /**
  * 翻页效果枚举
@@ -55,13 +71,15 @@ fun ReaderSettingsPanel(
     onSettingsChange: (ReaderSettings) -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+    Log.d("ReaderSettingsPanel", "settings: $settings")
     // 背景主题定义移到Composable函数内
     val backgroundThemes = listOf(
-        BackgroundTheme("护眼绿", Color(0xFFCCE8CC), Color(0xFF2E2E2E)),
-        BackgroundTheme("经典白", Color(0xFFFFFFFF), Color.Black),
-        BackgroundTheme("温暖黄", Color(0xFFF5F5DC), Color(0xFF2E2E2E)),
-        BackgroundTheme("夜间黑", Color(0xFF1E1E1E), Color(0xFFE0E0E0)),
-        BackgroundTheme("羊皮纸", Color(0xFFF4ECD8), Color(0xFF5D4E37))
+        BackgroundTheme("护眼绿", Color(0xFFCCE8CC), Color(0xFF2E2E2E)),  // 浅绿背景 + 深灰文字
+        BackgroundTheme("经典白", Color(0xFFFFFFFF), Color(0xFF2E2E2E)),  // 白色背景 + 深灰文字
+        BackgroundTheme("温暖黄", Color(0xFFF5F5DC), Color(0xFF2E2E2E)),  // 米黄背景 + 深灰文字 
+        BackgroundTheme("夜间黑", Color(0xFF1E1E1E), Color(0xFFE0E0E0)),  // 深黑背景 + 浅灰文字
+        BackgroundTheme("羊皮纸", Color(0xFFF4ECD8), Color(0xFF5D4E37))   // 羊皮纸背景 + 棕色文字
     )
 
     // 1. 把外层的 brightness 存成一个 State，仍然是 0f..1f 之间离散档位
@@ -121,10 +139,11 @@ fun ReaderSettingsPanel(
             BackgroundColorControl(
                 backgroundThemes = backgroundThemes,
                 currentBackgroundColor = settings.backgroundColor,
-                onThemeChange = { backgroundColor->
+                onThemeChange = { theme ->
                     onSettingsChange(
                         settings.copy(
-                            backgroundColor = backgroundColor
+                            backgroundColor = theme.backgroundColor,
+                            textColor = theme.textColor
                         )
                     )
                 }

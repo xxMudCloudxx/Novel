@@ -142,6 +142,8 @@ private fun NormalPageContent(
     readerSettings: ReaderSettings
 ) {
     Log.d("PageContentDisplay", "page: $page")
+    Log.d("PageContentDisplay", "readerSettings - fontSize: ${readerSettings.fontSize}, textColor: ${readerSettings.textColor}, backgroundColor: ${readerSettings.backgroundColor}")
+    
     Column {
         // 只在第一页显示章节标题
         if (isFirstPage) {

@@ -539,7 +539,7 @@ private fun ReaderControls(
         // 顶部控制栏
         TopBar(
             onBack = onBack,
-            backgroundColor = uiState.readerSettings.backgroundColor
+            readerSettings = uiState.readerSettings
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -563,12 +563,12 @@ private fun ReaderControls(
 @Composable
 private fun TopBar(
     onBack: () -> Unit,
-    backgroundColor: Color
+    readerSettings: ReaderSettings
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor.copy(alpha = 1f))
+            .background(readerSettings.backgroundColor.copy(alpha = 0.95f))
             .padding(4.wdp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -576,7 +576,7 @@ private fun TopBar(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "返回",
-                tint = NovelColors.NovelText
+                tint = readerSettings.textColor
             )
         }
     }
@@ -612,7 +612,7 @@ private fun BottomControls(
                 Text(
                     text = "正在计算总页数...",
                     fontSize = 10.ssp,
-                    color = NovelColors.NovelText.copy(alpha = 0.7f),
+                    color = uiState.readerSettings.textColor.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                 )
@@ -630,6 +630,7 @@ private fun BottomControls(
                     "上一章",
                     fontSize = 14.ssp,
                     fontWeight = FontWeight.Bold,
+                    color = uiState.readerSettings.textColor,
                     modifier = Modifier.debounceClickable(
                         onClick = { onPreviousChapter() }
                     ))
@@ -656,6 +657,7 @@ private fun BottomControls(
                     "下一章",
                     fontSize = 14.ssp,
                     fontWeight = FontWeight.Bold,
+                    color = uiState.readerSettings.textColor,
                     modifier = Modifier.debounceClickable(
                         onClick = { onNextChapter() }
                     ))
@@ -682,18 +684,21 @@ private fun BottomControls(
                 icon = Icons.AutoMirrored.Filled.List,
                 text = "目录",
                 onClick = onShowChapterList,
+                tintColor = uiState.readerSettings.textColor
             )
 
             ControlButton(
                 icon = Icons.Default.Star,
                 text = "夜间",
                 onClick = { /* 暂不实现 */ },
+                tintColor = uiState.readerSettings.textColor
             )
 
             ControlButton(
                 icon = Icons.Default.Settings,
                 text = "设置",
                 onClick = onShowSettings,
+                tintColor = uiState.readerSettings.textColor
             )
         }
     }
@@ -707,7 +712,7 @@ private fun ControlButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
     onClick: () -> Unit,
-    tintColor: Color = NovelColors.NovelText
+    tintColor: Color = Color(0xFF2E2E2E) // 使用安全的默认深灰色，而不是主题色
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,

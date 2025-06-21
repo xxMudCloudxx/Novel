@@ -26,7 +26,7 @@ import com.novel.utils.wdp
 fun BackgroundColorControl(
     backgroundThemes: List<BackgroundTheme>,
     currentBackgroundColor: Color,
-    onThemeChange: (Color) -> Unit
+    onThemeChange: (BackgroundTheme) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth()
@@ -41,7 +41,7 @@ fun BackgroundColorControl(
                     .padding(end = 15.wdp)
                     .size(32.wdp)
                     .clickable {
-                        onThemeChange(theme.backgroundColor)
+                        onThemeChange(theme)
                     },
                 colors = CardDefaults.cardColors(containerColor = theme.backgroundColor),
                 shape = CircleShape,

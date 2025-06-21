@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 import androidx.core.graphics.toColorInt
+import androidx.compose.ui.graphics.Color
 
 /**
  * 翻页状态
@@ -77,7 +78,7 @@ data class ReaderUiState(
     val currentChapter: Chapter? = null,
     val currentChapterIndex: Int = 0,
     val bookContent: String = "",
-    val readerSettings: ReaderSettings = ReaderSettings(),
+    val readerSettings: ReaderSettings = ReaderSettings.getDefault(), // 确保使用正确的默认设置
     var readingProgress: Float = 0f,
     // 新增分页相关状态
     val currentPageData: PageData? = null,
@@ -126,6 +127,20 @@ data class ReaderUiState(
 
         readingProgress = (globalCurrentPage + 1).toFloat() / cache.totalPages.toFloat()
         return (globalCurrentPage + 1).toFloat() / cache.totalPages.toFloat()
+    }
+    
+    // 添加颜色验证方法
+    fun validateColors(): ReaderUiState {
+        val settings = readerSettings
+        val hasTransparentBackground = settings.backgroundColor.alpha < 0.1f
+        val hasTransparentText = settings.textColor.alpha < 0.1f
+        
+        return if (hasTransparentBackground || hasTransparentText) {
+            android.util.Log.w("ReaderUiState", "检测到透明颜色，使用默认设置 - 背景色透明度: ${settings.backgroundColor.alpha}, 文字色透明度: ${settings.textColor.alpha}")
+            copy(readerSettings = ReaderSettings.getDefault())
+        } else {
+            this
+        }
     }
 }
 
@@ -181,7 +196,24 @@ class ReaderViewModel @Inject constructor(
     
     init {
         // 初始化时加载所有保存的阅读器设置
+        
+        // 调试：检查UserDefaults中的颜色值
+        try {
+            val savedBackgroundColor = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
+            val savedTextColor = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
+            android.util.Log.d("ReaderViewModel", "Init检查 - UserDefaults中的背景色: $savedBackgroundColor")
+            android.util.Log.d("ReaderViewModel", "Init检查 - UserDefaults中的文本色: $savedTextColor")
+            android.util.Log.d("ReaderViewModel", "Init检查 - 初始ReaderSettings: ${_uiState.value.readerSettings}")
+        } catch (e: Exception) {
+            android.util.Log.e("ReaderViewModel", "初始化检查失败", e)
+        }
+        
+        // 测试颜色转换
+        testColorConversion()
+        
         loadAllSavedSettings()
+        
+        // 确保设置有效性
     }
 
     /**
@@ -212,55 +244,107 @@ class ReaderViewModel @Inject constructor(
     @SuppressLint("UseKtx")
     private fun loadAllSavedSettings() {
         try {
-            val currentSettings = _uiState.value.readerSettings
-            var newSettings = currentSettings
+            // 使用静态默认设置作为基础
+            val defaultSettings = ReaderSettings.getDefault()
+            var newSettings = defaultSettings
+            
+            android.util.Log.d("ReaderViewModel", "开始加载保存的设置 - 默认背景色: ${defaultSettings.backgroundColor}, 默认文字色: ${defaultSettings.textColor}")
             
             // 加载翻页效果
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)?.let { savedEffect ->
                 try {
                     newSettings = newSettings.copy(pageFlipEffect = PageFlipEffect.valueOf(savedEffect))
+                    android.util.Log.d("ReaderViewModel", "加载翻页效果: $savedEffect")
                 } catch (e: Exception) {
-                    // 解析失败，使用默认值
+                    android.util.Log.e("ReaderViewModel", "解析翻页效果失败: $savedEffect", e)
                 }
             }
             
             // 加载字体大小
             userDefaults.get<Int>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.FONT_SIZE)?.let { fontSize ->
-                newSettings = newSettings.copy(fontSize = fontSize)
+                if (fontSize in 12..44) { // 验证字体大小范围
+                    newSettings = newSettings.copy(fontSize = fontSize)
+                    android.util.Log.d("ReaderViewModel", "加载字体大小: $fontSize")
+                } else {
+                    android.util.Log.w("ReaderViewModel", "字体大小超出范围: $fontSize，使用默认值")
+                }
             }
             
             // 加载亮度
             userDefaults.get<Float>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BRIGHTNESS)?.let { brightness ->
-                newSettings = newSettings.copy(brightness = brightness)
+                if (brightness in 0f..1f) { // 验证亮度范围
+                    newSettings = newSettings.copy(brightness = brightness)
+                    android.util.Log.d("ReaderViewModel", "加载亮度: $brightness")
+                } else {
+                    android.util.Log.w("ReaderViewModel", "亮度超出范围: $brightness，使用默认值")
+                }
             }
             
             // 加载背景色
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)?.let { colorString ->
                 try {
-                    val color = colorString.toColorInt()
-                    newSettings = newSettings.copy(backgroundColor = androidx.compose.ui.graphics.Color(color))
+                    android.util.Log.d("ReaderViewModel", "尝试加载背景色: $colorString")
+                    if (colorString.isNotBlank() && colorString.startsWith("#") && colorString.length >= 7) {
+                        // 支持 #RRGGBB 和 #AARRGGBB 格式
+                        val colorLong = if (colorString.length == 7) {
+                            // #RRGGBB 格式，添加不透明度
+                            "FF${colorString.substring(1)}".toLong(16)
+                        } else {
+                            // #AARRGGBB 格式
+                            colorString.substring(1).toLong(16)
+                        }
+                        val color = androidx.compose.ui.graphics.Color(colorLong.toULong())
+                        newSettings = newSettings.copy(backgroundColor = color)
+                        android.util.Log.d("ReaderViewModel", "成功加载背景色: $colorString -> $color")
+                    } else {
+                        android.util.Log.w("ReaderViewModel", "背景色格式无效: $colorString，使用默认值")
+                    }
                 } catch (e: Exception) {
-                    // 颜色解析失败，使用默认值
+                    android.util.Log.e("ReaderViewModel", "颜色解析失败 - 背景色: $colorString，使用默认值", e)
                 }
             }
             
             // 加载文本色
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)?.let { colorString ->
                 try {
-                    val color = colorString.toColorInt()
-                    newSettings = newSettings.copy(textColor = androidx.compose.ui.graphics.Color(color))
+                    android.util.Log.d("ReaderViewModel", "尝试加载文本色: $colorString")
+                    if (colorString.isNotBlank() && colorString.startsWith("#") && colorString.length >= 7) {
+                        // 支持 #RRGGBB 和 #AARRGGBB 格式
+                        val colorLong = if (colorString.length == 7) {
+                            // #RRGGBB 格式，添加不透明度
+                            "FF${colorString.substring(1)}".toLong(16)
+                        } else {
+                            // #AARRGGBB 格式
+                            colorString.substring(1).toLong(16)
+                        }
+                        val color = androidx.compose.ui.graphics.Color(colorLong.toULong())
+                        newSettings = newSettings.copy(textColor = color)
+                        android.util.Log.d("ReaderViewModel", "成功加载文本色: $colorString -> $color")
+                    } else {
+                        android.util.Log.w("ReaderViewModel", "文本色格式无效: $colorString，使用默认值")
+                    }
                 } catch (e: Exception) {
-                    // 颜色解析失败，使用默认值
+                    android.util.Log.e("ReaderViewModel", "颜色解析失败 - 文本色: $colorString，使用默认值", e)
                 }
             }
             
-            _uiState.value = _uiState.value.copy(readerSettings = newSettings)
+            android.util.Log.d("ReaderViewModel", "设置加载完成 - 最终背景色: ${newSettings.backgroundColor}, 最终文字色: ${newSettings.textColor}")
+            
+            // 使用ReaderSettings的内置方法检查并修复文字颜色问题
+            val finalSettings = newSettings
+            android.util.Log.d("ReaderViewModel", "颜色检查完成 - 最终背景色: ${finalSettings.backgroundColor}, 最终文字色: ${finalSettings.textColor}")
+            
+            _uiState.value = _uiState.value.copy(readerSettings = finalSettings)
         } catch (e: Exception) {
+            android.util.Log.e("ReaderViewModel", "加载设置失败，使用默认设置", e)
             // 如果加载失败，使用默认值
-            _uiState.value = _uiState.value.copy(
-                readerSettings = _uiState.value.readerSettings.copy(pageFlipEffect = PageFlipEffect.PAGECURL)
-            )
+            val defaultSettings = ReaderSettings.getDefault()
+            _uiState.value = _uiState.value.copy(readerSettings = defaultSettings)
         }
+        
+        // 最终验证颜色并应用
+        _uiState.value = _uiState.value.validateColors()
+        android.util.Log.d("ReaderViewModel", "最终验证后的设置 - 背景色: ${_uiState.value.readerSettings.backgroundColor}, 文字色: ${_uiState.value.readerSettings.textColor}")
     }
 
     /**
@@ -288,15 +372,30 @@ class ReaderViewModel @Inject constructor(
             // 保存亮度
             userDefaults.set(settings.brightness, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BRIGHTNESS)
             
-            // 保存背景色（转换为字符串）
-            val backgroundColorString = String.format("#%08X", settings.backgroundColor.value.toInt())
-            userDefaults.set(backgroundColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
+            // 修复颜色保存逻辑 - 使用更安全的转换方式
+            try {
+                val backgroundColorInt = settings.backgroundColor.value.toULong().toInt()
+                val backgroundColorString = String.format("#%08X", backgroundColorInt)
+                userDefaults.set(backgroundColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
+                android.util.Log.d("ReaderViewModel", "保存背景色: ${settings.backgroundColor} -> $backgroundColorString")
+            } catch (e: Exception) {
+                android.util.Log.e("ReaderViewModel", "保存背景色失败", e)
+                // 保存默认背景色的十六进制字符串
+                userDefaults.set("#FFF5F5DC", com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
+            }
             
-            // 保存文本色（转换为字符串）
-            val textColorString = String.format("#%08X", settings.textColor.value.toInt())
-            userDefaults.set(textColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
+            try {
+                val textColorInt = settings.textColor.value.toULong().toInt()
+                val textColorString = String.format("#%08X", textColorInt)
+                userDefaults.set(textColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
+                android.util.Log.d("ReaderViewModel", "保存文本色: ${settings.textColor} -> $textColorString")
+            } catch (e: Exception) {
+                android.util.Log.e("ReaderViewModel", "保存文本色失败", e)
+                // 保存默认文本色的十六进制字符串
+                userDefaults.set("#FF2E2E2E", com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
+            }
         } catch (e: Exception) {
-            // 保存失败时静默处理
+            android.util.Log.e("ReaderViewModel", "保存设置失败", e)
         }
     }
 
@@ -1988,6 +2087,50 @@ class ReaderViewModel @Inject constructor(
             pageIndex == -1 -> 0f // 书籍详情页
             currentPageData.pages.isEmpty() -> 0f
             else -> (pageIndex + 1).toFloat() / currentPageData.pages.size.toFloat()
+        }
+    }
+
+    /**
+     * 测试颜色转换 - 调试用
+     */
+    private fun testColorConversion() {
+        try {
+            val defaultSettings = ReaderSettings.getDefault()
+            android.util.Log.d("ReaderViewModel", "默认背景色: ${defaultSettings.backgroundColor}")
+            android.util.Log.d("ReaderViewModel", "默认文字色: ${defaultSettings.textColor}")
+            
+            // 测试颜色转换过程
+            val testBackgroundColorInt = defaultSettings.backgroundColor.value.toULong().toInt()
+            val testBackgroundColorString = String.format("#%08X", testBackgroundColorInt)
+            android.util.Log.d("ReaderViewModel", "测试背景色转换: ${defaultSettings.backgroundColor} -> $testBackgroundColorString")
+            
+            // 测试反向转换
+            if (testBackgroundColorString.startsWith("#") && testBackgroundColorString.length >= 7) {
+                val colorLong = if (testBackgroundColorString.length == 7) {
+                    "FF${testBackgroundColorString.substring(1)}".toLong(16)
+                } else {
+                    testBackgroundColorString.substring(1).toLong(16)
+                }
+                val reconstructedColor = androidx.compose.ui.graphics.Color(colorLong.toULong())
+                android.util.Log.d("ReaderViewModel", "测试背景色反向转换: $testBackgroundColorString -> $reconstructedColor")
+            }
+            
+            val testTextColorInt = defaultSettings.textColor.value.toULong().toInt()
+            val testTextColorString = String.format("#%08X", testTextColorInt)
+            android.util.Log.d("ReaderViewModel", "测试文字色转换: ${defaultSettings.textColor} -> $testTextColorString")
+            
+            // 测试反向转换
+            if (testTextColorString.startsWith("#") && testTextColorString.length >= 7) {
+                val colorLong = if (testTextColorString.length == 7) {
+                    "FF${testTextColorString.substring(1)}".toLong(16)
+                } else {
+                    testTextColorString.substring(1).toLong(16)
+                }
+                val reconstructedColor = androidx.compose.ui.graphics.Color(colorLong.toULong())
+                android.util.Log.d("ReaderViewModel", "测试文字色反向转换: $testTextColorString -> $reconstructedColor")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ReaderViewModel", "颜色转换测试失败", e)
         }
     }
 } 
