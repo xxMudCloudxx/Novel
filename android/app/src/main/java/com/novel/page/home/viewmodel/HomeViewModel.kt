@@ -410,6 +410,33 @@ class HomeViewModel @Inject constructor(
                 
                 val hasMore = endIndex < cachedHomeBooks.size
                 
+                // 修复：当获取到的数据为0时，强制重新获取网络数据
+                if (currentBooks.isEmpty() && !isRefresh) {
+                    Log.w(TAG, "首页推荐数据为空，尝试从网络获取")
+                    // 使用网络优先策略重新获取
+                    val networkBooks = homeRepository.getHomeBooks(
+                        strategy = com.novel.utils.network.cache.CacheStrategy.NETWORK_ONLY
+                    )
+                    
+                    if (networkBooks.isNotEmpty()) {
+                        cachedHomeBooks = networkBooks
+                        val newCurrentBooks = networkBooks.take(RECOMMEND_PAGE_SIZE)
+                        val newHasMore = RECOMMEND_PAGE_SIZE < networkBooks.size
+                        
+                        updateState { 
+                            it.copy(
+                                homeRecommendBooks = newCurrentBooks,
+                                homeRecommendLoading = false,
+                                hasMoreHomeRecommend = newHasMore,
+                                homeRecommendPage = 1,
+                                isRefreshing = false
+                            ) 
+                        }
+                        Log.d(TAG, "从网络获取首页推荐数据成功：${newCurrentBooks.size}本")
+                        return@launch
+                    }
+                }
+                
                 updateState { 
                     it.copy(
                         homeRecommendBooks = currentBooks,
@@ -473,6 +500,38 @@ class HomeViewModel @Inject constructor(
                 )
                 
                 val hasMore = booksData.list.size >= RECOMMEND_PAGE_SIZE
+                
+                // 修复：当获取到的数据为0时，强制重新获取网络数据
+                if (booksData.list.isEmpty()) {
+                    Log.w(TAG, "分类推荐数据为空，尝试从网络获取")
+                    // 使用网络优先策略重新获取
+                    val networkBooksData = cachedBookRepository.searchBooks(
+                        categoryId = categoryId,
+                        pageNum = 1,
+                        pageSize = RECOMMEND_PAGE_SIZE,
+                        strategy = com.novel.utils.network.cache.CacheStrategy.NETWORK_ONLY
+                    )
+                    
+                    if (networkBooksData.list.isNotEmpty()) {
+                        val networkHasMore = networkBooksData.list.size >= RECOMMEND_PAGE_SIZE
+                        
+                        // 更新缓存
+                        categoryRecommendCache[categoryName] = networkBooksData.list
+                        
+                        updateState { 
+                            it.copy(
+                                recommendBooks = networkBooksData.list,
+                                recommendLoading = false,
+                                hasMoreRecommend = networkHasMore,
+                                totalRecommendPages = networkBooksData.pages.toInt(),
+                                recommendPage = 1,
+                                isRefreshing = false
+                            ) 
+                        }
+                        Log.d(TAG, "从网络获取分类推荐数据成功：${networkBooksData.list.size}本")
+                        return@launch
+                    }
+                }
                 
                 // 更新缓存
                 categoryRecommendCache[categoryName] = booksData.list
@@ -559,6 +618,30 @@ class HomeViewModel @Inject constructor(
             
             try {
                 val rankBooks = homeRepository.getRankBooks(rankType)
+                
+                // 修复：当获取到的榜单数据为0时，强制重新获取网络数据
+                if (rankBooks.isEmpty()) {
+                    Log.w(TAG, "榜单数据为空，尝试从网络获取")
+                    // 使用网络优先策略重新获取
+                    val networkRankBooks = homeRepository.getRankBooks(
+                        rankType,
+                        strategy = com.novel.utils.network.cache.CacheStrategy.NETWORK_ONLY
+                    )
+                    
+                    if (networkRankBooks.isNotEmpty()) {
+                        // 更新缓存
+                        rankBooksCache[rankType] = networkRankBooks
+                        
+                        updateState { 
+                            it.copy(
+                                rankBooks = networkRankBooks,
+                                rankLoading = false
+                            ) 
+                        }
+                        Log.d(TAG, "从网络获取$rankType 数据成功，共${networkRankBooks.size}本书")
+                        return@launch
+                    }
+                }
                 
                 // 更新缓存
                 rankBooksCache[rankType] = rankBooks

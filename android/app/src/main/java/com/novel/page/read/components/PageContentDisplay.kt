@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -140,6 +141,7 @@ private fun NormalPageContent(
     previousChapterData: PageData?,
     readerSettings: ReaderSettings
 ) {
+    Log.d("PageContentDisplay", "page: $page")
     Column {
         // 只在第一页显示章节标题
         if (isFirstPage) {

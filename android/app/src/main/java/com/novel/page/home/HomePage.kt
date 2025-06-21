@@ -260,14 +260,16 @@ fun HomePage(
                     HomeRecommendLoadMoreIndicator(
                         isLoading = uiState.homeRecommendLoading,
                         hasMoreData = uiState.hasMoreHomeRecommend,
-                        onLoadMore = { viewModel.onAction(HomeAction.LoadMoreHomeRecommend) }
+                        onLoadMore = { viewModel.onAction(HomeAction.LoadMoreHomeRecommend) },
+                        totalDataCount = uiState.homeRecommendBooks.size
                     )
                 } else {
                     // 分类模式
                     HomeRecommendLoadMoreIndicator(
                         isLoading = uiState.recommendLoading,
                         hasMoreData = uiState.hasMoreRecommend,
-                        onLoadMore = { viewModel.onAction(HomeAction.LoadMoreRecommend) }
+                        onLoadMore = { viewModel.onAction(HomeAction.LoadMoreRecommend) },
+                        totalDataCount = uiState.recommendBooks.size
                     )
                 }
             }

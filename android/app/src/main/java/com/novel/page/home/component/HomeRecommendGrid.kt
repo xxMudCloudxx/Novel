@@ -525,7 +525,8 @@ fun HomeRecommendLoadMoreIndicator(
     isLoading: Boolean,
     hasMoreData: Boolean,
     onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    totalDataCount: Int = 0 // 新增：当前数据总数
 ) {
     Box(
         modifier = modifier
@@ -566,6 +567,25 @@ fun HomeRecommendLoadMoreIndicator(
                     )
                     NovelText(
                         text = "加载中...",
+                        fontSize = 14.ssp,
+                        color = NovelColors.NovelTextGray
+                    )
+                }
+            }
+
+            totalDataCount == 0 -> {
+                // 修复：当数据为空时，显示加载中状态而不是已加载全部
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.wdp)
+                ) {
+                    CircularProgressIndicator(
+                        color = NovelColors.NovelMain,
+                        modifier = Modifier.size(20.wdp),
+                        strokeWidth = 2.wdp
+                    )
+                    NovelText(
+                        text = "正在获取数据...",
                         fontSize = 14.ssp,
                         color = NovelColors.NovelTextGray
                     )
