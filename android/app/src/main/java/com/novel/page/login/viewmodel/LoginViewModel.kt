@@ -1,6 +1,7 @@
 package com.novel.page.login.viewmodel
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.page.login.utils.AuthResult
@@ -20,35 +21,56 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// 错误类型
-sealed class LoginError {
-    data class InputError(val field: String, val message: String) : LoginError()
-    data class NetworkError(val message: String) : LoginError()
-    data class CaptchaError(val message: String) : LoginError()
-}
+// === UI 状态定义 ===
 
-// —— UI 状态 ——
+/**
+ * 登录页面UI状态
+ * 
+ * 包含所有页面显示所需的状态数据：
+ * - 表单输入状态和验证结果
+ * - 验证码相关状态
+ * - 加载状态和错误信息
+ * - 模式切换状态（登录/注册）
+ */
 data class LoginUiState(
+    /** 用户协议是否已勾选 */
     val isAgreementChecked: Boolean = false,
+    /** 手机号码 */
     val phoneNumber: String = "",
+    /** 运营商名称（用于客服电话） */
     val operatorName: String = "",
-    val verifyCode: String = "",       // 用户输入的验证码
-    val verifyImage: String = "",      // Base64 Data URI
-    val sessionId: String = "",         // 验证码对应的会话 ID
-    val isCaptchaLoading: Boolean = false, // 新增：验证码加载状态
-    val captchaError: String? = null,      // 新增：验证码加载错误信息
+    /** 用户输入的验证码 */
+    val verifyCode: String = "",
+    /** Base64编码的验证码图片 */
+    val verifyImage: String = "",
+    /** 验证码对应的会话ID */
+    val sessionId: String = "",
+    /** 验证码加载状态 */
+    val isCaptchaLoading: Boolean = false,
+    /** 验证码加载错误信息 */
+    val captchaError: String? = null,
+    /** 用户名 */
     val username: String = "",
+    /** 密码 */
     val password: String = "",
+    /** 确认密码 */
     val passwordConfirm: String = "",
+    /** 是否为注册模式 */
     val isRegisterMode: Boolean = false,
-    val isLoading: Boolean = false,      // 新增：整体加载状态
+    /** 整体加载状态 */
+    val isLoading: Boolean = false,
+    /** 用户名验证错误 */
     val usernameError: String? = null,
+    /** 密码验证错误 */
     val passwordError: String? = null,
+    /** 确认密码验证错误 */
     val passwordConfirmError: String? = null,
+    /** 验证码验证错误 */
     val verifyCodeError: String? = null,
 ) {
     /**
      * 计算按钮是否可用
+     * 基于表单完整性和协议勾选状态
      */
     val isActionButtonEnabled: Boolean
         get() = isAgreementChecked &&
@@ -57,28 +79,55 @@ data class LoginUiState(
                 (!isRegisterMode || (passwordConfirm.isNotBlank() && verifyCode.isNotBlank()))
 }
 
-// —— 一次性事件 ——
+// === 事件定义 ===
+
+/**
+ * 登录页面一次性事件
+ * 用于触发导航、显示提示等副作用
+ */
 sealed class LoginEvent {
+    /** 显示Toast提示 */
     data class ShowToast(val message: String) : LoginEvent()
+    /** 导航到指定路由 */
     data class Navigate(val route: String) : LoginEvent()
+    /** 启动电话服务 */
     data class LaunchTelService(val number: String) : LoginEvent()
+    /** 打开用户协议页面 */
     data object OpenUserAgreementPage : LoginEvent()
+    /** 打开注册协议页面 */
     data object OpenRegisterAgreementPage : LoginEvent()
 }
 
-// —— 所有用户操作 ——
+// === 用户操作定义 ===
+
+/**
+ * 登录页面用户操作意图
+ * 采用MVI架构模式，封装所有用户交互
+ */
 sealed class LoginAction {
+    /** 执行登录操作 */
     data class DoLogin(val username: String, val password: String) : LoginAction()
+    /** 打开电话客服 */
     data object OpenTelService : LoginAction()
+    /** 打开用户协议 */
     data object OpenUserAgreement : LoginAction()
+    /** 打开注册协议 */
     data object OpenRegisterAgreement : LoginAction()
+    /** 切换协议勾选状态 */
     data class ToggleAgreement(val checked: Boolean) : LoginAction()
+    /** 输入验证码 */
     data class InputVerifyCode(val code: String) : LoginAction()
+    /** 刷新验证码 */
     data object RefreshCaptcha : LoginAction()
+    /** 输入用户名 */
     data class InputUsername(val value: String) : LoginAction()
+    /** 输入密码 */
     data class InputPassword(val value: String) : LoginAction()
+    /** 输入确认密码 */
     data class InputPasswordConfirm(val value: String) : LoginAction()
+    /** 切换登录/注册模式 */
     data object ToggleRegisterMode : LoginAction()
+    /** 执行注册操作 */
     data class DoRegister(
         val username: String,
         val password: String,
@@ -88,26 +137,46 @@ sealed class LoginAction {
 }
 
 /**
- * 登录页面ViewModel - 专注于UI状态管理和用户交互
- * 将业务逻辑委托给相应的领域服务
+ * 登录页面ViewModel
+ * 
+ * 职责：
+ * - 管理登录/注册页面的UI状态
+ * - 处理用户交互和表单验证
+ * - 协调认证服务和验证码服务
+ * - 管理页面间导航和事件通知
+ * 
+ * 架构特点：
+ * - 采用MVI架构模式，单向数据流
+ * - 业务逻辑委托给领域服务
+ * - 使用Channel处理一次性事件
+ * - 响应式状态管理，自动UI更新
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
+    /** 认证服务，处理登录/注册逻辑 */
     private val authService: AuthService,
+    /** 表单验证服务 */
     private val validationService: ValidationService,
+    /** 验证码服务 */
     private val captchaService: CaptchaService,
+    /** 手机信息工具类 */
     @SuppressLint("StaticFieldLeak") private val phoneInfoUtil: PhoneInfoUtil
 ) : ViewModel() {
 
-    // UI状态流
+    companion object {
+        private const val TAG = "LoginViewModel"
+    }
+
+    /** UI状态流，响应式更新UI */
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    // 事件通道
+    /** 事件通道，处理一次性事件 */
     private val _events = Channel<LoginEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     init {
+        Log.d(TAG, "LoginViewModel初始化")
         // 初始化页面数据
         initializePageData()
         // 监听验证码状态变化
@@ -116,8 +185,12 @@ class LoginViewModel @Inject constructor(
 
     /**
      * 统一入口，处理所有UI交互
+     * 
+     * 采用when表达式分发不同的用户操作
+     * 确保所有操作都在viewModelScope中执行
      */
     fun onAction(action: LoginAction) {
+        Log.d(TAG, "处理用户操作: ${action::class.simpleName}")
         viewModelScope.launch {
             when (action) {
                 is LoginAction.ToggleAgreement -> {
@@ -182,6 +255,7 @@ class LoginViewModel @Inject constructor(
                 }
 
                 LoginAction.ToggleRegisterMode -> {
+                    Log.d(TAG, "切换到${if (!uiState.value.isRegisterMode) "注册" else "登录"}模式")
                     _uiState.update { 
                         it.copy(
                             isRegisterMode = !it.isRegisterMode,
@@ -203,6 +277,7 @@ class LoginViewModel @Inject constructor(
 
     /**
      * 初始化页面数据
+     * 预加载手机信息和验证码
      */
     private fun initializePageData() {
         viewModelScope.launch {

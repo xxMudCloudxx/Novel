@@ -11,7 +11,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.novel.page.component.NovelImageView
 import com.novel.page.component.NovelText
 import com.novel.page.search.utils.SearchUtils
@@ -20,7 +19,6 @@ import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
-import kotlin.random.Random
 
 /**
  * 搜索结果项组件

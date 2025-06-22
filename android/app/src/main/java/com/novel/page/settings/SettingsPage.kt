@@ -7,14 +7,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
-import com.facebook.react.ReactApplication
 import com.facebook.react.ReactRootView
 import com.facebook.react.ReactInstanceManager
 import com.facebook.react.bridge.ReactContext
-import android.os.Bundle
-import android.content.Context
 import android.util.Log
 import androidx.core.os.bundleOf
 import com.novel.BuildConfig

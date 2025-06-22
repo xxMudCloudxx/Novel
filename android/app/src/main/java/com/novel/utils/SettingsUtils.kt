@@ -1,11 +1,10 @@
 package com.novel.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.content.SharedPreferences
-import androidx.appcompat.app.AppCompatDelegate
+import android.util.Log
 import com.novel.ui.theme.ThemeManager
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
-import com.novel.utils.network.cache.NetworkCacheManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,37 +14,47 @@ import javax.inject.Singleton
 
 /**
  * 设置工具类
- * 提供清除缓存、切换夜间模式等功能
+ * 
+ * 功能模块：
+ * - 缓存管理（计算、清理、格式化显示）
+ * - 主题切换（浅色/深色/跟随系统）
+ * - 配置持久化（SharedPreferences封装）
+ * - 全局主题同步管理
+ * 
+ * 技术特点：
+ * - Hilt单例依赖注入
+ * - 协程异步IO操作
+ * - 多级缓存目录处理
+ * - 主题状态统一管理
  */
 @Singleton
 class SettingsUtils @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val novelUserDefaults: NovelUserDefaults,
-    private val networkCacheManager: NetworkCacheManager
+    private val novelUserDefaults: NovelUserDefaults
 ) {
     
-    // 获取全局主题管理器
-    private val themeManager by lazy { ThemeManager.getInstance(context) }
-    
     companion object {
+        private const val TAG = "SettingsUtils"
         private const val PREF_NIGHT_MODE = "night_mode"
         private const val PREF_AUTO_NIGHT_MODE = "auto_night_mode"
         private const val PREF_FOLLOW_SYSTEM = "follow_system_theme"
     }
+    
+    // 获取全局主题管理器
+    private val themeManager by lazy { ThemeManager.getInstance(context) }
 
     /**
      * 清除所有缓存
-     * 包括SharedPreferences和网络缓存
+     * 包括内部缓存、外部缓存、图片缓存等
+     * @return 清理结果信息
      */
     suspend fun clearAllCache(): String = withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "开始清理缓存...")
             var totalSize = 0L
             
             // 计算缓存大小
             totalSize += calculateCacheSize()
-            
-            // 清除网络缓存 (清空所有缓存)
-            // TODO: 需要清空所有缓存的API，暂时跳过
             
             // 清除应用内部缓存目录
             clearInternalCache()
@@ -53,14 +62,20 @@ class SettingsUtils @Inject constructor(
             // 清除图片缓存等其他缓存
             clearImageCache()
             
-            "已清理 ${formatCacheSize(totalSize)} 缓存"
+            val result = "已清理 ${formatCacheSize(totalSize)} 缓存"
+            Log.d(TAG, "缓存清理完成: $result")
+            result
         } catch (e: Exception) {
-            "清理缓存失败: ${e.message}"
+            val errorMsg = "清理缓存失败: ${e.message}"
+            Log.e(TAG, errorMsg, e)
+            errorMsg
         }
     }
 
     /**
      * 计算缓存大小
+     * 遍历内部和外部缓存目录
+     * @return 总缓存大小（字节）
      */
     suspend fun calculateCacheSize(): Long = withContext(Dispatchers.IO) {
         try {
@@ -71,15 +86,19 @@ class SettingsUtils @Inject constructor(
             totalSize += getDirSize(cacheDir)
             externalCacheDir?.let { totalSize += getDirSize(it) }
             
+            Log.d(TAG, "缓存大小计算完成: ${formatCacheSize(totalSize)}")
             totalSize
         } catch (e: Exception) {
+            Log.e(TAG, "计算缓存大小失败", e)
             0L
         }
     }
 
     /**
      * 格式化缓存大小显示
+     * 支持B/KB/MB/GB单位转换
      */
+    @SuppressLint("DefaultLocale")
     fun formatCacheSize(bytes: Long): String {
         return when {
             bytes >= 1024 * 1024 * 1024 -> String.format("%.1fGB", bytes / (1024.0 * 1024.0 * 1024.0))
@@ -91,6 +110,8 @@ class SettingsUtils @Inject constructor(
 
     /**
      * 切换夜间模式
+     * 支持三种模式循环切换：浅色 → 深色 → 跟随系统
+     * @return 切换结果提示
      */
     fun toggleNightMode(): String {
         return try {
@@ -102,16 +123,23 @@ class SettingsUtils @Inject constructor(
             }
             
             setNightMode(newMode)
-            "已切换至${getNightModeDisplayName(newMode)}模式"
+            val result = "已切换至${getNightModeDisplayName(newMode)}模式"
+            Log.d(TAG, "主题切换: $currentMode -> $newMode")
+            result
         } catch (e: Exception) {
-            "切换夜间模式失败: ${e.message}"
+            val errorMsg = "切换夜间模式失败: ${e.message}"
+            Log.e(TAG, errorMsg, e)
+            errorMsg
         }
     }
 
     /**
      * 设置夜间模式
+     * 同步更新配置和全局主题管理器
+     * @param mode 主题模式（light/dark/auto）
      */
     fun setNightMode(mode: String) {
+        Log.d(TAG, "设置主题模式: $mode")
         novelUserDefaults.setString(PREF_NIGHT_MODE, mode)
         
         // 使用全局主题管理器统一管理
@@ -133,7 +161,7 @@ class SettingsUtils @Inject constructor(
     /**
      * 获取当前夜间模式
      */
-    fun getCurrentNightMode(): String {
+    private fun getCurrentNightMode(): String {
         return novelUserDefaults.getString(PREF_NIGHT_MODE) ?: "auto"
     }
 

@@ -247,7 +247,7 @@ private fun RankBookGridItem(
     }
 
     // 创建翻书动画点击处理器
-    val bookClickHandler = if (flipBookController != null) {
+    if (flipBookController != null) {
         rememberBookClickHandler(
             controller = flipBookController,
             bookId = book.id.toString(),
@@ -255,7 +255,7 @@ private fun RankBookGridItem(
             position = positionInfo.first,
             size = positionInfo.second
         )
-    } else null
+    }
 
     Row(
         modifier = modifier
@@ -387,14 +387,3 @@ private fun BookCoverImage(
         // 优化：移除动画状态的log输出
     }
 }
-
-/**
- * 格式化字数显示
- */
-private fun formatWordCount(wordCount: Int): String {
-    return when {
-        wordCount >= 10000 -> "${wordCount / 10000}万字"
-        wordCount >= 1000 -> "${wordCount / 1000}千字"
-        else -> "${wordCount}字"
-    }
-} 

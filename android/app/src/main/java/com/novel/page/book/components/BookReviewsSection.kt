@@ -1,5 +1,6 @@
 package com.novel.page.book.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,8 +18,19 @@ import com.novel.ui.theme.NovelColors
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 
+/**
+ * 书评区域组件
+ * 展示热门书评列表，包含评分和阅读时长
+ */
 @Composable
 fun BookReviewsSection(reviews: List<BookDetailUiState.BookReview>) {
+    val TAG = "BookReviewsSection"
+    
+    // 记录书评数量
+    if (reviews.isNotEmpty()) {
+        Log.d(TAG, "展示 ${reviews.size} 条书评")
+    }
+    
     Column(
         verticalArrangement = Arrangement.spacedBy(8.wdp)
     ) {
@@ -35,6 +47,10 @@ fun BookReviewsSection(reviews: List<BookDetailUiState.BookReview>) {
     }
 }
 
+/**
+ * 单个书评项组件
+ * 包含头像、评论内容、星级评分和阅读时长
+ */
 @Composable
 private fun BookReviewItem(review: BookDetailUiState.BookReview) {
     Row(
@@ -70,6 +86,7 @@ private fun BookReviewItem(review: BookDetailUiState.BookReview) {
                 horizontalArrangement = Arrangement.spacedBy(2.wdp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 渲染星级评分
                 repeat(5) { index ->
                     Icon(
                         imageVector = Icons.Default.Star,

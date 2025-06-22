@@ -15,11 +15,7 @@ import com.novel.page.read.ReaderPage
 import com.novel.page.search.SearchPage
 import com.novel.page.search.SearchResultPage
 import com.novel.page.settings.SettingsPage
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import android.util.Log
-import kotlinx.coroutines.DelicateCoroutinesApi
 import com.novel.page.component.FlipBookAnimationController
 import com.novel.page.search.FullRankingPage
 
@@ -46,7 +42,7 @@ fun NavigationSetup() {
             LoginPage()
         }
         composable("search?query={query}") { backStackEntry ->
-            val query = backStackEntry.arguments?.getString("query") ?: ""
+            backStackEntry.arguments?.getString("query") ?: ""
             SearchPage(
                 onNavigateBack = {
                     NavViewModel.navigateBack()
@@ -86,10 +82,9 @@ fun NavigationSetup() {
         }
         composable("book_detail/{bookId}?fromRank={fromRank}") { backStackEntry ->
             val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
-            val fromRank = backStackEntry.arguments?.getString("fromRank")?.toBoolean() ?: false
+            backStackEntry.arguments?.getString("fromRank")?.toBoolean() ?: false
             BookDetailPage(
                 bookId = bookId,
-                fromRank = fromRank,
                 onNavigateToReader = { bookId, chapterId ->
                     NavViewModel.navigateToReader(bookId, chapterId)
                 }
@@ -109,28 +104,14 @@ fun NavigationSetup() {
     }
 }
 
-/**
- * 返回事件数据类
- */
-data class BackNavigationEvent(
-    val fromRoute: String,
-    val bookId: String? = null,
-    val fromRank: Boolean = false
-)
-
 object NavViewModel : ViewModel() {
     val navController = MutableLiveData<NavHostController>()
-    
-    // 返回事件流
-    private val _backNavigationEvents = MutableSharedFlow<BackNavigationEvent>(replay = 0)
-    val backNavigationEvents: SharedFlow<BackNavigationEvent> = _backNavigationEvents.asSharedFlow()
     
     // 当前书籍信息（用于返回动画）
     private var currentBookInfo: Pair<String, Boolean>? = null
     
     /** 供 BookDetailPage 与 ReaderPage 共享的临时动画控制器 */
-    var flipBookController: FlipBookAnimationController? = null
-        private set
+    private var flipBookController: FlipBookAnimationController? = null
 
     fun setFlipBookController(controller: FlipBookAnimationController?) {
         flipBookController = controller
@@ -271,26 +252,8 @@ object NavViewModel : ViewModel() {
     }
     
     /**
-     * 导航到登录页
-     */
-    fun navigateToLogin() {
-        navController.value?.navigate("login")
-    }
-    
-    /**
-     * 导航到设置页面
-     */
-    fun navigateToSettings() {
-        Log.d("NavViewModel", "===== 导航到设置页面 =====")
-        navController.value?.navigate("settings")
-        Log.d("NavViewModel", "✅ 导航到设置页面命令已发送")
-        Log.d("NavViewModel", "==============================")
-    }
-    
-    /**
      * 返回
      */
-    @OptIn(DelicateCoroutinesApi::class)
     fun navigateBack() {
         navController.value?.popBackStack()
     }

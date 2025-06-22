@@ -1,5 +1,6 @@
 package com.novel.page.book.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -20,19 +21,30 @@ import javax.inject.Inject
 
 /**
  * 简单的ViewModel用于为Composable提供NovelDateFormatter实例
+ * 避免在Composable中直接注入依赖
  */
 @HiltViewModel
 class DateFormatterViewModel @Inject constructor(
     val dateFormatter: NovelDateFormatter
 ) : ViewModel()
 
+/**
+ * 书籍统计信息展示组件
+ * 显示评分、阅读人数、字数和更新时间等信息
+ */
 @Composable
 fun BookStatsSection(
     bookInfo: BookDetailUiState.BookInfo?,
     lastChapter: BookDetailUiState.LastChapter?,
     dateFormatter: NovelDateFormatter = hiltViewModel<DateFormatterViewModel>().dateFormatter
 ) {
-    if (bookInfo == null) return
+    val TAG = "BookStatsSection"
+
+    // 空数据保护
+    if (bookInfo == null) {
+        Log.w(TAG, "BookInfo为空，跳过渲染")
+        return
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 5.wdp),
@@ -68,15 +80,23 @@ fun BookStatsSection(
         )
 
         // 字数和更新时间 - 使用注入的 NovelDateFormatter
+        val updateTime = lastChapter?.chapterUpdateTime?.let { 
+            dateFormatter.parseNewsDate(it) 
+        }?.takeIf { it.isNotEmpty() } ?: "14小时前更新"
+        
         StatsItem(
             value = "${formatWordCount(bookInfo.wordCount)}字",
-            subtitle = lastChapter?.chapterUpdateTime?.let { 
-                dateFormatter.parseNewsDate(it) 
-            }?.takeIf { it.isNotEmpty() } ?: "14小时前更新"
+            subtitle = updateTime
         )
+        
+        Log.v(TAG, "展示统计信息 - 访问量: ${bookInfo.visitCount}, 字数: ${bookInfo.wordCount}")
     }
 }
 
+/**
+ * 统计项组件
+ * 显示数值和描述信息，支持数字和单位分离显示
+ */
 @Composable
 private fun StatsItem(
     value: String,

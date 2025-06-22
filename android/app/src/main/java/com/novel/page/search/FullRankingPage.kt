@@ -1,6 +1,7 @@
 package com.novel.page.search
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,8 +41,18 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 性能优化版：顶栏尺寸固定，使用 graphicsLayer 位移 + clip 避免每帧重新测量。
- * 实现丝滑的上滑折叠效果：标题保留，副标题淡出
+ * 全排行榜页面 - 性能优化版
+ * 
+ * 实现功能：
+ * - 丝滑的上滑折叠效果：标题保留，副标题淡出
+ * - 顶栏尺寸固定，使用 graphicsLayer 位移 + clip 避免每帧重新测量
+ * - 使用缓动函数提供自然的动画过渡
+ * - 优化的列表渲染，使用稳定key提升性能
+ * 
+ * @param rankingType 排行榜类型名称
+ * @param rankingItems 排行榜数据列表
+ * @param onNavigateBack 返回导航回调
+ * @param onNavigateToBookDetail 跳转书籍详情回调
  */
 @SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +63,9 @@ fun FullRankingPage(
     onNavigateBack: () -> Unit,
     onNavigateToBookDetail: (Long) -> Unit
 ) {
+    val TAG = "FullRankingPage"
+    Log.d(TAG, "渲染全排行榜页面: $rankingType, 条目数量: ${rankingItems.size}")
+    
     /* ---------- ScrollBehavior ---------- */
     val toolbarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(toolbarState)
@@ -62,7 +76,11 @@ fun FullRankingPage(
     val density = LocalDensity.current
 
     // 差值（像素）——用来位移整块顶栏
-    val diffPx = remember(density) { with(density) { (expandedHeight - collapsedHeight).toPx() } }
+    val diffPx = remember(density) { 
+        val diff = with(density) { (expandedHeight - collapsedHeight).toPx() }
+        Log.v(TAG, "计算顶栏高度差: ${diff}px")
+        diff
+    }
 
     // 内部元素偏移量 - 优化动画曲线
     val titleShiftYPx = remember(diffPx) { diffPx * 0.4f }  // 主标题需向下平移
@@ -70,6 +88,7 @@ fun FullRankingPage(
 
     // 告诉 TopAppBarState 能收缩多少像素（负值）
     LaunchedEffect(diffPx) {
+        Log.d(TAG, "设置顶栏高度偏移限制: ${-diffPx}px")
         toolbarState.heightOffsetLimit = -diffPx
     }
 
@@ -128,7 +147,10 @@ fun FullRankingPage(
             ) {
                 /* 返回按钮 - 固定位置不动 */
                 IconButton(
-                    onClick = onNavigateBack,
+                    onClick = {
+                        Log.d(TAG, "点击返回按钮")
+                        onNavigateBack()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(start = 8.dp, top = 4.dp)
@@ -173,9 +195,11 @@ fun FullRankingPage(
     ) { innerPadding ->
         if (rankingItems.isEmpty()) {
             /* 显示骨架屏或空状态 */
+            Log.w(TAG, "排行榜数据为空，显示骨架屏")
             FullRankingPageSkeleton()
         } else {
             /* 榜单列表 - 性能优化 */
+            Log.d(TAG, "渲染排行榜列表，条目数量: ${rankingItems.size}")
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -189,7 +213,10 @@ fun FullRankingPage(
                 ) { item ->
                     FullRankingItem(
                         item = item, 
-                        onClick = { onNavigateToBookDetail(item.id) }
+                        onClick = { 
+                            Log.d(TAG, "点击榜单条目: ${item.title} (ID: ${item.id})")
+                            onNavigateToBookDetail(item.id) 
+                        }
                     )
                 }
                 // 底部间距
@@ -203,6 +230,9 @@ fun FullRankingPage(
 
 /**
  * 缓动函数：立方缓入缓出，让动画更自然
+ * 
+ * @param t 输入值 [0,1]
+ * @return 缓动后的值 [0,1]
  */
 private fun easeInOutCubic(t: Float): Float {
     return if (t < 0.5f) {
@@ -212,7 +242,15 @@ private fun easeInOutCubic(t: Float): Float {
     }
 }
 
-/* ---------------- 优化的Item组件 ---------------- */
+/**
+ * 优化的排行榜条目组件
+ * 
+ * 使用remember缓存计算结果，避免重复渲染
+ * 
+ * @param item 排行榜条目数据
+ * @param onClick 点击回调
+ * @param modifier 修饰符
+ */
 @Composable
 private fun FullRankingItem(
     item: SearchRankingItem,

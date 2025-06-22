@@ -1,5 +1,6 @@
 package com.novel.page.search.component
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,7 +18,16 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 推荐榜单区域
+ * 推荐榜单区域组件
+ * 
+ * 水平滚动显示多个榜单，包括点击榜、推荐榜、新书榜等
+ * 每个榜单显示前15条记录，支持查看完整榜单
+ * 
+ * @param novelRanking 点击榜数据
+ * @param dramaRanking 推荐榜数据  
+ * @param newBookRanking 新书榜数据
+ * @param onRankingItemClick 榜单项点击回调
+ * @param onViewFullRanking 查看完整榜单回调
  */
 @Composable
 fun RankingSection(
@@ -27,6 +37,11 @@ fun RankingSection(
     onRankingItemClick: (Long) -> Unit,
     onViewFullRanking: (String) -> Unit
 ) {
+    val TAG = "RankingSection"
+    
+    // 记录榜单数据状态
+    Log.d(TAG, "渲染榜单区域 - 点击榜:${novelRanking.size}项, 推荐榜:${dramaRanking.size}项, 新书榜:${newBookRanking.size}项")
+    
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.wdp),
     ) {
@@ -38,7 +53,10 @@ fun RankingSection(
                 title = "点击榜",
                 items = novelRanking,
                 onItemClick = onRankingItemClick,
-                onViewFullRanking = { onViewFullRanking("点击榜") }
+                onViewFullRanking = { 
+                    Log.d(TAG, "查看完整点击榜")
+                    onViewFullRanking("点击榜") 
+                }
             )
         }
         item {
@@ -46,7 +64,10 @@ fun RankingSection(
                 title = "推荐榜",
                 items = dramaRanking,
                 onItemClick = onRankingItemClick,
-                onViewFullRanking = { onViewFullRanking("推荐榜") }
+                onViewFullRanking = { 
+                    Log.d(TAG, "查看完整推荐榜")
+                    onViewFullRanking("推荐榜") 
+                }
             )
         }
         item {
@@ -54,7 +75,10 @@ fun RankingSection(
                 title = "新书榜",
                 items = newBookRanking,
                 onItemClick = onRankingItemClick,
-                onViewFullRanking = { onViewFullRanking("新书榜") }
+                onViewFullRanking = { 
+                    Log.d(TAG, "查看完整新书榜")
+                    onViewFullRanking("新书榜") 
+                }
             )
         }
         item {
@@ -64,7 +88,15 @@ fun RankingSection(
 }
 
 /**
- * 单个榜单区域
+ * 单个榜单区域组件
+ * 
+ * 显示特定类型的排行榜，包含标题和排行列表
+ * 使用圆角背景卡片样式展示
+ * 
+ * @param title 榜单标题
+ * @param items 榜单数据列表
+ * @param onItemClick 榜单项点击回调
+ * @param onViewFullRanking 查看完整榜单回调
  */
 @Composable
 private fun RankingSectionItem(
@@ -73,6 +105,11 @@ private fun RankingSectionItem(
     onItemClick: (Long) -> Unit,
     onViewFullRanking: () -> Unit
 ) {
+    val TAG = "RankingSectionItem"
+    
+    // 记录单个榜单渲染
+    Log.v(TAG, "渲染榜单: $title, 包含${items.size}项")
+    
     Column(
         modifier = Modifier
             .width(225.wdp)
@@ -102,6 +139,13 @@ private fun RankingSectionItem(
 
 /**
  * 排行榜项数据类
+ * 
+ * 榜单中单个条目的数据结构
+ * 
+ * @param id 书籍ID
+ * @param title 书籍标题
+ * @param author 作者名字
+ * @param rank 排名序号
  */
 data class SearchRankingItem(
     val id: Long,
@@ -113,7 +157,14 @@ data class SearchRankingItem(
 
 /**
  * 榜单列表组件
- * 显示文本列表格式：序号 + 标题 + 作者名字
+ * 
+ * 显示排行榜的文本列表格式：序号 + 标题 + 作者名字
+ * 最多显示15条记录，超过时提供"查看完整榜单"链接
+ * 
+ * @param items 榜单数据列表
+ * @param onItemClick 榜单项点击回调
+ * @param onViewFullRanking 查看完整榜单回调
+ * @param modifier 修饰符
  */
 @Composable
 fun RankingList(
@@ -122,6 +173,11 @@ fun RankingList(
     onViewFullRanking: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val TAG = "RankingList"
+    
+    // 记录列表渲染状态
+    Log.v(TAG, "渲染榜单列表: ${items.size}项，显示前${minOf(15, items.size)}项")
+    
     Column(
         modifier = modifier.padding(horizontal = 8.wdp),
         verticalArrangement = Arrangement.spacedBy(4.wdp)
@@ -129,7 +185,10 @@ fun RankingList(
         items.take(15).forEach { item ->
             RankingListItem(
                 item = item,
-                onClick = { onItemClick(item.id) }
+                onClick = { 
+                    Log.d(TAG, "点击榜单项: ${item.title} (ID:${item.id}, 排名:${item.rank})")
+                    onItemClick(item.id) 
+                }
             )
         }
         
@@ -143,7 +202,10 @@ fun RankingList(
                 color = NovelColors.NovelMain,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .debounceClickable(onClick = onViewFullRanking)
+                    .debounceClickable(onClick = {
+                        Log.d(TAG, "点击查看完整榜单，总共${items.size}项")
+                        onViewFullRanking()
+                    })
                     .padding(vertical = 8.wdp, horizontal = 4.wdp)
             )
         }
@@ -151,7 +213,14 @@ fun RankingList(
 }
 
 /**
- * 单个榜单列表项
+ * 单个榜单列表项组件
+ * 
+ * 显示排行榜中的单个条目，包含排名、书名和作者
+ * 支持文本溢出时的省略显示
+ * 
+ * @param item 榜单项数据
+ * @param onClick 点击回调
+ * @param modifier 修饰符
  */
 @Composable
 private fun RankingListItem(

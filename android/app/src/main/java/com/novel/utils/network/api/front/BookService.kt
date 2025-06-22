@@ -5,12 +5,25 @@ import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 书籍服务API
+ * 
+ * 功能：
+ * - 书籍信息查询（详情、榜单、分类）
+ * - 章节内容获取
+ * - 评论数据管理
+ * - 阅读统计更新
+ * 
+ * 特点：
+ * - 支持协程和回调两种调用方式
+ * - 统一的响应处理机制
+ * - 完整的数据模型定义
+ */
 @Singleton
 class BookService @Inject constructor() {
     

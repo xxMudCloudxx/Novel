@@ -1,19 +1,32 @@
 package com.novel.page.search.usecase
 
+import android.util.Log
 import com.novel.page.search.repository.SearchRepository
 import javax.inject.Inject
 
 /**
- * 获取搜索历史UseCase
+ * 获取搜索历史业务用例
+ * 
+ * 功能：
+ * - 获取用户搜索历史记录
+ * - 支持历史记录展示
  */
 class GetSearchHistoryUseCase @Inject constructor(
     private val searchRepository: SearchRepository
 ) {
     
+    companion object {
+        private const val TAG = "GetSearchHistoryUseCase"
+    }
+    
     /**
      * 获取搜索历史列表
+     * @return 搜索历史字符串列表
      */
-    suspend operator fun invoke(): List<String> {
-        return searchRepository.getSearchHistory()
+    operator fun invoke(): List<String> {
+        Log.d(TAG, "获取搜索历史")
+        val history = searchRepository.getSearchHistory()
+        Log.d(TAG, "搜索历史数量: ${history.size}")
+        return history
     }
 } 

@@ -7,9 +7,6 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.sse.EventSourceListener
-import okhttp3.sse.EventSources
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Retrofit
@@ -17,68 +14,127 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 import java.io.IOException
 
-// Retrofit 服务接口，用于定义网络请求的接口方法
+/**
+ * Retrofit 服务接口定义
+ * 
+ * 统一封装所有HTTP请求方法：
+ * - 支持GET、POST、DELETE、PATCH、PUT请求
+ * - 动态URL和参数支持
+ * - 统一请求头管理
+ */
 interface ApiServiceInterface {
+    /**
+     * GET请求接口
+     * @param endpoint 接口路径
+     * @param params 查询参数（可选）
+     * @param headers 请求头部信息
+     */
     @GET
     fun get(
-        @Url endpoint: String,  // 接口路径
-        @QueryMap params: Map<String, String>? = null,  // 可选查询参数
-        @HeaderMap headers: Map<String, String> = mapOf()  // 请求头部信息
+        @Url endpoint: String,
+        @QueryMap params: Map<String, String>? = null,
+        @HeaderMap headers: Map<String, String> = mapOf()
     ): Call<ResponseBody>
 
+    /**
+     * POST请求接口
+     * @param endpoint 接口路径
+     * @param body 请求体（JSON格式）
+     * @param headers 请求头部信息
+     */
     @POST
     fun post(
         @Url endpoint: String,
-        @Body body: RequestBody,  // 请求体（JSON 格式）
-        @HeaderMap headers: Map<String, String> = mapOf()  // 请求头部信息
+        @Body body: RequestBody,
+        @HeaderMap headers: Map<String, String> = mapOf()
     ): Call<ResponseBody>
 
+    /**
+     * DELETE请求接口
+     * @param endpoint 接口路径
+     * @param headers 请求头部信息
+     */
     @DELETE
     fun delete(
-        @Url endpoint: String,  // 接口路径
-        @HeaderMap headers: Map<String, String> = mapOf()  // 请求头部信息
+        @Url endpoint: String,
+        @HeaderMap headers: Map<String, String> = mapOf()
     ): Call<ResponseBody>
 
+    /**
+     * PATCH请求接口（表单格式）
+     * @param endpoint 接口路径
+     * @param params 表单参数（可选）
+     * @param headers 请求头部信息
+     */
     @FormUrlEncoded
     @PATCH
     fun patch(
         @Url endpoint: String,
-        @FieldMap params: Map<String, String>? = null,  // 表单参数
-        @HeaderMap headers: Map<String, String> = mapOf()  // 请求头部信息
+        @FieldMap params: Map<String, String>? = null,
+        @HeaderMap headers: Map<String, String> = mapOf()
     ): Call<ResponseBody>
 
+    /**
+     * PUT请求接口
+     * @param endpoint 接口路径
+     * @param body 请求体（JSON格式）
+     * @param headers 请求头部信息
+     */
     @PUT
     fun put(
         @Url endpoint: String,
-        @Body body: RequestBody,  // 请求体（JSON 格式）
-        @HeaderMap headers: Map<String, String> = mapOf()  // 请求头部信息
+        @Body body: RequestBody,
+        @HeaderMap headers: Map<String, String> = mapOf()
     ): Call<ResponseBody>
 }
 
-// Retrofit 管理类，用于创建和缓存 Retrofit 实例
+/**
+ * Retrofit客户端管理器
+ * 
+ * 职责：
+ * - 创建和缓存Retrofit实例
+ * - 统一OkHttp配置管理
+ * - 自动认证拦截器集成
+ * - 多BaseURL支持
+ */
 object RetrofitClient {
 
+    private const val TAG = "RetrofitClient"
+    
+    /** Retrofit实例缓存，避免重复创建 */
     private val retrofitInstances = mutableMapOf<String, Retrofit>()
 
+    /** 认证拦截器，自动添加Token */
     private lateinit var authInterceptor: AuthInterceptor
+    /** Token提供器 */
     private lateinit var tokenProvider: TokenProvider
 
-    // 初始化方法，在 Application 中调用
+    /**
+     * 初始化方法，在Application中调用
+     * @param authInterceptor 认证拦截器实例
+     * @param tokenProvider Token提供器实例
+     */
     fun init(
         authInterceptor: AuthInterceptor,
         tokenProvider: TokenProvider
     ) {
+        Log.d(TAG, "初始化RetrofitClient")
         this.authInterceptor = authInterceptor
         this.tokenProvider = tokenProvider
     }
 
-    fun getRetrofit(baseUrl: String): Retrofit =
+    /**
+     * 获取指定BaseURL的Retrofit实例
+     * 使用缓存机制，相同BaseURL复用实例
+     */
+    private fun getRetrofit(baseUrl: String): Retrofit =
         retrofitInstances.getOrPut(baseUrl) {
-            // --- 1. 组装 OkHttpClient ---
+            Log.d(TAG, "创建新的Retrofit实例: $baseUrl")
+            // 组装OkHttpClient
             val builder = OkHttpClient.Builder()
-                .addInterceptor(authInterceptor) //自动加token
+                .addInterceptor(authInterceptor) // 自动加Token
 
-            // --- 2. 生成 Retrofit ---
+            // 生成Retrofit实例
             Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(builder.build())
@@ -86,26 +142,52 @@ object RetrofitClient {
                 .build()
         }
 
+    /**
+     * 获取API服务接口实例
+     * @param baseUrl 基础URL
+     * @return ApiServiceInterface实例
+     */
     fun getService(baseUrl: String): ApiServiceInterface =
         getRetrofit(baseUrl).create(ApiServiceInterface::class.java)
 }
 
 
-// 网络请求服务类，用于处理不同 HTTP 方法的请求
+/**
+ * 网络请求服务类
+ * 
+ * 核心功能：
+ * - 封装各种HTTP请求方法
+ * - 统一请求回调处理
+ * - 错误处理和日志记录
+ * - 多服务端点支持
+ * 
+ * 设计特点：
+ * - 单例模式，全局复用
+ * - 异步回调机制
+ * - 统一错误处理
+ * - 完整的请求生命周期日志
+ */
 object ApiService {
-    // 各个接口的基础 URL
+    /** 各个服务的基础URL配置 */
     const val BASE_URL_FRONT = "http://47.110.147.60:8080/api/front/"
     const val BASE_URL_USER = "http://47.110.147.60:8080/api/front/user/"
     const val BASE_URL_RESOURCE = "http://47.110.147.60:8080/api/front/resource/"
     const val BASE_URL_AUTHOR = "http://47.110.147.60:8080/api/author/"
     const val BASE_URL_AI = "http://47.110.147.60:8080/api/author/ai/"
-    private const val TAG = "ApiServiceS"
+    
+    private const val TAG = "ApiService"
 
-    // 获取指定 baseUrl 的服务实例
-    private fun getService(baseUrl: String) =
-        RetrofitClient.getService(baseUrl)
+    /** 获取指定BaseURL的服务实例 */
+    private fun getService(baseUrl: String) = RetrofitClient.getService(baseUrl)
 
-    // GET 请求方法
+    /**
+     * GET请求方法
+     * @param baseUrl 基础URL
+     * @param endpoint 接口端点
+     * @param params 查询参数
+     * @param headers 请求头
+     * @param callback 结果回调
+     */
     fun get(
         baseUrl: String,
         endpoint: String,
@@ -113,12 +195,19 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d("NetworkLog", "Sending GET to: ${baseUrl + endpoint}")
+        Log.d(TAG, "GET请求: $endpoint")
         getService(baseUrl).get(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }
 
-    // POST 请求方法
+    /**
+     * POST请求方法
+     * @param baseUrl 基础URL
+     * @param endpoint 接口端点
+     * @param params 请求参数
+     * @param headers 请求头
+     * @param callback 结果回调
+     */
     fun post(
         baseUrl: String,
         endpoint: String,
@@ -126,22 +215,36 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d("NetworkLog", "Sending POST to: ${baseUrl + endpoint}")
+        Log.d(TAG, "POST请求: $endpoint")
         getService(baseUrl).post(endpoint, createJsonBody(params), headers)
             .enqueue(createCallback(callback))
     }
 
-    // DELETE 请求方法
+    /**
+     * DELETE请求方法
+     * @param baseUrl 基础URL
+     * @param endpoint 接口端点
+     * @param headers 请求头
+     * @param callback 结果回调
+     */
     fun delete(
         baseUrl: String,
         endpoint: String,
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
+        Log.d(TAG, "DELETE请求: $endpoint")
         getService(baseUrl).delete(endpoint, headers).enqueue(createCallback(callback))
     }
 
-    // PATCH 请求方法
+    /**
+     * PATCH请求方法
+     * @param baseUrl 基础URL
+     * @param endpoint 接口端点
+     * @param params 表单参数
+     * @param headers 请求头
+     * @param callback 结果回调
+     */
     fun patch(
         baseUrl: String,
         endpoint: String,
@@ -149,11 +252,19 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
+        Log.d(TAG, "PATCH请求: $endpoint")
         getService(baseUrl).patch(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }
 
-    // PUT 请求方法
+    /**
+     * PUT请求方法
+     * @param baseUrl 基础URL
+     * @param endpoint 接口端点
+     * @param body 请求体
+     * @param headers 请求头
+     * @param callback 结果回调
+     */
     fun put(
         baseUrl: String,
         endpoint: String,
@@ -161,45 +272,58 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
+        Log.d(TAG, "PUT请求: $endpoint")
         getService(baseUrl).put(endpoint, body, headers).enqueue(createCallback(callback))
     }
 
-    // 创建回调函数，处理请求的响应和失败情况
+    /**
+     * 创建统一的请求回调处理器
+     * 
+     * 功能：
+     * - 统一成功响应处理
+     * - 统一错误处理和日志
+     * - HTTP状态码检查
+     * - 响应体解析异常处理
+     */
     private fun createCallback(callback: (String?, Throwable?) -> Unit) =
         object : Callback<ResponseBody> {
             override fun onResponse(
                 call: Call<ResponseBody>,
                 response: retrofit2.Response<ResponseBody>
             ) {
-                Log.d("NetworkLog", "Received response from: ${call.request()}")
-                Log.d("NetworkLog", "Response body: $response")
                 try {
                     if (response.isSuccessful) {
                         val body = response.body()?.string()
-                        Log.d("NetworkLog", "Response body: $body")
-                        callback(body, null)  // 请求成功，返回响应体
+                        Log.d(TAG, "请求成功: ${call.request().url}")
+                        if (body.isNullOrEmpty()) {
+                            Log.w(TAG, "响应为空: ${call.request().url}")
+                        }
+                        Log.d(TAG, "响应数据: $body")
+                        callback(body, null)
                     } else {
-                        Log.e("NetworkLog", "HTTP error: ${response.code()} / ${response.errorBody()?.string()}")
-                        callback(
-                            null,
-                            IOException("HTTP error: ${response.code()}")
-                        )  // 请求失败，返回错误信息
+                        val errorMsg = "HTTP错误: ${response.code()}"
+                        Log.w(TAG, "$errorMsg - ${call.request().url}")
+                        callback(null, IOException(errorMsg))
                     }
                 } catch (e: Exception) {
-                    Log.e("NetworkLog", "Response parse exception", e)
-                    callback(null, e)  // 处理异常情况
+                    Log.e(TAG, "响应解析异常: ${call.request().url}", e)
+                    callback(null, e)
                 }
             }
 
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                Log.e("NetworkLog", "onFailure: 请求失败", t)  // <<< 增加
-                callback(null, t)  // 请求失败，返回异常
+                Log.e(TAG, "请求失败: ${call.request().url} - ${t.message}")
+                callback(null, t)
             }
         }
 
-    // 创建 JSON 格式的请求体
+    /**
+     * 创建JSON格式的请求体
+     * @param json JSON字符串
+     * @return RequestBody实例
+     */
     private fun createJsonRequestBody(json: String): RequestBody {
-        return json.toRequestBody("application/json".toMediaTypeOrNull())  // 将 JSON 字符串转为 RequestBody
+        return json.toRequestBody("application/json".toMediaTypeOrNull())
     }
 
     // 直接使用 JSON 格式的请求体，而不是使用 FormBody

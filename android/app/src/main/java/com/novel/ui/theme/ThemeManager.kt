@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
@@ -100,11 +101,10 @@ class ThemeManager private constructor(private val context: Context) : ViewModel
      */
     private fun saveThemeToCache() {
         try {
-            with(sharedPreferences.edit()) {
+            sharedPreferences.edit { // 使用KTX扩展函数替代with
                 putString(KEY_THEME_MODE, getCurrentThemeMode())
                 putBoolean(KEY_IS_DARK_MODE, _isDarkMode.value)
                 putBoolean(KEY_FOLLOW_SYSTEM, _followSystemTheme.value)
-                apply()
             }
             println("[ThemeManager] 主题设置已保存到缓存")
         } catch (e: Exception) {

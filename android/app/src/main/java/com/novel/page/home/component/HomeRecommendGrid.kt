@@ -83,7 +83,7 @@ private fun FullHeightHomeRecommendGrid(
     onBookClick: (Long) -> Unit,
     onBookClickWithPosition: ((Long, Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
     val staggeredGridState = rememberLazyStaggeredGridState()
@@ -145,7 +145,7 @@ private fun FixedHeightHomeRecommendGrid(
     onBookClick: (Long) -> Unit,
     onBookClickWithPosition: ((Long, Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
     // 当前显示的总数量
@@ -248,7 +248,7 @@ private fun HomeBookStaggeredItem(
     book: HomeService.HomeBook,
     onClick: () -> Unit,
     onClickWithPosition: ((Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
-    modifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
     // 使用缓存的自适应高度，增加变化范围
@@ -330,13 +330,13 @@ private fun HomeBookStaggeredItem(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(androidx.compose.ui.graphics.Color(0xFFE0E0E0)),
+                                .background(Color(0xFFE0E0E0)),
                             contentAlignment = Alignment.Center
                         ) {
                             NovelText(
                                 text = "暂无封面",
                                 fontSize = 12.ssp,
-                                color = androidx.compose.ui.graphics.Color.Gray
+                                color = Color.Gray
                             )
                         }
                     }
@@ -391,7 +391,7 @@ private fun SearchBookStaggeredItem(
     book: SearchService.BookInfo,
     onClick: () -> Unit,
     onClickWithPosition: ((Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     // 使用缓存的自适应高度，增加变化范围
     val imageHeight = HomePerformanceOptimizer.getOptimizedImageHeight(
@@ -454,13 +454,13 @@ private fun SearchBookStaggeredItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(androidx.compose.ui.graphics.Color(0xFFE0E0E0)),
+                        .background(Color(0xFFE0E0E0)),
                     contentAlignment = Alignment.Center
                 ) {
                     NovelText(
                         text = "暂无封面",
                         fontSize = 12.ssp,
-                        color = androidx.compose.ui.graphics.Color.Gray
+                        color = Color.Gray
                     )
                 }
             }
@@ -524,9 +524,8 @@ private fun formatWordCount(wordCount: Int): String {
 fun HomeRecommendLoadMoreIndicator(
     isLoading: Boolean,
     hasMoreData: Boolean,
-    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
-    totalDataCount: Int = 0 // 新增：当前数据总数
+    totalDataCount: Int = 0 // 新增：当前数据总数){}
 ) {
     Box(
         modifier = modifier

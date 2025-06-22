@@ -1,4 +1,4 @@
-package com.novel.repository
+package com.novel.utils.network.repository
 
 import android.util.Log
 import com.novel.utils.network.api.front.BookService
@@ -23,14 +23,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 带缓存功能的书籍Repository
+ * 缓存书籍数据仓库
  * 
  * 功能：
- * 1. 提供cache-first策略的数据获取
- * 2. 自动处理缓存更新回调
- * 3. 统一的错误处理
- * 4. 数据状态管理
- * 5. 增强的兜底机制和自动重试
+ * - Cache-First数据获取策略
+ * - 自动重试和兜底机制
+ * - StateFlow状态管理
+ * - 统一错误处理
+ * 
+ * 特点：
+ * - 支持多级缓存策略
+ * - 业务数据有效性验证
+ * - 最大2次重试机制
+ * - 响应式数据更新
  */
 @Singleton
 class CachedBookRepository @Inject constructor(
@@ -82,8 +87,7 @@ class CachedBookRepository @Inject constructor(
         
         repeat(MAX_RETRY_COUNT) { attempt ->
             try {
-                val result = operation()
-                when (result) {
+                when (val result = operation()) {
                     is CacheResult.Success -> {
                         val data = extractData(result.data)
                         if (data != null && isValidBusinessData(data)) {
@@ -212,7 +216,7 @@ class CachedBookRepository @Inject constructor(
                         chapterId = chapterId,
                         cacheManager = cacheManager,
                         strategy = strategy,
-                        onCacheUpdate = { response ->
+                        onCacheUpdate = {
                             Log.d(TAG, "Book content cache updated for chapterId: $chapterId")
                         }
                     )
@@ -231,25 +235,48 @@ class CachedBookRepository @Inject constructor(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): List<BookService.BookRank> {
         return executeWithLoading {
-            bookService.getVisitRankBooksCached(
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
+            try {
+                bookService.getVisitRankBooksCached(
+                    cacheManager = cacheManager,
+                    strategy = strategy,
+                    onCacheUpdate = { response ->
+                        response.data?.let { _visitRankBooks.value = it }
+                        Log.d(TAG, "Visit rank books cache updated")
+                    }
+                ).onSuccess { response, fromCache ->
                     response.data?.let { _visitRankBooks.value = it }
-                    Log.d(TAG, "Visit rank books cache updated")
+                    Log.d(TAG, "Visit rank books loaded from ${if (fromCache) "cache" else "network"}")
+                }.onError { error, cachedData ->
+                    Log.e(TAG, "Failed to load visit rank books", error)
+                    cachedData?.data?.let { _visitRankBooks.value = it }
+                    _error.value = error.message
+                }.let { result ->
+                    when (result) {
+                        is CacheResult.Success -> result.data.data ?: emptyList()
+                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                    }
                 }
-            ).onSuccess { response, fromCache ->
-                response.data?.let { _visitRankBooks.value = it }
-                Log.d(TAG, "Visit rank books loaded from ${if (fromCache) "cache" else "network"}")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load visit rank books", error)
-                cachedData?.data?.let { _visitRankBooks.value = it }
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data ?: emptyList()
-                    is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "ClassCastException in getVisitRankBooks, clearing cache and retrying", e)
+                // 清理相关缓存
+                cacheManager.clearCache("visit_rank_books")
+                _visitRankBooks.value = emptyList()
+                try {
+                    // 直接从网络获取数据
+                    val response = bookService.getVisitRankBooksBlocking()
+                    response.data?.let { books ->
+                        _visitRankBooks.value = books
+                        books
+                    } ?: emptyList()
+                } catch (networkError: Exception) {
+                    Log.e(TAG, "Network fallback also failed for visit rank books", networkError)
+                    _error.value = networkError.message
+                    emptyList()
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in getVisitRankBooks", e)
+                _error.value = e.message
+                emptyList()
             }
         } ?: emptyList()
     }
@@ -261,25 +288,48 @@ class CachedBookRepository @Inject constructor(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): List<BookService.BookRank> {
         return executeWithLoading {
-            bookService.getUpdateRankBooksCached(
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
+            try {
+                bookService.getUpdateRankBooksCached(
+                    cacheManager = cacheManager,
+                    strategy = strategy,
+                    onCacheUpdate = { response ->
+                        response.data?.let { _updateRankBooks.value = it }
+                        Log.d(TAG, "Update rank books cache updated")
+                    }
+                ).onSuccess { response, fromCache ->
                     response.data?.let { _updateRankBooks.value = it }
-                    Log.d(TAG, "Update rank books cache updated")
+                    Log.d(TAG, "Update rank books loaded from ${if (fromCache) "cache" else "network"}")
+                }.onError { error, cachedData ->
+                    Log.e(TAG, "Failed to load update rank books", error)
+                    cachedData?.data?.let { _updateRankBooks.value = it }
+                    _error.value = error.message
+                }.let { result ->
+                    when (result) {
+                        is CacheResult.Success -> result.data.data ?: emptyList()
+                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                    }
                 }
-            ).onSuccess { response, fromCache ->
-                response.data?.let { _updateRankBooks.value = it }
-                Log.d(TAG, "Update rank books loaded from ${if (fromCache) "cache" else "network"}")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load update rank books", error)
-                cachedData?.data?.let { _updateRankBooks.value = it }
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data ?: emptyList()
-                    is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "ClassCastException in getUpdateRankBooks, clearing cache and retrying", e)
+                // 清理相关缓存
+                cacheManager.clearCache("update_rank_books")
+                _updateRankBooks.value = emptyList()
+                try {
+                    // 直接从网络获取数据
+                    val response = bookService.getUpdateRankBooksBlocking()
+                    response.data?.let { books ->
+                        _updateRankBooks.value = books
+                        books
+                    } ?: emptyList()
+                } catch (networkError: Exception) {
+                    Log.e(TAG, "Network fallback also failed for update rank books", networkError)
+                    _error.value = networkError.message
+                    emptyList()
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in getUpdateRankBooks", e)
+                _error.value = e.message
+                emptyList()
             }
         } ?: emptyList()
     }
@@ -313,9 +363,11 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: ClassCastException) {
-                Log.e(TAG, "ClassCastException in getNewestRankBooks, attempting direct network call", e)
-                // 如果缓存反序列化失败，直接从网络获取
+                Log.e(TAG, "ClassCastException in getNewestRankBooks, clearing cache and retrying", e)
+                // 清理相关缓存
+                clearNewestRankCache()
                 try {
+                    // 直接从网络获取数据
                     val response = bookService.getNewestRankBooksBlocking()
                     response.data?.let { books ->
                         _newestRankBooks.value = books
@@ -323,10 +375,12 @@ class CachedBookRepository @Inject constructor(
                     } ?: emptyList()
                 } catch (networkError: Exception) {
                     Log.e(TAG, "Network fallback also failed for newest rank books", networkError)
+                    _error.value = networkError.message
                     emptyList()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in getNewestRankBooks", e)
+                _error.value = e.message
                 emptyList()
             }
         } ?: emptyList()
@@ -340,26 +394,49 @@ class CachedBookRepository @Inject constructor(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): List<BookService.BookCategory> {
         return executeWithLoading {
-            bookService.getBookCategoriesCached(
-                workDirection = workDirection,
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
+            try {
+                bookService.getBookCategoriesCached(
+                    workDirection = workDirection,
+                    cacheManager = cacheManager,
+                    strategy = strategy,
+                    onCacheUpdate = { response ->
+                        response.data?.let { _bookCategories.value = it }
+                        Log.d(TAG, "Book categories cache updated for workDirection: $workDirection")
+                    }
+                ).onSuccess { response, fromCache ->
                     response.data?.let { _bookCategories.value = it }
-                    Log.d(TAG, "Book categories cache updated for workDirection: $workDirection")
+                    Log.d(TAG, "Book categories loaded from ${if (fromCache) "cache" else "network"} for workDirection: $workDirection")
+                }.onError { error, cachedData ->
+                    Log.e(TAG, "Failed to load book categories for workDirection: $workDirection", error)
+                    cachedData?.data?.let { _bookCategories.value = it }
+                    _error.value = error.message
+                }.let { result ->
+                    when (result) {
+                        is CacheResult.Success -> result.data.data ?: emptyList()
+                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                    }
                 }
-            ).onSuccess { response, fromCache ->
-                response.data?.let { _bookCategories.value = it }
-                Log.d(TAG, "Book categories loaded from ${if (fromCache) "cache" else "network"} for workDirection: $workDirection")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to load book categories for workDirection: $workDirection", error)
-                cachedData?.data?.let { _bookCategories.value = it }
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data ?: emptyList()
-                    is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "ClassCastException in getBookCategories, clearing cache and retrying", e)
+                // 清理相关缓存
+                cacheManager.clearCache("book_categories_$workDirection")
+                _bookCategories.value = emptyList()
+                try {
+                    // 直接从网络获取数据
+                    val response = bookService.getBookCategoriesBlocking(workDirection)
+                    response.data?.let { categories ->
+                        _bookCategories.value = categories
+                        categories
+                    } ?: emptyList()
+                } catch (networkError: Exception) {
+                    Log.e(TAG, "Network fallback also failed for book categories", networkError)
+                    _error.value = networkError.message
+                    emptyList()
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in getBookCategories", e)
+                _error.value = e.message
+                emptyList()
             }
         } ?: emptyList()
     }
@@ -416,44 +493,110 @@ class CachedBookRepository @Inject constructor(
         pageSize: Int = 20,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): SearchService.PageResponse<SearchService.BookInfo> {
-        return executeWithLoading {
-            searchService.searchBooksCached(
-                keyword = keyword,
-                workDirection = workDirection,
-                categoryId = categoryId,
-                isVip = isVip,
-                bookStatus = bookStatus,
-                wordCountMin = wordCountMin,
-                wordCountMax = wordCountMax,
-                updateTimeMin = updateTimeMin,
-                sort = sort,
-                pageNum = pageNum,
-                pageSize = pageSize,
-                cacheManager = cacheManager,
-                strategy = strategy,
-                onCacheUpdate = { response ->
-                    Log.d(TAG, "Search books cache updated for keyword: $keyword")
+        return executeWithLogging {
+            try {
+                searchService.searchBooksCached(
+                    keyword = keyword,
+                    workDirection = workDirection,
+                    categoryId = categoryId,
+                    isVip = isVip,
+                    bookStatus = bookStatus,
+                    wordCountMin = wordCountMin,
+                    wordCountMax = wordCountMax,
+                    updateTimeMin = updateTimeMin,
+                    sort = sort,
+                    pageNum = pageNum,
+                    pageSize = pageSize,
+                    cacheManager = cacheManager,
+                    strategy = strategy,
+                    onCacheUpdate = {
+                        Log.d(TAG, "Search books cache updated for keyword: $keyword")
+                    }
+                ).onSuccess { response, fromCache ->
+                    Log.d(TAG, "Search books loaded from ${if (fromCache) "cache" else "network"} for keyword: $keyword")
+                }.onError { error, cachedData ->
+                    Log.e(TAG, "Failed to search books for keyword: $keyword", error)
+                    _error.value = error.message
+                }.let { result ->
+                    when (result) {
+                        is CacheResult.Success -> result.data.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                        is CacheResult.Error -> result.cachedData?.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                    }
                 }
-            ).onSuccess { response, fromCache ->
-                Log.d(TAG, "Search books loaded from ${if (fromCache) "cache" else "network"} for keyword: $keyword")
-            }.onError { error, cachedData ->
-                Log.e(TAG, "Failed to search books for keyword: $keyword", error)
-                _error.value = error.message
-            }.let { result ->
-                when (result) {
-                    is CacheResult.Success -> result.data.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
-                    is CacheResult.Error -> result.cachedData?.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "ClassCastException in searchBooks, clearing search cache and retrying", e)
+                // 清理搜索缓存
+                clearSearchCache(keyword, workDirection, categoryId, isVip, bookStatus, wordCountMin, wordCountMax, updateTimeMin, sort, pageNum, pageSize)
+                try {
+                    // 直接从网络搜索
+                    val response = searchService.searchBooksBlocking(
+                        keyword = keyword,
+                        workDirection = workDirection,
+                        categoryId = categoryId,
+                        isVip = isVip,
+                        bookStatus = bookStatus,
+                        wordCountMin = wordCountMin,
+                        wordCountMax = wordCountMax,
+                        updateTimeMin = updateTimeMin,
+                        sort = sort,
+                        pageNum = pageNum,
+                        pageSize = pageSize
+                    )
+                    response.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                } catch (networkError: Exception) {
+                    Log.e(TAG, "Network fallback also failed for search", networkError)
+                    _error.value = networkError.message
+                    SearchService.PageResponse(0, 0, 0, emptyList(), 0)
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in searchBooks", e)
+                _error.value = e.message
+                SearchService.PageResponse(0, 0, 0, emptyList(), 0)
             }
         } ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
     }
     
     /**
-     * 清理搜索缓存
+     * 清理搜索缓存 - 支持具体参数的缓存清理
      */
-    suspend fun clearSearchCache() {
-        // 这里可以根据需要实现更具体的搜索缓存清理逻辑
-        Log.d(TAG, "Search cache cleared")
+    private suspend fun clearSearchCache(
+        keyword: String? = null,
+        workDirection: Int? = null,
+        categoryId: Int? = null,
+        isVip: Int? = null,
+        bookStatus: Int? = null,
+        wordCountMin: Int? = null,
+        wordCountMax: Int? = null,
+        updateTimeMin: String? = null,
+        sort: String? = null,
+        pageNum: Int = 1,
+        pageSize: Int = 20
+    ) {
+        val paramsHash = listOf(
+            keyword, workDirection, categoryId, isVip, bookStatus,
+            wordCountMin, wordCountMax, updateTimeMin, sort, pageNum, pageSize
+        ).joinToString("_").hashCode().toString()
+        
+        val cacheKey = "search_books_$paramsHash"
+        cacheManager.clearCache(cacheKey)
+        Log.d(TAG, "Search cache cleared for key: $cacheKey")
+    }
+    
+    /**
+     * 执行带日志的操作
+     */
+    private suspend fun <T> executeWithLogging(block: suspend () -> T): T? {
+        return try {
+            _isLoading.value = true
+            _error.value = null
+            block()
+        } catch (e: Exception) {
+            Log.e(TAG, "Operation failed", e)
+            _error.value = e.message
+            null
+        } finally {
+            _isLoading.value = false
+        }
     }
     
     /**

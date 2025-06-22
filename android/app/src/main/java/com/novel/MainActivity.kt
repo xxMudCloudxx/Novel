@@ -23,7 +23,7 @@ class MainActivity : ReactActivity() {
         // 监听主题变更并应用到Activity
         lifecycleScope.launch {
             val themeManager = ThemeManager.getInstance()
-            themeManager.isDarkMode.collect { isDarkMode ->
+            themeManager.isDarkMode.collect {
                 // 这里可以添加应用级别的主题变更逻辑
                 // 例如状态栏、导航栏的颜色调整
             }

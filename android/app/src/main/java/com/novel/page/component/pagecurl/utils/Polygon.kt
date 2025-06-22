@@ -6,16 +6,19 @@ import androidx.compose.ui.graphics.Path
 /**
  * 多边形工具类
  * 
- * 用于创建和操作多边形路径，主要用于PageCurl的卷曲效果绘制
+ * 用于创建和操作多边形路径，主要服务于PageCurl的卷曲效果绘制
+ * 提供多边形的基本几何操作，如路径转换、边界计算、平移和扩展
  *
- * @param points 多边形的顶点列表
+ * @param points 多边形的顶点列表，按顺序连接
  */
 internal class Polygon(private val points: List<Offset>) {
 
     /**
-     * 将多边形转换为Compose Path对象
+     * 转换为Compose Path对象
      * 
-     * @return 可用于绘制的Path对象
+     * 将多边形顶点转换为可绘制的Path路径
+     * 
+     * @return 闭合的Path对象，可用于Canvas绘制
      */
     fun toPath(): Path {
         val path = Path()
@@ -39,7 +42,9 @@ internal class Polygon(private val points: List<Offset>) {
     /**
      * 获取多边形的边界矩形
      * 
-     * @return 包含所有顶点的最小矩形
+     * 计算包含所有顶点的最小矩形区域
+     * 
+     * @return 包围盒矩形
      */
     fun getBounds(): androidx.compose.ui.geometry.Rect {
         if (points.isEmpty()) {
@@ -67,8 +72,10 @@ internal class Polygon(private val points: List<Offset>) {
     /**
      * 平移多边形
      * 
-     * @param offset 平移偏移量
-     * @return 新的平移后的多边形
+     * 将多边形的所有顶点按指定偏移量平移
+     * 
+     * @param offset 平移向量
+     * @return 平移后的新多边形
      */
     fun translate(offset: Offset): Polygon {
         return Polygon(points.map { it + offset })
@@ -77,8 +84,11 @@ internal class Polygon(private val points: List<Offset>) {
     /**
      * 向外扩展多边形
      * 
-     * @param value 扩展值
-     * @return 新的扩展后的多边形
+     * 沿每个顶点的法向量方向扩展多边形
+     * 用于创建阴影效果或边框
+     * 
+     * @param value 扩展距离，正值向外扩展，负值向内收缩
+     * @return 扩展后的新多边形
      */
     fun offset(value: Float): Polygon {
         if (points.size < 3) return this
@@ -113,7 +123,9 @@ internal class Polygon(private val points: List<Offset>) {
 /**
  * 向量标准化扩展函数
  * 
- * @return 标准化后的向量
+ * 将向量转换为单位向量，保持方向不变
+ * 
+ * @return 长度为1的标准化向量，零向量返回零向量
  */
 private fun Offset.normalized(): Offset {
     val magnitude = kotlin.math.sqrt(x * x + y * y)

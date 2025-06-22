@@ -1,6 +1,7 @@
 package com.novel.page.search.component
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,21 @@ import com.novel.utils.wdp
 import kotlin.math.roundToInt
 
 /**
- * 搜索筛选弹窗 - 可在整卡下滑关闭；支持“可选可空”的筛选逻辑
+ * 搜索筛选弹窗组件
+ * 
+ * 提供搜索结果的多维度筛选功能，支持下滑手势关闭
+ * 筛选条件包括：更新状态、VIP状态、字数篇幅、排序方式
+ * 
+ * 特性：
+ * - 支持向下拖拽关闭弹窗
+ * - "可选可空"筛选逻辑（再次点击已选项可取消选择）
+ * - 实时预览筛选条件变更
+ * 
+ * @param filters 当前筛选状态
+ * @param onFiltersChange 筛选条件变更回调
+ * @param onDismiss 弹窗关闭回调
+ * @param onClear 清空筛选回调
+ * @param onApply 应用筛选回调
  */
 @SuppressLint("UseOfNonLambdaOffsetOverload")
 @Composable
@@ -39,12 +54,20 @@ fun SearchFilterBottomSheet(
     onClear: () -> Unit,
     onApply: () -> Unit
 ) {
+    val TAG = "SearchFilterBottomSheet"
+    
+    // 记录弹窗显示
+    Log.d(TAG, "显示搜索筛选弹窗: $filters")
+    
     var currentFilters by remember(filters) { mutableStateOf(filters) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val dismissThresholdPx = with(LocalDensity.current) { 80.dp.toPx() }
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            Log.d(TAG, "弹窗被取消")
+            onDismiss()
+        },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
@@ -55,7 +78,10 @@ fun SearchFilterBottomSheet(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.4f))
-                .debounceClickable(onClick = onDismiss)
+                .debounceClickable(onClick = {
+                    Log.d(TAG, "点击外部区域关闭弹窗")
+                    onDismiss()
+                })
         ) {
             Column(Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.weight(1f))
@@ -70,8 +96,10 @@ fun SearchFilterBottomSheet(
                             detectDragGestures(
                                 onDragEnd = {
                                     if (dragOffset > dismissThresholdPx) {
+                                        Log.d(TAG, "拖拽关闭弹窗: offset=$dragOffset")
                                         onDismiss()
                                     } else {
+                                        Log.v(TAG, "拖拽未达到关闭阈值，回弹")
                                         dragOffset = 0f
                                     }
                                 }
@@ -106,7 +134,10 @@ fun SearchFilterBottomSheet(
                                 tint = NovelColors.NovelText,
                                 modifier = Modifier
                                     .size(40.wdp)
-                                    .debounceClickable(onClick = onDismiss)
+                                    .debounceClickable(onClick = {
+                                        Log.d(TAG, "点击关闭按钮")
+                                        onDismiss()
+                                    })
                                     .align(Alignment.CenterStart)
                             )
                         }
@@ -124,6 +155,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.updateStatus,
                                     defaultItem = UpdateStatus.ALL,
                                     onItemSelected = {
+                                        Log.d(TAG, "更新状态筛选变更: ${currentFilters.updateStatus} -> $it")
                                         currentFilters = currentFilters.copy(updateStatus = it)
                                     },
                                     itemDisplayName = { it.displayName }
@@ -136,6 +168,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.isVip,
                                     defaultItem = VipStatus.ALL,
                                     onItemSelected = {
+                                        Log.d(TAG, "VIP状态筛选变更: ${currentFilters.isVip} -> $it")
                                         currentFilters = currentFilters.copy(isVip = it)
                                     },
                                     itemDisplayName = { it.displayName }
@@ -148,6 +181,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.wordCountRange,
                                     defaultItem = WordCountRange.ALL,
                                     onItemSelected = {
+                                        Log.d(TAG, "字数筛选变更: ${currentFilters.wordCountRange} -> $it")
                                         currentFilters =
                                             currentFilters.copy(wordCountRange = it)
                                     },
@@ -161,6 +195,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.sortBy,
                                     defaultItem = SortBy.NULL,
                                     onItemSelected = {
+                                        Log.d(TAG, "排序方式变更: ${currentFilters.sortBy} -> $it")
                                         currentFilters = currentFilters.copy(sortBy = it)
                                     },
                                     itemDisplayName = { it.displayName }
@@ -176,6 +211,7 @@ fun SearchFilterBottomSheet(
                         ) {
                             OutlinedButton(
                                 onClick = {
+                                    Log.d(TAG, "清空所有筛选条件")
                                     currentFilters = FilterState()
                                     onClear()
                                 },
@@ -197,6 +233,7 @@ fun SearchFilterBottomSheet(
 
                             Button(
                                 onClick = {
+                                    Log.d(TAG, "应用筛选条件: $currentFilters")
                                     onFiltersChange(currentFilters)
                                     onApply()
                                 },
@@ -220,7 +257,19 @@ fun SearchFilterBottomSheet(
 }
 
 /**
- * 三列网格，可“可选可空”
+ * 三列筛选网格组件
+ * 
+ * 实现"可选可空"的筛选逻辑：
+ * - 点击未选中项：选中该项
+ * - 点击已选中项：取消选择（恢复默认值）
+ * 
+ * @param T 筛选项类型
+ * @param items 可选项列表
+ * @param selectedItem 当前选中项
+ * @param defaultItem 默认值（用于取消选择时恢复）
+ * @param onItemSelected 选项变更回调
+ * @param itemDisplayName 获取显示名称的函数
+ * @param modifier 修饰符
  */
 @Composable
 private fun <T> ThreeColumnFilterGrid(
@@ -231,6 +280,7 @@ private fun <T> ThreeColumnFilterGrid(
     itemDisplayName: (T) -> String,
     modifier: Modifier = Modifier
 ) {
+    val TAG = "ThreeColumnFilterGrid"
     val rows = items.chunked(3)
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.wdp)) {
@@ -245,7 +295,9 @@ private fun <T> ThreeColumnFilterGrid(
                         text = itemDisplayName(item),
                         selected = selected,
                         onClick = {
-                            if (selected) onItemSelected(defaultItem) else onItemSelected(item)
+                            val newSelection = if (selected) defaultItem else item
+                            Log.v(TAG, "筛选项点击: ${itemDisplayName(item)}, 选中状态: $selected -> ${!selected}")
+                            onItemSelected(newSelection)
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -256,6 +308,12 @@ private fun <T> ThreeColumnFilterGrid(
     }
 }
 
+/**
+ * 筛选分组标题组件
+ * 
+ * @param title 分组标题
+ * @param content 分组内容
+ */
 @Composable
 private fun FilterSection(title: String, content: @Composable () -> Unit) {
     Column {

@@ -15,7 +15,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,7 +27,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.novel.page.component.NovelDivider
@@ -43,8 +41,6 @@ import com.novel.page.login.viewmodel.LoginAction
 import com.novel.page.login.viewmodel.LoginEvent
 import com.novel.page.login.viewmodel.LoginViewModel
 import com.novel.ui.theme.NovelColors
-import com.novel.ui.theme.NovelTheme
-import com.novel.utils.AdaptiveScreen
 import com.novel.utils.NavViewModel.navController
 import com.novel.utils.wdp
 import kotlinx.coroutines.flow.collectLatest

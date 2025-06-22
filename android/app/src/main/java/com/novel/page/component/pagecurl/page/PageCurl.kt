@@ -1,5 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
@@ -12,14 +13,15 @@ import com.novel.page.component.pagecurl.config.PageCurlConfig
 import com.novel.page.component.pagecurl.config.rememberPageCurlConfig
 
 /**
- * 显示可以通过拖拽或点击手势翻页的页面组件
+ * PageCurl 仿真翻页组件
  * 
- * 这是一个高性能的仿真翻页组件，支持真实的书页卷曲效果
+ * 提供逼真的书页卷曲翻页效果，支持拖拽和点击手势
+ * 采用高性能渲染策略，确保流畅的动画体验
  *
  * @param count 页面总数
  * @param modifier 修饰符
  * @param state PageCurl的状态，用于程序化改变当前页面或观察变化
- * @param config PageCurl的配置
+ * @param config PageCurl的配置，包含手势和动画设置
  * @param content 内容lambda，提供页面可组合项，接收页面编号参数
  */
 @ExperimentalPageCurlApi
@@ -42,6 +44,8 @@ fun PageCurl(
         val internalState by rememberUpdatedState(state.internalState ?: return@BoxWithConstraints)
         val updatedConfig by rememberUpdatedState(config)
 
+        Log.d("PageCurl", "渲染页面 $updatedCurrent/$count")
+
         // 根据配置选择拖拽手势类型
         val dragGestureModifier = when (val interaction = updatedConfig.dragInteraction) {
             is PageCurlConfig.GestureDragInteraction ->
@@ -52,7 +56,10 @@ fun PageCurl(
                         enabledForward = updatedConfig.dragForwardEnabled && updatedCurrent < state.max - 1,
                         enabledBackward = updatedConfig.dragBackwardEnabled && updatedCurrent > 0,
                         scope = scope,
-                        onChange = { state.current = updatedCurrent + it }
+                        onChange = { 
+                            Log.d("PageCurl", "页面变化: ${updatedCurrent} -> ${updatedCurrent + it}")
+                            state.current = updatedCurrent + it 
+                        }
                     )
 
             is PageCurlConfig.StartEndDragInteraction ->
@@ -63,7 +70,10 @@ fun PageCurl(
                         enabledForward = updatedConfig.dragForwardEnabled && updatedCurrent < state.max - 1,
                         enabledBackward = updatedConfig.dragBackwardEnabled && updatedCurrent > 0,
                         scope = scope,
-                        onChange = { state.current = updatedCurrent + it }
+                        onChange = { 
+                            Log.d("PageCurl", "页面变化: ${updatedCurrent} -> ${updatedCurrent + it}")
+                            state.current = updatedCurrent + it 
+                        }
                     )
         }
 

@@ -1,5 +1,6 @@
 package com.novel.page.login.component
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -42,6 +43,7 @@ private object AnimationConfig {
 /**
  * 输入区域，包含用户名、密码、确认密码和验证码
  */
+@SuppressLint("UseOfNonLambdaOffsetOverload")
 @Composable
 fun InputSection(
     uiState: LoginUiState,
@@ -110,7 +112,7 @@ fun InputSection(
         )
         if (uiState.isRegisterMode)
             AnimatedVisibility(
-                visible = uiState.isRegisterMode,
+                visible = true,
                 enter = expandVertically(
                     animationSpec = tween(
                         AnimationConfig.DURATION_MS,

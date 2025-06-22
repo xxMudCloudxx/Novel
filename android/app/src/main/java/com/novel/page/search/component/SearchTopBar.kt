@@ -1,5 +1,6 @@
 package com.novel.page.search.component
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,8 +22,17 @@ import com.novel.page.component.NovelTextField
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 
+private const val TAG = "SearchTopBar"
+
 /**
- * 顶部搜索栏
+ * 搜索页面顶部导航栏组件
+ * 
+ * 提供返回按钮、搜索输入框和搜索按钮的统一界面
+ * 
+ * @param query 当前搜索关键词
+ * @param onQueryChange 搜索词变更回调
+ * @param onBackClick 返回按钮点击回调
+ * @param onSearchClick 搜索按钮点击回调
  */
 @Composable
 fun SearchTopBar(
@@ -40,7 +50,10 @@ fun SearchTopBar(
     ) {
         // 返回按钮
         IconButton(
-            onClick = onBackClick,
+            onClick = {
+                Log.d(TAG, "返回按钮被点击")
+                onBackClick()
+            },
             modifier = Modifier.size(40.wdp)
         ) {
             Icon(
@@ -53,7 +66,10 @@ fun SearchTopBar(
         // 搜索输入框
         NovelTextField(
             value = query,
-            onValueChange = onQueryChange,
+            onValueChange = { newQuery ->
+                Log.v(TAG, "搜索词变更: '$newQuery'")
+                onQueryChange(newQuery)
+            },
             placeText = "搜索小说或作者",
             modifier = Modifier
                 .weight(1f)
@@ -63,7 +79,10 @@ fun SearchTopBar(
 
         // 搜索按钮
         IconButton(
-            onClick = onSearchClick,
+            onClick = {
+                Log.d(TAG, "搜索按钮被点击, 关键词: '$query'")
+                onSearchClick()
+            },
             modifier = Modifier.size(40.wdp)
         ) {
             Icon(

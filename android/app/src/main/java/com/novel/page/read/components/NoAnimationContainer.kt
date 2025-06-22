@@ -14,8 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import com.novel.page.read.viewmodel.FlipDirection
-import com.novel.page.read.viewmodel.PageData
-import com.novel.utils.wdp
 import com.novel.utils.SwipeBackContainer
 import kotlin.math.abs
 import com.novel.page.read.viewmodel.ReaderUiState
@@ -29,7 +27,6 @@ fun NoAnimationContainer(
     uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
-    onChapterChange: (FlipDirection) -> Unit,
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit
@@ -60,18 +57,10 @@ fun NoAnimationContainer(
                 page = "",
                 chapterName = uiState.currentChapter?.chapterName ?: "",
                 isFirstPage = false,
-                isLastPage = false,
                 isBookDetailPage = true,
                 bookInfo = bookInfo,
-                nextChapterData = uiState.nextChapterData,
-                previousChapterData = uiState.previousChapterData,
                 readerSettings = readerSettings,
-                onNavigateToReader = onNavigateToReader,
-                onSwipeBack = onSwipeBack,
-                onPageChange = onPageChange,
                 showNavigationInfo = false,
-                currentPageIndex = 0,
-                totalPages = 1,
                 onClick = onClick
             )
         }
@@ -130,27 +119,6 @@ fun NoAnimationContainer(
             }
     ) {
         when (currentVirtualPage) {
-            is VirtualPage.BookDetailPage -> {
-                val bookInfo = loadedChapters[uiState.currentChapter?.id]?.bookInfo
-                PageContentDisplay(
-                    page = "",
-                    chapterName = uiState.currentChapter?.chapterName ?: "",
-                    isFirstPage = false,
-                    isLastPage = false,
-                    isBookDetailPage = true,
-                    bookInfo = bookInfo,
-                    nextChapterData = uiState.nextChapterData,
-                    previousChapterData = uiState.previousChapterData,
-                    readerSettings = readerSettings,
-                    onNavigateToReader = onNavigateToReader,
-                    onSwipeBack = onSwipeBack,
-                    onPageChange = onPageChange,
-                    showNavigationInfo = false,
-                    currentPageIndex = 0,
-                    totalPages = 1,
-                    onClick = onClick
-                )
-            }
             is VirtualPage.ContentPage -> {
                 val chapterData = loadedChapters[currentVirtualPage.chapterId]
                 if (chapterData != null) {
@@ -159,18 +127,10 @@ fun NoAnimationContainer(
                         page = pageContent,
                         chapterName = chapterData.chapterName,
                         isFirstPage = currentVirtualPage.pageIndex == 0,
-                        isLastPage = currentVirtualPage.pageIndex == chapterData.pages.size - 1,
                         isBookDetailPage = false,
                         bookInfo = null,
-                        nextChapterData = uiState.nextChapterData,
-                        previousChapterData = uiState.previousChapterData,
                         readerSettings = readerSettings,
-                        onNavigateToReader = onNavigateToReader,
-                        onSwipeBack = onSwipeBack,
-                        onPageChange = onPageChange,
                         showNavigationInfo = true,
-                        currentPageIndex = currentVirtualPage.pageIndex + 1,
-                        totalPages = chapterData.contentPageCount,
                         onClick = onClick
                     )
                 }
@@ -183,6 +143,8 @@ fun NoAnimationContainer(
                  // Placeholder
                  Box(modifier = Modifier.fillMaxSize())
             }
+
+            VirtualPage.BookDetailPage -> TODO()
         }
     }
 }

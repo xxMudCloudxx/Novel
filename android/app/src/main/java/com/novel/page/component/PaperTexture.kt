@@ -1,7 +1,6 @@
 package com.novel.page.component
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -163,19 +162,3 @@ private enum class TextureType {
     FIBER,  // 纤维纹理
     GRAIN   // 颗粒纹理
 }
-
-/**
- * 为Composable添加纸张纹理的扩展函数
- * 
- * @param alpha 纹理透明度
- * @param density 噪点密度
- * @param seed 随机种子
- * @return 带有纸张纹理效果的修饰符
- */
-fun Modifier.paperTexture(
-    alpha: Float = 0.03f,
-    density: Float = 1.0f,
-    seed: Long = 42L
-): Modifier = this.then(
-    Modifier.background(Color.Transparent) // 确保有背景层用于绘制纹理
-) 

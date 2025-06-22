@@ -15,7 +15,11 @@ import com.novel.utils.wdp
 import com.valentinilk.shimmer.shimmer
 
 /**
- * 登录页面骨架屏
+ * 登录页面骨架屏组件
+ * 
+ * 在登录页面数据加载时显示的占位符界面
+ * 使用Shimmer动画效果提升用户体验
+ * 模拟真实登录页面的布局结构
  */
 @Composable
 fun LoginPageSkeleton() {
@@ -25,7 +29,7 @@ fun LoginPageSkeleton() {
         modifier = Modifier
             .fillMaxSize()
             .background(NovelColors.NovelBackground)
-            .shimmer()
+            .shimmer() // 应用闪烁动画效果
             .padding(20.wdp),
         verticalArrangement = Arrangement.spacedBy(24.wdp)
     ) {
@@ -70,6 +74,9 @@ fun LoginPageSkeleton() {
     }
 }
 
+/**
+ * 顶部导航栏骨架组件
+ */
 @Composable
 private fun LoginAppBarSkeleton(skeletonColor: Color) {
     Row(
@@ -89,6 +96,9 @@ private fun LoginAppBarSkeleton(skeletonColor: Color) {
     }
 }
 
+/**
+ * 标题区域骨架组件
+ */
 @Composable
 private fun TitleSectionSkeleton(skeletonColor: Color) {
     Column(
@@ -115,6 +125,9 @@ private fun TitleSectionSkeleton(skeletonColor: Color) {
     }
 }
 
+/**
+ * 运营商信息骨架组件
+ */
 @Composable
 private fun OperatorSectionSkeleton(skeletonColor: Color) {
     Box(
@@ -126,6 +139,9 @@ private fun OperatorSectionSkeleton(skeletonColor: Color) {
     )
 }
 
+/**
+ * 手机号区域骨架组件
+ */
 @Composable
 private fun PhoneSectionSkeleton(skeletonColor: Color) {
     Box(
@@ -137,6 +153,9 @@ private fun PhoneSectionSkeleton(skeletonColor: Color) {
     )
 }
 
+/**
+ * 输入框区域骨架组件
+ */
 @Composable
 private fun InputSectionSkeleton(skeletonColor: Color) {
     Column(
@@ -174,6 +193,9 @@ private fun InputSectionSkeleton(skeletonColor: Color) {
     }
 }
 
+/**
+ * 操作按钮区域骨架组件
+ */
 @Composable
 private fun ActionButtonsSkeleton(skeletonColor: Color) {
     Column(
@@ -202,6 +224,9 @@ private fun ActionButtonsSkeleton(skeletonColor: Color) {
     }
 }
 
+/**
+ * 协议区域骨架组件
+ */
 @Composable
 private fun AgreementSectionSkeleton(skeletonColor: Color) {
     Column(

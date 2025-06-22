@@ -5,7 +5,6 @@ import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject

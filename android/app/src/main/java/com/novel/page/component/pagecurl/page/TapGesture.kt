@@ -1,5 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
+import android.util.Log
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -14,8 +15,9 @@ import kotlinx.coroutines.launch
 
 /**
  * 点击手势修饰符
- *
- * 为PageCurl组件添加点击翻页功能，支持区域检测和自定义点击处理
+ * 
+ * 为PageCurl组件添加点击翻页功能
+ * 支持区域检测、自定义点击处理和触摸阈值判断
  *
  * @param config PageCurl配置
  * @param scope 协程作用域
@@ -35,6 +37,8 @@ internal fun Modifier.tapGesture(
         val tapInteraction =
             config.tapInteraction as? PageCurlConfig.TargetTapInteraction ?: return@pointerInput
 
+        Log.d("TapGesture", "配置点击手势 - 向前: ${config.tapForwardEnabled}, 向后: ${config.tapBackwardEnabled}")
+
         awaitEachGesture {
             // 等待按下事件
             val down = awaitFirstDown().also { it.consume() }
@@ -42,12 +46,17 @@ internal fun Modifier.tapGesture(
             val up = waitForUpOrCancellation() ?: return@awaitEachGesture
 
             // 检查是否是有效的点击（移动距离不超过触摸阈值）
-            if ((down.position - up.position).getDistance() > viewConfiguration.touchSlop) {
+            val moveDistance = (down.position - up.position).getDistance()
+            if (moveDistance > viewConfiguration.touchSlop) {
+                Log.v("TapGesture", "移动距离过大，不是有效点击: $moveDistance")
                 return@awaitEachGesture
             }
 
+            Log.v("TapGesture", "检测到点击事件，位置: ${up.position}")
+
             // 优先处理自定义点击
             if (config.tapCustomEnabled && config.onCustomTap(this, size, up.position)) {
+                Log.d("TapGesture", "自定义点击处理完成")
                 return@awaitEachGesture
             }
 
@@ -55,6 +64,7 @@ internal fun Modifier.tapGesture(
             if (config.tapForwardEnabled &&
                 tapInteraction.forward.target.multiply(size).contains(up.position)
             ) {
+                Log.d("TapGesture", "触发向前点击")
                 scope.launch {
                     onTapForward()
                 }
@@ -65,11 +75,14 @@ internal fun Modifier.tapGesture(
             if (config.tapBackwardEnabled &&
                 tapInteraction.backward.target.multiply(size).contains(up.position)
             ) {
+                Log.d("TapGesture", "触发向后点击")
                 scope.launch {
                     onTapBackward()
                 }
                 return@awaitEachGesture
             }
+
+            Log.v("TapGesture", "点击位置不在任何有效区域内")
         }
     }
 }

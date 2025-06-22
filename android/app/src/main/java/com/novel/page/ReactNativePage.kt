@@ -23,43 +23,55 @@ import com.novel.BuildConfig
 import com.novel.MainApplication
 
 /**
- * ReactNative 页面
+ * React Native 页面容器组件
+ * 
+ * 负责在Compose中嵌入React Native页面，处理RN上下文初始化和页面渲染
+ * 包含加载状态管理和实例监听器的生命周期管理
  */
 @SuppressLint("VisibleForTests")
 @Composable
 fun ReactNativePage() {
+    
+    val TAG = "ReactNativePage"
     val context = LocalContext.current
+    
+    // 从 MainApplication 获取单例的 ReactInstanceManager
     val reactInstanceManager = remember {
-        // 从 MainApplication 获取 ReactInstanceManager，确保单例
+        Log.d(TAG, "获取ReactInstanceManager实例")
         (context.applicationContext as MainApplication).reactNativeHost.reactInstanceManager
     }
+    
+    // 跟踪RN上下文初始化状态
     var isContextReady by remember { mutableStateOf(reactInstanceManager.currentReactContext != null) }
     val isViewAttached by remember { mutableStateOf(false) }
     val isViewLaidOut by remember { mutableStateOf(false) }
     var reactRootView by remember { mutableStateOf<ReactRootView?>(null) }
 
-    Log.d("ReactNativePage", "Composed ReactNativePage, initial isContextReady: $isContextReady")
-    Log.d(
-        "ReactNativePage",
-        "Has started creating initial context: ${reactInstanceManager.hasStartedCreatingInitialContext()}"
-    )
+    Log.d(TAG, "组件渲染 - isContextReady: $isContextReady")
+    Log.d(TAG, "已开始创建初始上下文: ${reactInstanceManager.hasStartedCreatingInitialContext()}")
 
+    // 创建ReactRootView并配置应用启动
     val rootView = remember {
-        Log.d("ReactNativePage", "Creating ReactRootView")
-        Log.d("ReactNativePage", "Starting React application")
+        Log.d(TAG, "创建ReactRootView")
         ReactRootView(context).apply {
+            // 设置Fabric架构支持
             setIsFabric(BuildConfig.IS_NEW_ARCHITECTURE_ENABLED)
-            // 当 RN Context 已准备好时立刻启动
+            Log.d(TAG, "Fabric架构已启用: ${BuildConfig.IS_NEW_ARCHITECTURE_ENABLED}")
+            
+            // 根据RN上下文状态决定启动时机
             if (reactInstanceManager.currentReactContext != null) {
+                Log.d(TAG, "RN上下文已就绪，立即启动应用")
                 startReactApplication(
                     reactInstanceManager,
                     "Novel",
                     bundleOf("nativeMessage" to "sssss")
                 )
             } else {
+                Log.d(TAG, "等待RN上下文初始化完成")
                 reactInstanceManager.addReactInstanceEventListener(
                     object : ReactInstanceManager.ReactInstanceEventListener {
                         override fun onReactContextInitialized(context: ReactContext) {
+                            Log.d(TAG, "RN上下文初始化完成，启动应用")
                             startReactApplication(
                                 reactInstanceManager,
                                 "Novel",
@@ -73,16 +85,18 @@ fun ReactNativePage() {
         }
     }
 
+    // 管理RN上下文监听器的生命周期
     DisposableEffect(reactInstanceManager) {
-        Log.d("ReactNativePage", "DisposableEffect started")
+        Log.d(TAG, "DisposableEffect启动")
         if (!isContextReady) {
-            Log.d("ReactNativePage", "Adding listener")
-            // 添加监听器，等待 React 上下文初始化
-            val listener = ReactInstanceManager.ReactInstanceEventListener { isContextReady = true }
+            Log.d(TAG, "添加RN上下文监听器")
+            val listener = ReactInstanceManager.ReactInstanceEventListener { 
+                Log.d(TAG, "RN上下文状态变更为就绪")
+                isContextReady = true 
+            }
             reactInstanceManager.addReactInstanceEventListener(listener)
             onDispose {
-                Log.d("ReactNativePage", "Removing listener")
-                // 清理监听器，防止内存泄漏
+                Log.d(TAG, "移除RN上下文监听器，防止内存泄漏")
                 reactInstanceManager.removeReactInstanceEventListener(listener)
             }
         } else {
@@ -90,25 +104,35 @@ fun ReactNativePage() {
         }
     }
 
+    // 使用AndroidView嵌入ReactRootView
     AndroidView(
-        factory = { rootView },
+        factory = { 
+            Log.d(TAG, "AndroidView factory执行")
+            rootView 
+        },
         update = { view ->
             reactRootView = view
+            Log.v(TAG, "ReactRootView已更新")
         },
         modifier = Modifier.fillMaxSize()
     )
 
+    // 注释掉的LaunchedEffect代码保留，用于未来可能的延迟启动逻辑
 //    LaunchedEffect(Unit) {
 //        while (!isContextReady || !isViewAttached || !isViewLaidOut || reactRootView == null) {
 //            delay(100) // 等待所有条件满足
 //        }
-    try {//        reactRootView!!.startReactApplication(reactInstanceManager, "Novel", null)
+    try {
+//        reactRootView!!.startReactApplication(reactInstanceManager, "Novel", null)
     } catch (e: Exception) {
-        TODO("Not yet implemented")
+        Log.e(TAG, "ReactNative应用启动异常", e)
+        // TODO: 实现异常处理逻辑
     }
 //    }
 
+    // 在RN未就绪时显示加载指示器
     if (!isContextReady || !isViewAttached || !isViewLaidOut) {
+        Log.v(TAG, "显示加载指示器")
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }

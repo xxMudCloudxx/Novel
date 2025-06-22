@@ -20,19 +20,15 @@ import com.novel.page.read.repository.BookCacheManager
 import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.repository.ProgressiveCalculationState
 import com.novel.page.read.repository.ReadingProgressData
+import com.novel.utils.network.repository.CachedBookRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import javax.inject.Inject
-import androidx.core.graphics.toColorInt
-import androidx.compose.ui.graphics.Color
 
 /**
  * 翻页状态
  */
 sealed class FlipState {
     data object Idle : FlipState()
-    data class Flipping(val progress: Float, val direction: FlipDirection) : FlipState()
-    data class PageChanged(val newPageIndex: Int, val direction: FlipDirection) : FlipState()
 }
 
 /**
@@ -171,7 +167,7 @@ class ReaderViewModel @Inject constructor(
     private val userDefaults: com.novel.utils.Store.UserDefaults.NovelUserDefaults,
     private val bookCacheManager: BookCacheManager,
     private val readingProgressRepository: com.novel.page.read.repository.ReadingProgressRepository,
-    private val cachedBookRepository: com.novel.repository.CachedBookRepository
+    private val cachedBookRepository: CachedBookRepository
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(ReaderUiState())
@@ -195,47 +191,7 @@ class ReaderViewModel @Inject constructor(
     private val maxPreloadRange = 4           // 最大预加载范围：前后各4章
     
     init {
-        // 初始化时加载所有保存的阅读器设置
-        
-        // 调试：检查UserDefaults中的颜色值
-        try {
-            val savedBackgroundColor = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
-            val savedTextColor = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
-            android.util.Log.d("ReaderViewModel", "Init检查 - UserDefaults中的背景色: $savedBackgroundColor")
-            android.util.Log.d("ReaderViewModel", "Init检查 - UserDefaults中的文本色: $savedTextColor")
-            android.util.Log.d("ReaderViewModel", "Init检查 - 初始ReaderSettings: ${_uiState.value.readerSettings}")
-        } catch (e: Exception) {
-            android.util.Log.e("ReaderViewModel", "初始化检查失败", e)
-        }
-        
-        // 测试颜色转换
-        testColorConversion()
-        
         loadAllSavedSettings()
-        
-        // 确保设置有效性
-    }
-
-    /**
-     * 加载保存的翻页方式
-     */
-    private fun loadSavedPageFlipEffect() {
-        try {
-            val savedEffect = userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
-            if (savedEffect != null) {
-                val pageFlipEffect = PageFlipEffect.valueOf(savedEffect)
-                
-                val currentSettings = _uiState.value.readerSettings
-                _uiState.value = _uiState.value.copy(
-                    readerSettings = currentSettings.copy(pageFlipEffect = pageFlipEffect)
-                )
-            }
-        } catch (e: Exception) {
-            // 如果加载失败，使用默认值
-            _uiState.value = _uiState.value.copy(
-                readerSettings = _uiState.value.readerSettings.copy(pageFlipEffect = PageFlipEffect.PAGECURL)
-            )
-        }
     }
 
     /**
@@ -248,13 +204,13 @@ class ReaderViewModel @Inject constructor(
             val defaultSettings = ReaderSettings.getDefault()
             var newSettings = defaultSettings
             
-            android.util.Log.d("ReaderViewModel", "开始加载保存的设置 - 默认背景色: ${defaultSettings.backgroundColor}, 默认文字色: ${defaultSettings.textColor}")
+            // 开始加载保存的阅读器设置
             
             // 加载翻页效果
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)?.let { savedEffect ->
                 try {
                     newSettings = newSettings.copy(pageFlipEffect = PageFlipEffect.valueOf(savedEffect))
-                    android.util.Log.d("ReaderViewModel", "加载翻页效果: $savedEffect")
+                    // 加载翻页效果设置
                 } catch (e: Exception) {
                     android.util.Log.e("ReaderViewModel", "解析翻页效果失败: $savedEffect", e)
                 }
@@ -264,7 +220,7 @@ class ReaderViewModel @Inject constructor(
             userDefaults.get<Int>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.FONT_SIZE)?.let { fontSize ->
                 if (fontSize in 12..44) { // 验证字体大小范围
                     newSettings = newSettings.copy(fontSize = fontSize)
-                    android.util.Log.d("ReaderViewModel", "加载字体大小: $fontSize")
+                    // 加载字体大小设置
                 } else {
                     android.util.Log.w("ReaderViewModel", "字体大小超出范围: $fontSize，使用默认值")
                 }
@@ -274,7 +230,7 @@ class ReaderViewModel @Inject constructor(
             userDefaults.get<Float>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BRIGHTNESS)?.let { brightness ->
                 if (brightness in 0f..1f) { // 验证亮度范围
                     newSettings = newSettings.copy(brightness = brightness)
-                    android.util.Log.d("ReaderViewModel", "加载亮度: $brightness")
+                    // 加载亮度设置
                 } else {
                     android.util.Log.w("ReaderViewModel", "亮度超出范围: $brightness，使用默认值")
                 }
@@ -283,7 +239,7 @@ class ReaderViewModel @Inject constructor(
             // 加载背景色
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)?.let { colorString ->
                 try {
-                    android.util.Log.d("ReaderViewModel", "尝试加载背景色: $colorString")
+                    // 加载背景色设置
                     if (colorString.isNotBlank() && colorString.startsWith("#") && colorString.length >= 7) {
                         // 支持 #RRGGBB 和 #AARRGGBB 格式
                         val colorLong = if (colorString.length == 7) {
@@ -295,7 +251,7 @@ class ReaderViewModel @Inject constructor(
                         }
                         val color = androidx.compose.ui.graphics.Color(colorLong.toULong())
                         newSettings = newSettings.copy(backgroundColor = color)
-                        android.util.Log.d("ReaderViewModel", "成功加载背景色: $colorString -> $color")
+                        // 背景色加载成功
                     } else {
                         android.util.Log.w("ReaderViewModel", "背景色格式无效: $colorString，使用默认值")
                     }
@@ -307,7 +263,7 @@ class ReaderViewModel @Inject constructor(
             // 加载文本色
             userDefaults.get<String>(com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)?.let { colorString ->
                 try {
-                    android.util.Log.d("ReaderViewModel", "尝试加载文本色: $colorString")
+                    // 加载文本色设置
                     if (colorString.isNotBlank() && colorString.startsWith("#") && colorString.length >= 7) {
                         // 支持 #RRGGBB 和 #AARRGGBB 格式
                         val colorLong = if (colorString.length == 7) {
@@ -319,7 +275,7 @@ class ReaderViewModel @Inject constructor(
                         }
                         val color = androidx.compose.ui.graphics.Color(colorLong.toULong())
                         newSettings = newSettings.copy(textColor = color)
-                        android.util.Log.d("ReaderViewModel", "成功加载文本色: $colorString -> $color")
+                        // 文本色加载成功
                     } else {
                         android.util.Log.w("ReaderViewModel", "文本色格式无效: $colorString，使用默认值")
                     }
@@ -328,11 +284,10 @@ class ReaderViewModel @Inject constructor(
                 }
             }
             
-            android.util.Log.d("ReaderViewModel", "设置加载完成 - 最终背景色: ${newSettings.backgroundColor}, 最终文字色: ${newSettings.textColor}")
+            // 设置加载完成，进行颜色验证
             
             // 使用ReaderSettings的内置方法检查并修复文字颜色问题
             val finalSettings = newSettings
-            android.util.Log.d("ReaderViewModel", "颜色检查完成 - 最终背景色: ${finalSettings.backgroundColor}, 最终文字色: ${finalSettings.textColor}")
             
             _uiState.value = _uiState.value.copy(readerSettings = finalSettings)
         } catch (e: Exception) {
@@ -344,18 +299,7 @@ class ReaderViewModel @Inject constructor(
         
         // 最终验证颜色并应用
         _uiState.value = _uiState.value.validateColors()
-        android.util.Log.d("ReaderViewModel", "最终验证后的设置 - 背景色: ${_uiState.value.readerSettings.backgroundColor}, 文字色: ${_uiState.value.readerSettings.textColor}")
-    }
-
-    /**
-     * 保存翻页方式
-     */
-    private fun savePageFlipEffect(pageFlipEffect: com.novel.page.read.components.PageFlipEffect) {
-        try {
-            userDefaults.set(pageFlipEffect.name, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
-        } catch (e: Exception) {
-            // 保存失败时静默处理
-        }
+        // 最终验证完成，设置已应用
     }
 
     /**
@@ -374,10 +318,10 @@ class ReaderViewModel @Inject constructor(
             
             // 修复颜色保存逻辑 - 使用更安全的转换方式
             try {
-                val backgroundColorInt = settings.backgroundColor.value.toULong().toInt()
+                val backgroundColorInt = settings.backgroundColor.value.toInt()
                 val backgroundColorString = String.format("#%08X", backgroundColorInt)
                 userDefaults.set(backgroundColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.BACKGROUND_COLOR)
-                android.util.Log.d("ReaderViewModel", "保存背景色: ${settings.backgroundColor} -> $backgroundColorString")
+                // 背景色保存成功
             } catch (e: Exception) {
                 android.util.Log.e("ReaderViewModel", "保存背景色失败", e)
                 // 保存默认背景色的十六进制字符串
@@ -385,10 +329,10 @@ class ReaderViewModel @Inject constructor(
             }
             
             try {
-                val textColorInt = settings.textColor.value.toULong().toInt()
+                val textColorInt = settings.textColor.value.toInt()
                 val textColorString = String.format("#%08X", textColorInt)
                 userDefaults.set(textColorString, com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey.TEXT_COLOR)
-                android.util.Log.d("ReaderViewModel", "保存文本色: ${settings.textColor} -> $textColorString")
+                // 文本色保存成功
             } catch (e: Exception) {
                 android.util.Log.e("ReaderViewModel", "保存文本色失败", e)
                 // 保存默认文本色的十六进制字符串
@@ -397,13 +341,6 @@ class ReaderViewModel @Inject constructor(
         } catch (e: Exception) {
             android.util.Log.e("ReaderViewModel", "保存设置失败", e)
         }
-    }
-
-    /**
-     * 获取当前翻页方式（供外部调用）
-     */
-    fun getCurrentPageFlipEffect(): com.novel.page.read.components.PageFlipEffect {
-        return _uiState.value.readerSettings.pageFlipEffect
     }
 
     /**
@@ -718,10 +655,8 @@ class ReaderViewModel @Inject constructor(
             _uiState.value.chapterList.indexOfFirst { it.id == chapterCache.chapter.id }
 
         // 根据翻页方向正确设置初始页面索引
-        val initialPageIndex = if (initialPageIndexOverride != null) {
-            initialPageIndexOverride
-        } else {
-            when (flipDirection) {
+        val initialPageIndex = initialPageIndexOverride
+            ?: when (flipDirection) {
                 FlipDirection.PREVIOUS -> -1 // 标记为需要设置到最后一页，在分页完成后设置
                 FlipDirection.NEXT -> 0     // 下一章从第一页开始
                 else -> {
@@ -734,7 +669,6 @@ class ReaderViewModel @Inject constructor(
                     }
                 }
             }
-        }
 
         _uiState.value = _uiState.value.copy(
             isLoading = false,
@@ -785,7 +719,6 @@ class ReaderViewModel @Inject constructor(
             // 分页
             val finalPages = PageSplitter.splitContent(
                 content = content,
-                chapterTitle = chapter.chapterName,
                 containerSize = state.containerSize,
                 readerSettings = state.readerSettings,
                 density = state.density
@@ -807,7 +740,6 @@ class ReaderViewModel @Inject constructor(
                     } else {
                         PageSplitter.splitContent(
                             content = cache.content,
-                            chapterTitle = cache.chapter.chapterName,
                             containerSize = state.containerSize,
                             readerSettings = state.readerSettings,
                             density = state.density
@@ -837,7 +769,6 @@ class ReaderViewModel @Inject constructor(
                     } else {
                         PageSplitter.splitContent(
                             content = cache.content,
-                            chapterTitle = cache.chapter.chapterName,
                             containerSize = state.containerSize,
                             readerSettings = state.readerSettings,
                             density = state.density
@@ -950,7 +881,7 @@ class ReaderViewModel @Inject constructor(
 
         var currentChapterStartIndex = 0
         
-        val newVirtualPages = buildList<VirtualPage> {
+        val newVirtualPages = buildList{
             orderedLoadedChapters.forEach { (chapterIndex, pageData) ->
                 if (chapterIndex < currentIndex) {
                     // 在当前章节之前的章节
@@ -1075,7 +1006,6 @@ class ReaderViewModel @Inject constructor(
                             try {
                                 val pages = PageSplitter.splitContent(
                                     content = cachedChapter.content,
-                                    chapterTitle = cachedChapter.chapter.chapterName,
                                     containerSize = state.containerSize,
                                     readerSettings = state.readerSettings,
                                     density = state.density
@@ -1201,13 +1131,6 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 预加载相邻章节 - 兼容旧接口，调用新的动态预加载
-     */
-    private fun preloadAdjacentChaptersExtended(currentChapterId: String) {
-        performDynamicPreload(currentChapterId, triggerExpansion = false)
-    }
-
-    /**
      * 处理页面翻页 - 优化版本，更好的边界处理和状态同步，支持平移模式防回跳
      */
     private fun handlePageFlip(direction: FlipDirection) {
@@ -1242,7 +1165,7 @@ class ReaderViewModel @Inject constructor(
             } else {
                 // 其他翻页模式：立即更新virtualPageIndex
                 _uiState.value = state.copy(virtualPageIndex = newVirtualIndex)
-                updatePageFlipState(newVirtualPage, newVirtualIndex)
+                updatePageFlipState(newVirtualPage)
             }
             
             // 检查是否需要预加载更多
@@ -1253,7 +1176,7 @@ class ReaderViewModel @Inject constructor(
                                              newVirtualPage.pageIndex == pageData.pages.size - 1
                     // 只在章节边界时检查预加载
                     if (isAtChapterBoundary) {
-                        checkAndPreload(newVirtualIndex, virtualPages.size)
+                        checkAndPreload(newVirtualIndex)
                     }
                 }
             }
@@ -1310,7 +1233,7 @@ class ReaderViewModel @Inject constructor(
     /**
      * 处理其他翻页模式的状态更新
      */
-    private fun updatePageFlipState(newVirtualPage: VirtualPage, newVirtualIndex: Int) {
+    private fun updatePageFlipState(newVirtualPage: VirtualPage) {
         when (newVirtualPage) {
             is VirtualPage.ContentPage -> {
                 val state = _uiState.value
@@ -1350,7 +1273,7 @@ class ReaderViewModel @Inject constructor(
      * 检查是否需要动态扩展预加载范围
      * 当用户进入预加载边缘章节时，自动扩展预加载范围
      */
-    private fun checkAndPreload(currentVirtualIndex: Int, totalVirtualPages: Int) {
+    private fun checkAndPreload(currentVirtualIndex: Int) {
         val state = _uiState.value
         val currentContentPage = state.virtualPages.getOrNull(currentVirtualIndex) as? VirtualPage.ContentPage ?: return
         
@@ -1611,7 +1534,6 @@ class ReaderViewModel @Inject constructor(
 
         if (needsRecalculation) {
             // 保留当前阅读上下文
-            val currentChapterId = oldState.currentChapter?.id
             val oldPages = oldState.currentPageData?.pages ?: emptyList()
             val chapterProgress = if (oldPages.isNotEmpty() && oldState.currentPageIndex >= 0) {
                 (oldState.currentPageIndex.toFloat() + 1) / oldPages.size.toFloat()
@@ -1810,7 +1732,7 @@ class ReaderViewModel @Inject constructor(
     /**
      * 获取邻近章节数据 - 新增方法，用于翻页容器获取相邻章节
      */
-    fun getAdjacentChapterData(currentChapterId: String): Pair<PageData?, PageData?> {
+    private fun getAdjacentChapterData(currentChapterId: String): Pair<PageData?, PageData?> {
         val chapterList = _uiState.value.chapterList
         val currentIndex = chapterList.indexOfFirst { it.id == currentChapterId }
         
@@ -1843,19 +1765,10 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 立即切换章节 - 新增方法，用于翻页容器直接切换章节
-     */
-    fun switchChapterImmediately(direction: FlipDirection) {
-        handleChapterFlip(direction)
-    }
-
-    /**
      * 统一的翻页状态更新方法 - 确保所有翻页模式的状态一致性
      */
     private fun updateFlipState(
         newVirtualPageIndex: Int,
-        newChapterId: String? = null,
-        newPageIndexInChapter: Int? = null,
         triggerPreload: Boolean = true
     ) {
         val state = _uiState.value
@@ -2090,47 +2003,4 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 测试颜色转换 - 调试用
-     */
-    private fun testColorConversion() {
-        try {
-            val defaultSettings = ReaderSettings.getDefault()
-            android.util.Log.d("ReaderViewModel", "默认背景色: ${defaultSettings.backgroundColor}")
-            android.util.Log.d("ReaderViewModel", "默认文字色: ${defaultSettings.textColor}")
-            
-            // 测试颜色转换过程
-            val testBackgroundColorInt = defaultSettings.backgroundColor.value.toULong().toInt()
-            val testBackgroundColorString = String.format("#%08X", testBackgroundColorInt)
-            android.util.Log.d("ReaderViewModel", "测试背景色转换: ${defaultSettings.backgroundColor} -> $testBackgroundColorString")
-            
-            // 测试反向转换
-            if (testBackgroundColorString.startsWith("#") && testBackgroundColorString.length >= 7) {
-                val colorLong = if (testBackgroundColorString.length == 7) {
-                    "FF${testBackgroundColorString.substring(1)}".toLong(16)
-                } else {
-                    testBackgroundColorString.substring(1).toLong(16)
-                }
-                val reconstructedColor = androidx.compose.ui.graphics.Color(colorLong.toULong())
-                android.util.Log.d("ReaderViewModel", "测试背景色反向转换: $testBackgroundColorString -> $reconstructedColor")
-            }
-            
-            val testTextColorInt = defaultSettings.textColor.value.toULong().toInt()
-            val testTextColorString = String.format("#%08X", testTextColorInt)
-            android.util.Log.d("ReaderViewModel", "测试文字色转换: ${defaultSettings.textColor} -> $testTextColorString")
-            
-            // 测试反向转换
-            if (testTextColorString.startsWith("#") && testTextColorString.length >= 7) {
-                val colorLong = if (testTextColorString.length == 7) {
-                    "FF${testTextColorString.substring(1)}".toLong(16)
-                } else {
-                    testTextColorString.substring(1).toLong(16)
-                }
-                val reconstructedColor = androidx.compose.ui.graphics.Color(colorLong.toULong())
-                android.util.Log.d("ReaderViewModel", "测试文字色反向转换: $testTextColorString -> $reconstructedColor")
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("ReaderViewModel", "颜色转换测试失败", e)
-        }
-    }
 } 

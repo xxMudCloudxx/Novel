@@ -15,7 +15,10 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 登录页面的AppBar
+ * 登录页面顶部导航栏
+ * 
+ * 包含返回按钮和帮助文字
+ * 提供简洁的页面导航功能
  */
 @Composable
 fun LoginAppBar(){
@@ -27,7 +30,10 @@ fun LoginAppBar(){
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // 返回按钮
         BackButton()
+        
+        // 帮助文字
         NovelText("帮助", fontSize = 16.ssp, lineHeight = 20.ssp, fontWeight = FontWeight.Bold)
     }
 }

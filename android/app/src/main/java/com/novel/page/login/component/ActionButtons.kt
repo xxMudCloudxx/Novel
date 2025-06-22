@@ -1,5 +1,6 @@
 package com.novel.page.login.component
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -8,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.novel.page.component.NovelMainButton
+import androidx.compose.ui.Alignment
 import com.novel.page.component.NovelText
 import com.novel.page.component.NovelWeakenButton
 import com.novel.ui.theme.NovelColors
@@ -15,11 +17,17 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 登录按钮
- * @param firstText 登录按钮文字
- * @param secondText 注册按钮文字
- * @param onFirstClick 登录按钮点击事件
- * @param onSecondClick 注册按钮点击事件
+ * 登录页面操作按钮组件
+ *
+ * 包含主要操作按钮（登录）和次要操作按钮（注册）
+ * 支持按钮启用状态控制和自定义文案
+ *
+ * @param modifier 修饰符
+ * @param firstText 主按钮文字，默认为"登录"
+ * @param secondText 次按钮文字，默认为"暂无账号，进行注册"
+ * @param onFirstClick 主按钮点击事件回调
+ * @param isFirstEnabled 主按钮是否启用，默认为true
+ * @param onSecondClick 次按钮点击事件回调
  */
 @Composable
 fun ActionButtons(
@@ -30,10 +38,12 @@ fun ActionButtons(
     isFirstEnabled: Boolean = true,
     onSecondClick: () -> Unit
 ) {
+    val TAG = "ActionButtons"
     Column(
         modifier = modifier,
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // 主操作按钮（登录）
         NovelMainButton(
             content = {
                 NovelText(
@@ -48,8 +58,13 @@ fun ActionButtons(
                 .width(330.wdp)
                 .height(48.wdp),
             enabldeClicke = isFirstEnabled,
-            onClick = onFirstClick
+            onClick = {
+                Log.d(TAG, "点击主操作按钮: $firstText")
+                onFirstClick()
+            }
         )
+
+        // 次要操作按钮（注册）
         NovelWeakenButton(
             content = {
                 NovelText(
@@ -62,7 +77,10 @@ fun ActionButtons(
             modifier = Modifier
                 .width(330.wdp)
                 .height(48.wdp),
-            onClick = onSecondClick
+            onClick = {
+                Log.d(TAG, "点击次要操作按钮: $secondText")
+                onSecondClick()
+            }
         )
     }
 }

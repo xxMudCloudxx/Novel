@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import androidx.collection.LruCache
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
@@ -27,13 +28,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 抽象 Token 提供者，方便 Mock 测试
+ * Token 提供者接口
+ * 抽象Token获取逻辑，便于单元测试和依赖注入
  */
 interface TokenProvider {
     fun getToken(): String?
 }
 
-/** 从 KeyChain 读取 Token 的默认实现 */
+/**
+ * 基于KeyChain的Token提供者实现
+ * 从安全存储中读取访问令牌
+ */
 @Singleton
 class KeyChainTokenProvider @Inject constructor(
     private val novelKeyChain: NovelKeyChain
@@ -43,17 +48,21 @@ class KeyChainTokenProvider @Inject constructor(
 }
 
 /**
- * 内存缓存抽象
+ * 内存缓存接口
+ * 定义图片内存缓存的基本操作
  */
 interface MemoryCache {
     fun get(key: String): Bitmap?
     fun put(key: String, bitmap: Bitmap)
 }
 
-/** 基于 LruCache 的内存缓存实现 */
+/**
+ * 基于LruCache的内存缓存实现
+ * 使用最近最少使用算法管理内存，防止内存溢出
+ */
 @Singleton
 class LruMemoryCache @Inject constructor(): MemoryCache {
-    private val cache = LruCache<String, Bitmap>(20 * 1024 * 1024)
+    private val cache = LruCache<String, Bitmap>(20 * 1024 * 1024) // 20MB缓存
     override fun get(key: String) = cache[key]
     override fun put(key: String, bitmap: Bitmap) {
         cache.put(key, bitmap)
@@ -61,14 +70,18 @@ class LruMemoryCache @Inject constructor(): MemoryCache {
 }
 
 /**
- * 图片加载服务抽象
+ * 图片加载服务接口
+ * 定义异步图片加载的契约
  */
 interface ImageLoaderService {
     suspend fun loadImage(url: String, needToken: Boolean): Bitmap?
 }
 
 /**
- * HTTP + 多级缓存实现：内存缓存 -> OkHttp 硬盘缓存 -> 网络请求
+ * HTTP图片加载服务实现
+ * 
+ * 采用三级缓存策略：内存缓存 -> OkHttp磁盘缓存 -> 网络请求
+ * 提供高性能的图片加载体验
  */
 @Singleton
 class HttpImageLoaderService @Inject constructor(
@@ -79,22 +92,28 @@ class HttpImageLoaderService @Inject constructor(
     
     companion object {
         private const val BASE_URL = "http://47.110.147.60:8080" // 基础URL
+        private const val TAG = "HttpImageLoaderService"
     }
     
     override suspend fun loadImage(url: String, needToken: Boolean): Bitmap? =
         withContext(Dispatchers.IO) {
             try {
-                // 1. 内存缓存
-                memoryCache.get(url)?.let { return@withContext it }
+                // 1. 内存缓存命中检查
+                memoryCache.get(url)?.let { 
+                    Log.v(TAG, "内存缓存命中: $url")
+                    return@withContext it 
+                }
                 
-                // 2. 处理URL - 如果是相对路径，添加基础URL
+                // 2. URL处理 - 相对路径转绝对路径
                 val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
                     url
                 } else {
                     "$BASE_URL$url"
                 }
                 
-                // 3. 构建请求
+                Log.d(TAG, "开始加载图片: $fullUrl")
+                
+                // 3. 构建HTTP请求
                 val reqBuilder = Request.Builder()
                     .url(fullUrl)
                     .get()
@@ -102,26 +121,32 @@ class HttpImageLoaderService @Inject constructor(
                     reqBuilder.header("Authorization", it)
                 }
                 
-                // 4. 执行请求（OkHttp 自动硬盘缓存）
+                // 4. 执行网络请求（自动利用OkHttp磁盘缓存）
                 client.newCall(reqBuilder.build()).execute().use { resp ->
-                    if (!resp.isSuccessful) return@withContext null
+                    if (!resp.isSuccessful) {
+                        Log.w(TAG, "网络请求失败: $fullUrl, 状态码: ${resp.code}")
+                        return@withContext null
+                    }
+                    
                     resp.body?.byteStream()?.let { stream ->
-                        BitmapFactory.decodeStream(stream)?.also {
+                        BitmapFactory.decodeStream(stream)?.also { bitmap ->
                             // 5. 写入内存缓存
-                            memoryCache.put(url, it)
+                            memoryCache.put(url, bitmap)
+                            Log.d(TAG, "图片加载成功并缓存: $url")
                         }
                     }
                 }
             } catch (e: Exception) {
                 // 记录错误但不抛出异常，返回null让UI显示占位符
-                android.util.Log.w("ImageLoader", "加载图片失败: $url", e)
+                Log.w(TAG, "加载图片失败: $url", e)
                 null
             }
         }
 }
 
 /**
- * Hilt 网络依赖提供
+ * Hilt网络依赖提供模块
+ * 配置图片加载所需的网络组件
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -151,7 +176,8 @@ object NetworkingModule {
 }
 
 /**
- * 加载状态：Loading / Success / Error
+ * 图片加载状态
+ * 封装加载过程中的不同状态
  */
 sealed class LoadState {
     data object Loading : LoadState()
@@ -159,19 +185,26 @@ sealed class LoadState {
     data class Success(val image: ImageBitmap) : LoadState()
 }
 
-/** CompositionLocal，简化在 Composable 中获取 ImageLoaderService */
+/**
+ * CompositionLocal图片加载器
+ * 简化在Composable中获取ImageLoaderService的方式
+ */
 val LocalImageLoaderService = staticCompositionLocalOf<ImageLoaderService> {
-    error("请在 CompositionLocalProvider 中提供 ImageLoaderService")
+    error("请在CompositionLocalProvider中提供ImageLoaderService")
 }
 
 /**
- * Compose 组件：多级缓存图片加载
+ * 多级缓存图片加载组件
+ * 
+ * 提供高性能的图片加载体验，支持内存缓存、磁盘缓存和网络加载
+ * 自动处理加载状态和错误情况
  *
- * @param url 图片地址
- * @param needToken 是否需要附带 Token
- * @param modifier 外部传入 Modifier
- * @param content 加载成功后展示 ImageBitmap 的 Composable 插槽
- * @param placeholder 加载中或失败时展示的 Composable 插槽
+ * @param url 图片URL，支持相对路径和绝对路径
+ * @param needToken 是否需要在请求头中附带访问令牌
+ * @param modifier 外部传入的修饰符
+ * @param content 加载成功后展示ImageBitmap的Composable插槽
+ * @param placeholder 加载中或失败时展示的Composable插槽
+ * @param imageLoader 图片加载服务，默认从CompositionLocal获取
  */
 @Composable
 fun NovelCachedImageView(
@@ -189,8 +222,18 @@ fun NovelCachedImageView(
 
     Box(modifier) {
         when (state) {
-            is LoadState.Success -> content((state as LoadState.Success).image)
-            else                -> placeholder()
+            is LoadState.Success -> {
+                Log.v("NovelCachedImageView", "渲染图片成功: $url")
+                content((state as LoadState.Success).image)
+            }
+            LoadState.Loading -> {
+                Log.v("NovelCachedImageView", "图片加载中: $url")
+                placeholder()
+            }
+            LoadState.Error -> {
+                Log.w("NovelCachedImageView", "图片加载失败，显示占位符: $url")
+                placeholder()
+            }
         }
     }
 }

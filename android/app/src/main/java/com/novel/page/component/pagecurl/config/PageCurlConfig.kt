@@ -4,6 +4,7 @@ package com.novel.page.component.pagecurl.config
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -270,7 +271,7 @@ class PageCurlConfig(
     /**
      * 背页内容透明度，定义内容"透过"背页的可见程度。0（不可见）到1（完全可见）
      */
-    var backPageContentAlpha: Float by mutableStateOf(backPageContentAlpha)
+    var backPageContentAlpha: Float by mutableFloatStateOf(backPageContentAlpha)
 
     /**
      * 阴影颜色。大多数情况下应设置为内容背景色的反色。应为纯色，使用shadowAlpha调整不透明度
@@ -280,7 +281,7 @@ class PageCurlConfig(
     /**
      * 阴影透明度
      */
-    var shadowAlpha: Float by mutableStateOf(shadowAlpha)
+    var shadowAlpha: Float by mutableFloatStateOf(shadowAlpha)
 
     /**
      * 基础阴影大小
@@ -300,12 +301,12 @@ class PageCurlConfig(
     /**
      * 高光效果的强度，0到1之间
      */
-    var highlightStrength: Float by mutableStateOf(highlightStrength)
+    var highlightStrength: Float by mutableFloatStateOf(highlightStrength)
 
     /**
      * 透视倾斜角度，增加3D感
      */
-    var perspectiveTiltDeg: Float by mutableStateOf(perspectiveTiltDeg)
+    var perspectiveTiltDeg: Float by mutableFloatStateOf(perspectiveTiltDeg)
 
     /**
      * 是否启用动态阴影（阴影大小随拖拽距离变化）
@@ -315,7 +316,7 @@ class PageCurlConfig(
     /**
      * 折痕阴影强度，0到1之间
      */
-    var creaseShadowStrength: Float by mutableStateOf(creaseShadowStrength)
+    var creaseShadowStrength: Float by mutableFloatStateOf(creaseShadowStrength)
 
     /**
      * 边缘光宽度
@@ -325,7 +326,7 @@ class PageCurlConfig(
     /**
      * 卷曲正面朝里方向的自阴影强度，0到1之间
      */
-    var selfShadowStrength: Float by mutableStateOf(selfShadowStrength)
+    var selfShadowStrength: Float by mutableFloatStateOf(selfShadowStrength)
 
     /**
      * 是否启用向前拖拽交互

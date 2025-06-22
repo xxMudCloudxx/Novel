@@ -139,7 +139,7 @@ private fun HomeRankPanelSkeleton(skeletonColor: Color) {
             
             // 榜单书籍列表骨架
             repeat(5) { index ->
-                RankBookItemSkeleton(skeletonColor, index + 1)
+                RankBookItemSkeleton(skeletonColor)
                 if (index < 4) {
                     Spacer(modifier = Modifier.height(12.wdp))
                 }
@@ -149,7 +149,7 @@ private fun HomeRankPanelSkeleton(skeletonColor: Color) {
 }
 
 @Composable
-private fun RankBookItemSkeleton(skeletonColor: Color, rank: Int) {
+private fun RankBookItemSkeleton(skeletonColor: Color) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.wdp),
@@ -211,7 +211,7 @@ private fun HomeRecommendGridSkeleton(skeletonColor: Color) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.wdp)
             ) {
-                repeat(2) { col ->
+                repeat(2) {
                     RecommendBookItemSkeleton(
                         skeletonColor = skeletonColor,
                         modifier = Modifier.weight(1f)

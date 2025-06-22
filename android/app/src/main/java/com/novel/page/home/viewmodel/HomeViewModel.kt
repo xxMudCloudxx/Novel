@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.novel.page.home.dao.HomeBookEntity
 import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.page.home.dao.HomeRepository
+import com.novel.page.home.dao.toEntity
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
@@ -16,11 +17,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
-import com.novel.page.home.dao.toEntity
-import com.novel.repository.CachedBookRepository
+import com.novel.utils.network.repository.CachedBookRepository
 
 /**
- * 分类数据
+ * 分类信息数据类
+ * 
+ * 用于封装书籍分类的基本信息，支持分类筛选功能
+ * 
+ * @param id 分类唯一标识符
+ * @param name 分类显示名称
  */
 data class CategoryInfo(
     val id: String,
@@ -28,116 +33,183 @@ data class CategoryInfo(
 )
 
 /**
- * 首页UI状态
+ * 首页UI状态数据类
+ * 
+ * 采用不可变数据结构，支持MVI架构的状态管理
+ * 包含首页展示所需的全部状态信息
  */
 data class HomeUiState(
+    /** 全局加载状态 - 用于首次进入页面的加载指示器 */
     val isLoading: Boolean = false,
+    
+    /** 下拉刷新状态 - 用于下拉刷新的加载指示器 */
     val isRefreshing: Boolean = false,
+    
+    /** 错误信息 - 当发生错误时显示给用户的消息 */
     val error: String? = null,
     
-    // 分类数据
+    // === 分类数据相关 ===
+    /** 书籍分类列表 - 从数据库或网络获取的分类信息 */
     val categories: List<HomeCategoryEntity> = emptyList(),
+    
+    /** 分类数据加载状态 */
     val categoryLoading: Boolean = false,
     
-    // 书籍推荐数据
+    // === 书籍推荐数据相关 ===
+    /** 轮播图书籍列表 - 首页顶部轮播展示的精选书籍 */
     val carouselBooks: List<HomeBookEntity> = emptyList(),
+    
+    /** 热门书籍列表 - 按热度排序的推荐书籍 */
     val hotBooks: List<HomeBookEntity> = emptyList(),
+    
+    /** 最新书籍列表 - 按发布时间排序的新书 */
     val newBooks: List<HomeBookEntity> = emptyList(),
+    
+    /** VIP书籍列表 - 付费或会员专享书籍 */
     val vipBooks: List<HomeBookEntity> = emptyList(),
     
+    /** 书籍数据加载状态 */
     val booksLoading: Boolean = false,
     
-    // 搜索相关
+    // === 搜索相关 ===
+    /** 当前搜索关键词 */
     val searchQuery: String = "",
     
-    // 分类筛选器状态
+    // === 分类筛选器状态 ===
+    /** 当前选中的分类筛选器名称 */
     val selectedCategoryFilter: String = "推荐",
+    
+    /** 可用的分类筛选器列表 - 包含"推荐"和所有书籍分类 */
     val categoryFilters: List<CategoryInfo> = listOf(
         CategoryInfo("0", "推荐")
     ),
+    
+    /** 分类筛选器数据加载状态 */
     val categoryFiltersLoading: Boolean = false,
     
-    // 榜单状态
+    // === 榜单状态 ===
+    /** 当前选中的榜单类型（点击榜/更新榜/新书榜） */
     val selectedRankType: String = HomeRepository.RANK_TYPE_VISIT,
+    
+    /** 当前榜单的书籍列表 */
     val rankBooks: List<BookService.BookRank> = emptyList(),
+    
+    /** 榜单数据加载状态 */
     val rankLoading: Boolean = false,
     
-    // 推荐书籍状态 - 支持两种数据源
-    val recommendBooks: List<SearchService.BookInfo> = emptyList(), // 分类搜索结果
-    val homeRecommendBooks: List<HomeService.HomeBook> = emptyList(), // 首页推荐
+    // === 推荐书籍状态 - 支持双数据源 ===
+    /** 分类搜索结果书籍列表 - 来自搜索服务的分类书籍 */
+    val recommendBooks: List<SearchService.BookInfo> = emptyList(),
+    
+    /** 首页推荐书籍列表 - 来自首页服务的推荐书籍 */
+    val homeRecommendBooks: List<HomeService.HomeBook> = emptyList(),
+    
+    /** 推荐书籍加载状态 */
     val recommendLoading: Boolean = false,
+    
+    /** 是否还有更多分类推荐数据可加载 */
     val hasMoreRecommend: Boolean = true,
+    
+    /** 当前分类推荐数据的页码 */
     val recommendPage: Int = 1,
+    
+    /** 分类推荐数据的总页数 */
     val totalRecommendPages: Int = 1,
     
-    // 首页推荐分页状态
+    // === 首页推荐分页状态 ===
+    /** 首页推荐数据加载状态 */
     val homeRecommendLoading: Boolean = false,
+    
+    /** 是否还有更多首页推荐数据可加载 */
     val hasMoreHomeRecommend: Boolean = true,
+    
+    /** 当前首页推荐数据的页码 */
     val homeRecommendPage: Int = 1,
     
-    // 当前显示模式
-    val isRecommendMode: Boolean = true // true=推荐模式，false=分类模式
+    // === 显示模式控制 ===
+    /** 当前显示模式 - true=推荐模式（显示首页推荐），false=分类模式（显示分类搜索结果） */
+    val isRecommendMode: Boolean = true
 )
 
 /**
- * 首页用户操作
+ * 首页用户操作意图
+ * 
+ * 采用MVI架构的Action模式，封装所有用户可能产生的操作
+ * 每个Action都会触发相应的状态变更或副作用
  */
 sealed class HomeAction {
+    /** 加载初始数据 - 页面首次加载时触发 */
     data object LoadInitialData : HomeAction()
-    data object RefreshData : HomeAction()
-    data class UpdateSearchQuery(val query: String) : HomeAction()
-    data class SelectCategoryFilter(val categoryName: String) : HomeAction()
-    data object LoadMoreRecommend : HomeAction()
-    data object LoadMoreHomeRecommend : HomeAction()
-    data class SelectRankType(val rankType: String) : HomeAction()
-    data class NavigateToSearch(val query: String) : HomeAction()
-    data class NavigateToBookDetail(val bookId: Long) : HomeAction()
-    data class NavigateToCategory(val categoryId: Long) : HomeAction()
-    data class NavigateToFullRanking(val rankType: String) : HomeAction()
-    data object RestoreData : HomeAction()
     
-    // 兼容旧版本的动作
-    @Deprecated("Use RefreshData instead")
-    data object Refresh : HomeAction()
-    @Deprecated("Use UpdateSearchQuery instead")
-    data class OnSearchQueryChange(val query: String) : HomeAction()
-    @Deprecated("Use NavigateToBookDetail instead")
-    data class OnRankBookClick(val bookId: Long) : HomeAction()
-    @Deprecated("Use NavigateToBookDetail instead")
-    data class OnRecommendBookClick(val bookId: Long) : HomeAction()
-    @Deprecated("Use SelectCategoryFilter instead")
-    data class OnCategoryFilterSelected(val filter: String) : HomeAction()
-    @Deprecated("Use SelectRankType instead")
-    data class OnRankTypeSelected(val rankType: String) : HomeAction()
-    @Deprecated("Use NavigateToSearch instead")
-    data object OnSearchClick : HomeAction()
-    @Deprecated("Use NavigateToCategory instead")
-    data object OnCategoryButtonClick : HomeAction()
-    @Deprecated("Use LoadMoreRecommend instead")
-    data object LoadMoreRecommendByCategory : HomeAction()
-    @Deprecated("Use RefreshData instead")
-    data object RefreshRecommend : HomeAction()
+    /** 刷新数据 - 用户下拉刷新时触发 */
+    data object RefreshData : HomeAction()
+    
+    /** 更新搜索关键词 - 用户输入搜索内容时触发 */
+    data class UpdateSearchQuery(val query: String) : HomeAction()
+    
+    /** 选择分类筛选器 - 用户切换分类标签时触发 */
+    data class SelectCategoryFilter(val categoryName: String) : HomeAction()
+    
+    /** 加载更多推荐内容 - 用户滚动到底部时触发 */
+    data object LoadMoreRecommend : HomeAction()
+    
+    /** 加载更多首页推荐内容 - 首页推荐模式下的加载更多 */
+    data object LoadMoreHomeRecommend : HomeAction()
+    
+    /** 选择榜单类型 - 用户切换榜单标签时触发 */
+    data class SelectRankType(val rankType: String) : HomeAction()
+    
+    /** 导航到搜索页面 - 用户点击搜索时触发 */
+    data class NavigateToSearch(val query: String) : HomeAction()
+    
+    /** 导航到书籍详情页 - 用户点击书籍时触发 */
+    data class NavigateToBookDetail(val bookId: Long) : HomeAction()
+    
+    /** 导航到分类页面 - 用户点击分类时触发 */
+    data class NavigateToCategory(val categoryId: Long) : HomeAction()
+    
+    /** 导航到完整榜单页面 - 用户点击查看更多榜单时触发 */
+    data class NavigateToFullRanking(val rankType: String) : HomeAction()
+    
+    /** 恢复数据 - 页面重新获得焦点时触发数据检查和恢复 */
+    data object RestoreData : HomeAction()
+
+    /** 清除错误状态 - 用户关闭错误提示时触发 */
     data object ClearError : HomeAction()
 }
 
 /**
  * 首页一次性事件
+ * 
+ * 用于处理导航、Toast提示等副作用操作
+ * 这些事件只会被消费一次，不会保存在状态中
  */
 sealed class HomeEvent {
+    /** 导航到书籍页面 - 触发页面跳转到书籍阅读 */
     data class NavigateToBook(val bookId: Long) : HomeEvent()
+    
+    /** 导航到分类页面 - 触发页面跳转到指定分类 */
     data class NavigateToCategory(val categoryId: Long) : HomeEvent()
+    
+    /** 导航到搜索页面 - 触发页面跳转到搜索功能 */
     data class NavigateToSearch(val query: String = "") : HomeEvent()
+    
+    /** 导航到分类总览页面 - 触发页面跳转到分类列表 */
     data object NavigateToCategoryPage : HomeEvent()
+    
+    /** 显示Toast提示 - 向用户显示简短的提示信息 */
     data class ShowToast(val message: String) : HomeEvent()
+    
+    /** 导航到书籍详情页 - 触发页面跳转到书籍详细信息 */
     data class NavigateToBookDetail(val bookId: Long) : HomeEvent()
+    
+    /** 导航到完整榜单页面 - 触发页面跳转到榜单详情 */
     data class NavigateToFullRanking(val rankType: String) : HomeEvent()
 }
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
-    private val homeService: HomeService,
-    private val searchService: SearchService,
     private val cachedBookRepository: CachedBookRepository
 ) : ViewModel() {
     
@@ -242,38 +314,6 @@ class HomeViewModel @Inject constructor(
             is HomeAction.LoadMoreHomeRecommend -> {
                 loadMoreHomeRecommend()
             }
-            
-            // 兼容旧版本的动作处理
-            is HomeAction.Refresh -> refreshData()
-            is HomeAction.OnSearchQueryChange -> updateState { it.copy(searchQuery = action.query) }
-            is HomeAction.OnRankBookClick -> {
-                viewModelScope.launch {
-                    _events.send(HomeEvent.NavigateToBookDetail(action.bookId))
-                }
-            }
-            is HomeAction.OnRecommendBookClick -> {
-                viewModelScope.launch {
-                    _events.send(HomeEvent.NavigateToBookDetail(action.bookId))
-                }
-            }
-            is HomeAction.OnCategoryFilterSelected -> selectCategoryFilter(action.filter)
-            is HomeAction.OnRankTypeSelected -> selectRankType(action.rankType)
-            is HomeAction.OnSearchClick -> {
-                viewModelScope.launch {
-                    _events.send(HomeEvent.NavigateToSearch(currentState.searchQuery))
-                }
-            }
-            is HomeAction.OnCategoryButtonClick -> {
-                viewModelScope.launch {
-                    _events.send(HomeEvent.NavigateToCategory(0))
-                }
-            }
-            is HomeAction.LoadMoreRecommendByCategory -> {
-                if (!currentState.isRecommendMode) {
-                    loadMoreRecommend()
-                }
-            }
-            is HomeAction.RefreshRecommend -> refreshData()
             is HomeAction.ClearError -> clearError()
         }
     }
@@ -432,7 +472,7 @@ class HomeViewModel @Inject constructor(
                                 isRefreshing = false
                             ) 
                         }
-                        Log.d(TAG, "从网络获取首页推荐数据成功：${newCurrentBooks.size}本")
+                        // 网络数据获取成功，继续执行
                         return@launch
                     }
                 }
@@ -447,7 +487,7 @@ class HomeViewModel @Inject constructor(
                     ) 
                 }
 
-                Log.d(TAG, "首页推荐数据加载完成：当前显示${currentBooks.size}本，总共${cachedHomeBooks.size}本，hasMore=$hasMore")
+                // 首页推荐数据加载完成
             } catch (e: Exception) {
                 Log.e(TAG, "加载首页推荐书籍失败", e)
                 updateState { 
@@ -528,7 +568,7 @@ class HomeViewModel @Inject constructor(
                                 isRefreshing = false
                             ) 
                         }
-                        Log.d(TAG, "从网络获取分类推荐数据成功：${networkBooksData.list.size}本")
+                        // 网络数据获取成功，继续执行
                         return@launch
                     }
                 }
@@ -638,7 +678,7 @@ class HomeViewModel @Inject constructor(
                                 rankLoading = false
                             ) 
                         }
-                        Log.d(TAG, "从网络获取$rankType 数据成功，共${networkRankBooks.size}本书")
+                        // 网络数据获取成功，继续执行
                         return@launch
                     }
                 }
@@ -652,7 +692,7 @@ class HomeViewModel @Inject constructor(
                         rankLoading = false
                     ) 
                 }
-                Log.d(TAG, "$rankType 数据加载完成，共${rankBooks.size}本书")
+                // 榜单数据加载完成
             } catch (e: Exception) {
                 Log.e(TAG, "加载榜单书籍异常", e)
                 updateState { 
@@ -751,7 +791,7 @@ class HomeViewModel @Inject constructor(
                             categoryLoading = false
                         ) 
                     }
-                    Log.d(TAG, "分类数据加载完成，共${categories.size}个")
+                    // 分类数据加载完成
                 }
         }
     }
@@ -814,52 +854,10 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * 更新搜索查询
-     */
-    private fun updateSearchQuery(query: String) {
-        updateState { 
-            it.copy(searchQuery = query) 
-        }
-    }
-    
-    /**
-     * 导航到搜索页面
-     */
-    private fun navigateToSearch() {
-        val query = currentState.searchQuery
-        Log.d(TAG, "导航到搜索页面，查询：$query")
-        sendEvent(HomeEvent.NavigateToSearch(query))
-    }
-    
-    /**
      * 清除错误状态
      */
     private fun clearError() {
         updateState { it.copy(error = null) }
-    }
-    
-    /**
-     * 导航到分类页面
-     */
-    private fun navigateToCategoryPage() {
-        Log.d(TAG, "点击分类按钮")
-        sendEvent(HomeEvent.NavigateToCategoryPage)
-    }
-    
-    /**
-     * 导航到榜单书籍详情
-     */
-    private fun navigateToRankBook(bookId: Long) {
-        Log.d(TAG, "点击榜单书籍：$bookId")
-        sendEvent(HomeEvent.NavigateToBook(bookId))
-    }
-    
-    /**
-     * 导航到推荐书籍详情
-     */
-    private fun navigateToRecommendBook(bookId: Long) {
-        Log.d(TAG, "点击推荐书籍：$bookId")
-        sendEvent(HomeEvent.NavigateToBook(bookId))
     }
     
     /**
@@ -895,7 +893,7 @@ class HomeViewModel @Inject constructor(
                     ) 
                 }
                 
-                Log.d(TAG, "加载更多首页推荐：当前显示${updatedBooks.size}本，总共${cachedHomeBooks.size}本，hasMore=$hasMore")
+                // 加载更多首页推荐完成
             } catch (e: Exception) {
                 Log.e(TAG, "加载更多首页推荐书籍失败", e)
                 updateState { 
@@ -904,41 +902,6 @@ class HomeViewModel @Inject constructor(
                         homeRecommendPage = it.homeRecommendPage - 1 // 回退页码
                     ) 
                 }
-            }
-        }
-    }
-    
-    /**
-     * 刷新推荐数据
-     */
-    private fun refreshRecommend() {
-        viewModelScope.launch {
-            updateState { it.copy(isRefreshing = true, error = null) }
-            
-            try {
-                if (currentState.isRecommendMode) {
-                    // 刷新首页推荐
-                    updateState { 
-                        it.copy(
-                            homeRecommendBooks = emptyList(),
-                            homeRecommendPage = 1,
-                            hasMoreHomeRecommend = true
-                        ) 
-                    }
-                    loadHomeRecommendBooks(isRefresh = true)
-                } else {
-                    // 刷新分类推荐
-                    updateState { 
-                        it.copy(
-                            recommendBooks = emptyList(),
-                            recommendPage = 1,
-                            hasMoreRecommend = true
-                        ) 
-                    }
-                    loadRecommendByCategoryFromCacheOrNetwork(currentState.selectedCategoryFilter)
-                }
-            } finally {
-                updateState { it.copy(isRefreshing = false) }
             }
         }
     }
@@ -996,7 +959,7 @@ class HomeViewModel @Inject constructor(
                 )
                 
                 categoryRecommendCache[categoryName] = booksData.list
-                Log.d(TAG, "预加载分类 $categoryName 数据成功，共${booksData.list.size}本书")
+                // 预加载分类数据成功
                 
             } catch (e: Exception) {
                 Log.e(TAG, "预加载分类 $categoryName 数据失败", e)
@@ -1044,7 +1007,7 @@ class HomeViewModel @Inject constructor(
             try {
                 val rankBooks = homeRepository.getRankBooks(rankType)
                 rankBooksCache[rankType] = rankBooks
-                Log.d(TAG, "预加载榜单 $rankType 数据成功，共${rankBooks.size}本书")
+                // 预加载榜单数据成功
             } catch (e: Exception) {
                 Log.e(TAG, "预加载榜单 $rankType 数据失败", e)
             } finally {
@@ -1066,7 +1029,7 @@ class HomeViewModel @Inject constructor(
                     selectedRankType = rankType
                 ) 
             }
-            Log.d(TAG, "使用缓存的榜单数据：$rankType，共${cachedBooks.size}本书")
+            // 使用缓存的榜单数据
             return
         }
         
@@ -1102,7 +1065,7 @@ class HomeViewModel @Inject constructor(
                     isRefreshing = false
                 ) 
             }
-            Log.d(TAG, "使用缓存的分类数据：$categoryName，共${cachedBooks.size}本书")
+            // 使用缓存的分类数据
             return
         }
         
@@ -1121,7 +1084,7 @@ class HomeViewModel @Inject constructor(
         }
         
         // 榜单缓存相对较少，暂不清理
-        Log.d(TAG, "缓存清理完成，分类缓存剩余：${categoryRecommendCache.size}个")
+        // 缓存清理完成
     }
     
     /**
@@ -1131,7 +1094,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             // 检查榜单数据是否为空
             if (currentState.rankBooks.isEmpty()) {
-                Log.d(TAG, "检测到榜单数据为空，尝试恢复数据")
+                // 检测到榜单数据为空，尝试恢复
                 
                 // 先尝试从内存缓存恢复
                 val currentRankType = currentState.selectedRankType
@@ -1143,7 +1106,7 @@ class HomeViewModel @Inject constructor(
                                 rankLoading = false
                             ) 
                         }
-                        Log.d(TAG, "从内存缓存恢复榜单数据：$currentRankType，共${cachedBooks.size}本书")
+                        // 从内存缓存恢复榜单数据成功
                         return@launch
                     }
                 }
@@ -1154,13 +1117,13 @@ class HomeViewModel @Inject constructor(
             
             // 检查分类数据是否为空
             if (currentState.categoryFilters.size <= 1) { // 只有"推荐"分类
-                Log.d(TAG, "检测到分类数据不完整，重新加载")
+                // 检测到分类数据不完整，重新加载
                 loadCategoryFilters()
             }
             
             // 检查推荐数据是否为空
             if (currentState.isRecommendMode && currentState.homeRecommendBooks.isEmpty()) {
-                Log.d(TAG, "检测到推荐数据为空，重新加载")
+                // 检测到推荐数据为空，重新加载
                 loadHomeRecommendBooks()
             }
         }

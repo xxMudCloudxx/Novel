@@ -1,14 +1,42 @@
 package com.novel.page.search.usecase
 
+import android.util.Log
 import com.novel.page.search.repository.SearchRepository
 import com.novel.page.search.repository.PageRespDtoBookInfoRespDto
 import com.novel.page.search.viewmodel.FilterState
 import javax.inject.Inject
 
+/**
+ * 搜索书籍业务用例
+ * 
+ * 职责：
+ * - 封装书籍搜索业务逻辑
+ * - 统一筛选条件处理
+ * - 数据模型转换适配
+ * - 分页查询支持
+ * 
+ * 设计模式：
+ * - Clean Architecture用例层
+ * - Repository模式数据访问
+ * - Result包装错误处理
+ */
 class SearchBooksUseCase @Inject constructor(
     private val searchRepository: SearchRepository
 ) {
     
+    companion object {
+        private const val TAG = "SearchBooksUseCase"
+    }
+    
+    /**
+     * 执行书籍搜索
+     * @param keyword 搜索关键词
+     * @param categoryId 分类ID（可选）
+     * @param filters 筛选条件
+     * @param pageNum 页码（从1开始）
+     * @param pageSize 每页大小
+     * @return 搜索结果包装
+     */
     suspend fun execute(
         keyword: String,
         categoryId: Int? = null,
@@ -17,6 +45,8 @@ class SearchBooksUseCase @Inject constructor(
         pageSize: Int = 20
     ): Result<PageRespDtoBookInfoRespDto> {
         return try {
+            Log.d(TAG, "开始搜索书籍: keyword='$keyword', page=$pageNum")
+            
             val response = searchRepository.searchBooks(
                 keyword = keyword,
                 workDirection = null, // 可以根据需要设置
@@ -32,6 +62,8 @@ class SearchBooksUseCase @Inject constructor(
             )
             
             if (response?.ok == true && response.data != null) {
+                Log.d(TAG, "搜索成功: 共${response.data.total}条结果")
+                
                 // 转换SearchService的响应数据为期望的类型
                 val pageResp = PageRespDtoBookInfoRespDto(
                     pageNum = response.data.pageNum,
@@ -39,32 +71,36 @@ class SearchBooksUseCase @Inject constructor(
                     total = response.data.total,
                     list = response.data.list.map { searchBook ->
                         // 转换SearchService.BookInfo为BookInfoRespDto
-                        com.novel.page.search.viewmodel.BookInfoRespDto(
+                        val bookInfoRespDto = com.novel.page.search.viewmodel.BookInfoRespDto(
                             id = searchBook.id,
-                            categoryId = searchBook.categoryId ?: 0L,
-                            categoryName = searchBook.categoryName ?: "",
-                            picUrl = searchBook.picUrl ?: "",
-                            bookName = searchBook.bookName ?: "",
-                            authorId = searchBook.authorId ?: 0L,
-                            authorName = searchBook.authorName ?: "",
-                            bookDesc = searchBook.bookDesc ?: "",
-                            bookStatus = searchBook.bookStatus ?: 0,
-                            visitCount = searchBook.visitCount ?: 0L,
-                            wordCount = (searchBook.wordCount ?: 0L).toInt(),
-                            commentCount = searchBook.commentCount ?: 0,
-                            firstChapterId = searchBook.firstChapterId ?: 0L,
-                            lastChapterId = searchBook.lastChapterId ?: 0L,
-                            lastChapterName = searchBook.lastChapterName ?: "",
-                            updateTime = searchBook.updateTime ?: ""
+                            categoryId = searchBook.categoryId,
+                            categoryName = searchBook.categoryName,
+                            picUrl = searchBook.picUrl,
+                            bookName = searchBook.bookName,
+                            authorId = searchBook.authorId,
+                            authorName = searchBook.authorName,
+                            bookDesc = searchBook.bookDesc,
+                            bookStatus = searchBook.bookStatus,
+                            visitCount = searchBook.visitCount,
+                            wordCount = searchBook.wordCount,
+                            commentCount = searchBook.commentCount,
+                            firstChapterId = searchBook.firstChapterId,
+                            lastChapterId = searchBook.lastChapterId,
+                            lastChapterName = searchBook.lastChapterName,
+                            updateTime = searchBook.updateTime
                         )
+                        bookInfoRespDto
                     },
                     pages = response.data.pages
                 )
                 Result.success(pageResp)
             } else {
-                Result.failure(Exception(response?.message ?: "搜索失败"))
+                val errorMsg = response?.message ?: "搜索失败"
+                Log.w(TAG, "搜索失败: $errorMsg")
+                Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "搜索异常", e)
             Result.failure(e)
         }
     }

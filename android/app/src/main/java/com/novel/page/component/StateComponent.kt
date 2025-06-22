@@ -9,7 +9,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
@@ -75,7 +74,6 @@ open class StateComponentDefaults : Defaults(), IStateComponentDefaults {
         )
     }
 
-    @OptIn(ExperimentalComposeUiApi::class)
     @Composable
     private fun StateComponentImpl(
         component: StateComponent,

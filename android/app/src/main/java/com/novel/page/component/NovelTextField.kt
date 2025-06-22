@@ -34,18 +34,27 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 带占位符的输入框
+ * 自定义输入框组件
+ * 
+ * 功能：
+ * - 占位符文本显示
+ * - 密码输入支持
+ * - 错误状态显示
+ * - 密码可见性切换
+ * 
  * @param value 输入框的值
- * @param onValueChange 输入框的值改变的回调
+ * @param onValueChange 值改变回调
  * @param modifier 修饰符
- * @param round 圆角
+ * @param round 圆角大小
  * @param placeText 占位符文字
- * @param isPassword 是否是密码输入框
+ * @param isPassword 是否为密码输入框
+ * @param isError 是否为错误状态
+ * @param errorMessage 错误提示信息
  */
 @Composable
 fun NovelTextField(
-    value: String, // 改为 value（与状态绑定）
-    onValueChange: (String) -> Unit = {}, // 新增回调
+    value: String,
+    onValueChange: (String) -> Unit = {},
     modifier: Modifier,
     round: Dp = 26.wdp,
     placeText: String = "",
@@ -66,21 +75,23 @@ fun NovelTextField(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // 如果输入框值为空，则显示占位符
+        // 占位符显示逻辑
         if (value == "" && !hasFocus && !isError) {
             NovelText(
-                text = placeText, // 显示占位符文字
+                text = placeText,
                 style = TextStyle(
                     fontWeight = FontWeight.W500,
                     fontSize = 16.ssp,
                     textAlign = TextAlign.Center
                 ),
-                color = NovelColors.NovelTextGray, // 淡化颜色
+                color = NovelColors.NovelTextGray,
             )
         }
+        
+        // 主要输入框
         BasicTextField(
             value = value,
-            onValueChange = onValueChange, // 绑定回调
+            onValueChange = onValueChange,
             textStyle = TextStyle(
                 fontWeight = FontWeight.W500,
                 fontSize = 16.ssp,
@@ -88,21 +99,19 @@ fun NovelTextField(
                 textAlign = TextAlign.Center,
                 fontFamily = PingFangFamily,
             ),
-            visualTransformation = if (isPassword) { // 核心修改点
+            visualTransformation = if (isPassword) {
                 PasswordVisualTransformation()
             } else {
                 VisualTransformation.None
             },
-
             modifier = Modifier
                 .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
-                    // 监听焦点变化
                     hasFocus = focusState.isFocused
                 }
         )
 
-        // 错误提示区域
+        // 错误提示显示
         if (isError) {
             if (errorMessage != null) {
                 NovelText(
@@ -111,13 +120,13 @@ fun NovelTextField(
                         fontSize = 12.ssp,
                         fontWeight = FontWeight.W400
                     ),
-                    color = NovelColors.NovelError, // 错误提示颜色
+                    color = NovelColors.NovelError,
                     modifier = Modifier.padding(start = 16.wdp, top = 4.wdp)
                 )
             }
         }
 
-        // 密码框才展示可见切换按钮
+        // 密码可见性切换按钮
         if (isPassword && value != "") {
             IconButton(
                 onClick = { passwordVisible = !passwordVisible },

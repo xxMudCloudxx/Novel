@@ -15,7 +15,7 @@ object SearchUtils {
      * 清理搜索关键词
      * 去除首尾空格，过滤特殊字符
      */
-    fun cleanSearchQuery(query: String): String {
+    private fun cleanSearchQuery(query: String): String {
         return query.trim()
             .replace(Regex("[\\n\\r\\t]"), "") // 移除换行符、制表符
             .replace(Regex("\\s+"), " ") // 多个空格合并为一个

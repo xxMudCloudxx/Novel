@@ -39,47 +39,79 @@ import kotlinx.coroutines.launch
 import com.novel.page.component.rememberFlipBookAnimationController
 import com.novel.page.component.GlobalFlipBookOverlay
 
+/**
+ * 应用主页面组件
+ * 
+ * 小说应用的核心导航容器，采用底部导航栏 + 页面容器的经典布局：
+ * 
+ * 🏗️ 架构特性：
+ * - HorizontalPager实现页面水平切换
+ * - 全局3D翻书动画控制器集成
+ * - 底部导航栏状态同步
+ * - React Native混合开发支持
+ * 
+ * 📱 页面结构：
+ * - 首页：书籍推荐和榜单展示
+ * - 分类：书籍分类浏览（待实现）
+ * - 福利：用户登录和活动页面
+ * - 书架：个人书架管理（待实现）
+ * - 我的：用户中心（React Native页面）
+ * 
+ * ✨ 交互特性：
+ * - 防抖点击避免误触
+ * - 平滑的页面切换动画
+ * - 全局动画状态管理
+ */
 @Composable
 fun MainPage() {
-    // 页面内容列表——注意中间第三项是 ChatScreen
+    // 底部导航标签配置
     val labels = listOf("首页", "分类", "福利", "书架", "我的")
     val imageId = listOf(
-        R.drawable.home,
-        R.drawable.clarify,
-        R.drawable.welfare,
-        R.drawable.bookshelf,
-        R.drawable.my
+        R.drawable.home,        // 首页图标
+        R.drawable.clarify,     // 分类图标
+        R.drawable.welfare,     // 福利图标
+        R.drawable.bookshelf,   // 书架图标
+        R.drawable.my           // 我的图标
     )
     val pageCount = labels.size
 
+    // 页面状态管理
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { pageCount })
     val scope = rememberCoroutineScope()
     
     // 在MainPage级别创建全局的翻书动画控制器
+    // 确保所有子页面都能使用同一个动画实例
     val globalFlipBookController = rememberFlipBookAnimationController()
     
     Box(modifier = Modifier.fillMaxSize()) {
-        // 主要内容
+        // 主要内容区域
         Column(Modifier.fillMaxSize()) {
+            // 页面切换容器
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f).background(color = Color(0xffF6F6F6)),
-                userScrollEnabled = false
+                modifier = Modifier
+                    .weight(1f)
+                    .background(color = Color(0xffF6F6F6)), // 统一背景色
+                userScrollEnabled = false // 禁用手势滑动，只能通过底部导航切换
             ) { pageIndex ->
                 when (pageIndex) {
                     0 -> HomePage(
-                        // 传递全局动画控制器给HomePage
+                        // 传递全局动画控制器给首页
                         globalFlipBookController = globalFlipBookController
                     )
-                    2 -> LoginPage()
-                    4 -> ReactNativePage()
+                    2 -> LoginPage()          // 福利页面（登录相关）
+                    4 -> ReactNativePage()    // 我的页面（React Native实现）
                     else -> Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
-                    ) { NovelText("Page Not Found") }
+                    ) { 
+                        // 待实现页面的占位符
+                        NovelText("Page Not Found") 
+                    }
                 }
             }
 
+            // 底部导航栏
             BottomAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -94,10 +126,13 @@ fun MainPage() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // 渲染底部导航按钮
                     labels.forEachIndexed { index, _ ->
                         NavButton(
                             onClick = {
-                                scope.launch { pagerState.animateScrollToPage(index) }
+                                scope.launch { 
+                                    pagerState.animateScrollToPage(index) 
+                                }
                             },
                             isSelect = pagerState.currentPage == index,
                             text = labels[index],
@@ -108,13 +143,26 @@ fun MainPage() {
             }
         }
         
-        // 全局翻书动画覆盖层 - 在最顶层
+        // 全局翻书动画覆盖层 - 放置在最顶层确保正确渲染
         GlobalFlipBookOverlay(
             controller = globalFlipBookController
         )
     }
 }
 
+/**
+ * 底部导航按钮组件
+ * 
+ * 单个导航项的UI实现，包含图标和文字：
+ * - 选中状态的视觉反馈
+ * - 防抖点击处理
+ * - 图标颜色状态管理
+ * 
+ * @param onClick 点击事件回调
+ * @param isSelect 是否为选中状态
+ * @param text 导航项文字
+ * @param id 图标资源ID
+ */
 @Composable
 fun NavButton(
     onClick: () -> Unit = {},
@@ -122,21 +170,25 @@ fun NavButton(
     text: String,
     id: Int
 ) {
+    // 根据选中状态确定颜色
     val color = if (isSelect) NovelColors.NovelText else NovelColors.NovelTextGray
+    
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxHeight()
-            .debounceClickable(onClick = onClick),
+            .debounceClickable(onClick = onClick), // 防抖点击
     ) {
+        // 导航图标
         Image(
             painter = painterResource(id = id),
-            contentDescription = "back",
-            modifier = Modifier
-                .size(20.wdp, 20.wdp),
+            contentDescription = text, // 使用文字作为无障碍描述
+            modifier = Modifier.size(20.wdp, 20.wdp),
             colorFilter = ColorFilter.tint(color)
         )
+        
+        // 导航文字
         NovelText(
             text = text,
             fontSize = 10.ssp,
@@ -147,9 +199,13 @@ fun NavButton(
             color = color
         )
     }
-
 }
 
+/**
+ * 主页面预览组件
+ * 
+ * 用于Android Studio的设计时预览
+ */
 @Preview
 @Composable
 fun MainPagePreview() {

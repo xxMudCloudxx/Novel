@@ -14,7 +14,7 @@ class AddSearchHistoryUseCase @Inject constructor(
      * 添加搜索历史
      * @param query 搜索关键词
      */
-    suspend operator fun invoke(query: String) {
+    operator fun invoke(query: String) {
         if (query.isNotBlank()) {
             searchRepository.addSearchHistory(query.trim())
         }

@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +70,7 @@ data class SwipeBackState(
  * @param onSwipeStateChange 拖拽状态变化回调
  * @param onLeftSwipeToReader 左滑进入阅读器的回调（可选）
  */
-@SuppressLint("RememberReturnType")
+@SuppressLint("RememberReturnType", "ConfigurationScreenWidthHeight")
 fun Modifier.iosSwipeBack(
     edgeWidthDp: Dp = 300.wdp,
     firstThreshold: Float = 0.15f,
@@ -98,8 +100,8 @@ fun Modifier.iosSwipeBack(
     
     // 左滑手势状态
     var isLeftSwipeGesture by remember { mutableStateOf(false) }
-    var leftSwipeDistance by remember { mutableStateOf(0f) }
-    var leftSwipeStartTime by remember { mutableStateOf(0L) }
+    var leftSwipeDistance by remember { mutableFloatStateOf(0f) }
+    var leftSwipeStartTime by remember { mutableLongStateOf(0L) }
 
     // 提示文字状态 - 使用 derivedStateOf 优化性能
     val hintText by remember {

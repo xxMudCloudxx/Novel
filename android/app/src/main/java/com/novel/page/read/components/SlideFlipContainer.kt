@@ -10,17 +10,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import com.novel.page.read.viewmodel.FlipDirection
-import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.SwipeBackContainer
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
-import com.novel.utils.wdp
 
 /**
  * 平移翻页容器 - ViewPager风格，支持章节切换
@@ -31,10 +30,9 @@ fun SlideFlipContainer(
     uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
-    onChapterChange: (FlipDirection) -> Unit,
     onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit,
-    onSlideIndexChange: ((Int) -> Unit)? = null // 新增：平移模式专用的索引更新回调
+    onSlideIndexChange: ((Int) -> Unit)? = null // 新增：平移模式专用的索引更新回调){}
 ) {
     val virtualPages = uiState.virtualPages
     val virtualPageIndex = uiState.virtualPageIndex
@@ -56,7 +54,7 @@ fun SlideFlipContainer(
     val isOnBookDetailPage = currentVirtualPage is VirtualPage.BookDetailPage
 
     // 状态管理 - 修复循环更新问题
-    var lastKnownVirtualPageIndex by remember { mutableStateOf(virtualPageIndex) }
+    var lastKnownVirtualPageIndex by remember { mutableIntStateOf(virtualPageIndex) }
     var isUserScrolling by remember { mutableStateOf(false) }
     var shouldSyncFromViewModel by remember { mutableStateOf(false) }
 
@@ -140,27 +138,10 @@ fun SlideFlipContainer(
                 page = "",
                 chapterName = uiState.currentChapter?.chapterName ?: "",
                 isFirstPage = false,
-                isLastPage = false,
                 isBookDetailPage = true,
                 bookInfo = bookInfo,
-                nextChapterData = uiState.nextChapterData,
-                previousChapterData = uiState.previousChapterData,
                 readerSettings = readerSettings,
-                onSwipeBack = onSwipeBack,
-                onPageChange = { direction ->
-                    // 书籍详情页中的翻页也使用专用回调
-                    val newIndex = when (direction) {
-                        FlipDirection.NEXT -> virtualPageIndex + 1
-                        FlipDirection.PREVIOUS -> virtualPageIndex - 1
-                    }
-                    Log.d("SlideFlipContainer", "Page change in book detail: $virtualPageIndex -> $newIndex")
-                    if (newIndex in virtualPages.indices) {
-                        onSlideIndexChange?.invoke(newIndex) ?: onPageChange(direction)
-                    }
-                },
                 showNavigationInfo = false,
-                currentPageIndex = 0,
-                totalPages = 1,
                 onClick = onClick
             )
         }
@@ -187,17 +168,10 @@ fun SlideFlipContainer(
                         page = "",
                         chapterName = uiState.currentChapter?.chapterName ?: "",
                         isFirstPage = false,
-                        isLastPage = false,
                         isBookDetailPage = true,
                         bookInfo = bookInfo,
-                        nextChapterData = uiState.nextChapterData,
-                        previousChapterData = uiState.previousChapterData,
                         readerSettings = readerSettings,
-                        onSwipeBack = onSwipeBack,
-                        onPageChange = { onPageChange(it) },
                         showNavigationInfo = false,
-                        currentPageIndex = 0,
-                        totalPages = 1,
                         onClick = onClick
                     )
                 }
@@ -208,13 +182,7 @@ fun SlideFlipContainer(
                             page = chapterData.pages.getOrNull(virtualPage.pageIndex) ?: "",
                             chapterName = chapterData.chapterName,
                             isFirstPage = virtualPage.pageIndex == 0,
-                            isLastPage = virtualPage.pageIndex == chapterData.pages.size - 1,
-                            nextChapterData = if (virtualPage.pageIndex == chapterData.pages.size - 1) uiState.nextChapterData else null,
-                            previousChapterData = if (virtualPage.pageIndex == 0) uiState.previousChapterData else null,
                             readerSettings = readerSettings,
-                            onPageChange = { onPageChange(it) },
-                            currentPageIndex = virtualPage.pageIndex + 1,
-                            totalPages = chapterData.pages.size,
                             onClick = onClick
                         )
                     }

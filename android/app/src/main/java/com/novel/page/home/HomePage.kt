@@ -127,7 +127,7 @@ fun HomePage(
     } else {
         SwipeRefresh(
             state = swipeRefreshState,
-            onRefresh = { viewModel.onAction(HomeAction.RefreshRecommend) },
+            onRefresh = { viewModel.onAction(HomeAction.RestoreData) },
             modifier = Modifier.fillMaxSize()
         ) {
         LazyColumn(
@@ -142,10 +142,8 @@ fun HomePage(
             // 1. 顶部搜索栏和分类按钮
             item(key = "top_bar") {
                 HomeTopBar(
-                    searchQuery = uiState.searchQuery,
-                    onSearchQueryChange = { viewModel.onAction(HomeAction.UpdateSearchQuery(it)) },
                     onSearchClick = { viewModel.onAction(HomeAction.NavigateToSearch(uiState.searchQuery)) },
-                    onCategoryClick = { viewModel.onAction(HomeAction.OnCategoryButtonClick) },
+                    onCategoryClick = { viewModel.onAction(HomeAction.NavigateToCategory(1L)) },
                     modifier = Modifier.padding(horizontal = 15.wdp)
                 )
             }
@@ -228,7 +226,7 @@ fun HomePage(
                     // 分类模式：显示搜索结果数据 - 使用放大透明动画
                     HomeRecommendGrid(
                         books = uiState.recommendBooks,
-                        onBookClick = { viewModel.onAction(HomeAction.OnRecommendBookClick(it)) },
+                        onBookClick = { viewModel.onAction(HomeAction.NavigateToBookDetail(it)) },
                         onBookClickWithPosition = { bookId, offset, size ->
                             // 分类推荐点击触发放大透明动画
                             coroutineScope.launch {
@@ -260,7 +258,6 @@ fun HomePage(
                     HomeRecommendLoadMoreIndicator(
                         isLoading = uiState.homeRecommendLoading,
                         hasMoreData = uiState.hasMoreHomeRecommend,
-                        onLoadMore = { viewModel.onAction(HomeAction.LoadMoreHomeRecommend) },
                         totalDataCount = uiState.homeRecommendBooks.size
                     )
                 } else {
@@ -268,7 +265,6 @@ fun HomePage(
                     HomeRecommendLoadMoreIndicator(
                         isLoading = uiState.recommendLoading,
                         hasMoreData = uiState.hasMoreRecommend,
-                        onLoadMore = { viewModel.onAction(HomeAction.LoadMoreRecommend) },
                         totalDataCount = uiState.recommendBooks.size
                     )
                 }

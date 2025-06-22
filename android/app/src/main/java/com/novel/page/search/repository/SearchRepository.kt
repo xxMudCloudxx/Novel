@@ -1,15 +1,11 @@
 package com.novel.page.search.repository
 
-import android.content.Context
 import android.util.Log
 import com.novel.utils.network.api.front.SearchService
-import com.novel.utils.network.api.front.BookService
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.page.search.viewmodel.BookInfoRespDto
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -17,68 +13,84 @@ import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.cache.searchBooksCached
 import com.novel.utils.network.cache.onSuccess
 import com.novel.utils.network.cache.onError
-import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
-import com.novel.repository.CachedBookRepository
-
-/**
- * 搜索历史数据结构
- */
-data class SearchHistoryData(
-    val history: List<String> = emptyList(),
-    val isExpanded: Boolean = false
-)
+import com.novel.utils.network.repository.CachedBookRepository
 
 /**
  * 榜单数据结构
+ * 
+ * 包含三种类型榜单的完整数据
  */
 data class RankingData(
+    /** 小说榜单列表 */
     val novelRanking: List<SearchRankingItem> = emptyList(),
+    /** 短剧榜单列表 */
     val dramaRanking: List<SearchRankingItem> = emptyList(),
+    /** 新书榜单列表 */
     val newBookRanking: List<SearchRankingItem> = emptyList()
 )
 
 /**
- * REST响应包装类 for 分页书籍信息
- */
-data class RestRespPageRespDtoBookInfoRespDto(
-    val code: Int? = null,
-    val message: String? = null,
-    val data: PageRespDtoBookInfoRespDto? = null,
-    val ok: Boolean? = null
-)
-
-/**
- * 分页响应DTO for 书籍信息
+ * 书籍信息分页响应DTO
+ * 
+ * 标准分页数据结构，包含分页信息和书籍列表
  */
 data class PageRespDtoBookInfoRespDto(
+    /** 当前页码 */
     val pageNum: Long? = null,
+    /** 每页大小 */
     val pageSize: Long? = null,
+    /** 总记录数 */
     val total: Long? = null,
+    /** 书籍信息列表 */
     val list: List<BookInfoRespDto> = emptyList(),
+    /** 总页数 */
     val pages: Long? = null
 )
 
 /**
- * 搜索数据仓库 - 集成缓存策略
+ * 搜索数据仓库
+ * 
+ * 核心功能：
+ * - 搜索历史管理：本地存储用户搜索记录，支持增删查改
+ * - 榜单数据获取：集成缓存策略的多类型榜单数据
+ * - 书籍搜索：支持多条件筛选的书籍搜索功能
+ * - 状态管理：搜索历史展开状态的持久化
+ * 
+ * 技术特点：
+ * - 单例模式设计，全局数据一致性
+ * - 集成缓存管理，提升用户体验
+ * - JSON序列化存储，数据结构灵活
+ * - 完善的异常处理和日志记录
+ * - 依赖注入，便于测试和维护
+ * 
+ * 存储机制：
+ * - 使用NovelUserDefaults进行本地配置存储
+ * - 搜索历史限制为10条，自动清理旧记录
+ * - 支持历史展开状态的保存和恢复
  */
 @Singleton
 class SearchRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
+    /** 搜索服务，提供网络搜索功能 */
     private val searchService: SearchService,
-    private val bookService: BookService,
+    /** 用户配置存储，管理本地设置 */
     private val userDefaults: NovelUserDefaults,
+    /** JSON序列化工具 */
     private val gson: Gson,
+    /** 网络缓存管理器 */
     private val cacheManager: NetworkCacheManager,
+    /** 缓存书籍仓库，提供带缓存的数据访问 */
     private val cachedBookRepository: CachedBookRepository
 ) {
     
     companion object {
         private const val TAG = "SearchRepository"
-        private const val MAX_HISTORY_SIZE = 10
+        /** 搜索历史最大保存数量 */
         private const val MAX_SEARCH_HISTORY = 10
         
-        // Storage keys
+        // 本地存储键名
+        /** 搜索历史存储键 */
         private const val SEARCH_HISTORY_KEY = "search_history"
+        /** 历史展开状态存储键 */
         private const val HISTORY_EXPANDED_KEY = "history_expanded"
     }
     
@@ -172,7 +184,7 @@ class SearchRepository @Inject constructor(
     /**
      * 获取推荐榜单数据 - 使用缓存优先策略
      */
-    suspend fun getNovelRanking(): List<SearchRankingItem> {
+    private suspend fun getNovelRanking(): List<SearchRankingItem> {
         return try {
             Log.d(TAG, "获取推荐榜单数据")
             val rankBooks = cachedBookRepository.getVisitRankBooks(CacheStrategy.CACHE_FIRST)
@@ -222,7 +234,7 @@ class SearchRepository @Inject constructor(
     /**
      * 获取热搜短剧榜数据 - 使用缓存优先策略
      */
-    suspend fun getDramaRanking(): List<SearchRankingItem> {
+    private suspend fun getDramaRanking(): List<SearchRankingItem> {
         return try {
             Log.d(TAG, "获取热搜短剧榜数据")
             val rankBooks = cachedBookRepository.getUpdateRankBooks(CacheStrategy.CACHE_FIRST)
@@ -272,7 +284,7 @@ class SearchRepository @Inject constructor(
     /**
      * 获取新书榜单数据 - 使用缓存优先策略
      */
-    suspend fun getNewBookRanking(): List<SearchRankingItem> {
+    private suspend fun getNewBookRanking(): List<SearchRankingItem> {
         return try {
             Log.d(TAG, "获取新书榜单数据")
             val rankBooks = cachedBookRepository.getNewestRankBooks(CacheStrategy.CACHE_FIRST)
@@ -376,12 +388,12 @@ class SearchRepository @Inject constructor(
                 pageSize = pageSize,
                 cacheManager = cacheManager,
                 strategy = strategy,
-                onCacheUpdate = { response ->
+                onCacheUpdate = {
                     Log.d(TAG, "搜索结果缓存已更新: keyword=$keyword")
                 }
-            ).onSuccess { response, fromCache ->
+            ).onSuccess { _, fromCache ->
                 Log.d(TAG, "搜索成功，来源: ${if (fromCache) "缓存" else "网络"}，关键词: $keyword")
-            }.onError { error, cachedData ->
+            }.onError { error, _ ->
                 Log.e(TAG, "搜索失败，关键词: $keyword", error)
             }.let { result ->
                 when (result) {
@@ -398,7 +410,7 @@ class SearchRepository @Inject constructor(
     /**
      * 清理搜索缓存
      */
-    suspend fun clearSearchCache() {
+    fun clearSearchCache() {
         try {
             // 清理搜索相关缓存（需要遍历所有可能的缓存键）
             // 这里可以根据需要实现更精确的缓存清理逻辑

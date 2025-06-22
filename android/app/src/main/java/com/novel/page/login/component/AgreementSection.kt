@@ -1,5 +1,6 @@
 package com.novel.page.login.component
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -25,13 +26,18 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 
 /**
- * 录页 - 协议
- * @param operator 运营商
- * @param isChecked 是否选中
- * @param onCheckedChange 选中状态改变回调
- * @param onTelServiceClick 点击 “认证服务协议”
- * @param onUserAgreementClick 点击 “用户协议”
- * @param onRegisterAgreementClick 点击 “注册协议”
+ * 登录页面协议同意组件
+ * 
+ * 包含用户协议、注册协议和运营商认证服务协议的勾选框和链接
+ * 支持协议文本点击和同意状态切换
+ * 
+ * @param operator 运营商名称
+ * @param isChecked 是否已勾选同意
+ * @param onCheckedChange 勾选状态变化回调
+ * @param onTelServiceClick 点击运营商认证服务协议回调
+ * @param onUserAgreementClick 点击用户协议回调
+ * @param onRegisterAgreementClick 点击注册协议回调
+ * @param modifier 修饰符
  */
 @Composable
 fun AgreementSection(
@@ -43,11 +49,12 @@ fun AgreementSection(
     onRegisterAgreementClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    //—— ① 预取主题色，避免在 Canvas DrawScope 内重复调用 @Composable Getter
+    val TAG = "AgreementSection"
+    // 预取主题色，避免在Canvas DrawScope内重复调用@Composable Getter
     val checkedColor = NovelColors.NovelMainLight
     val uncheckedColor = NovelColors.NovelTextGray
 
-    //—— ② 统一文本样式
+    // 统一文本样式
     val textStyle = androidx.compose.ui.text.TextStyle(
         color = NovelColors.NovelTextGray,
         fontSize = 12.ssp,
@@ -65,18 +72,22 @@ fun AgreementSection(
         Row(
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // 自定义勾选框
             Box(
                 modifier = Modifier
                     .size(12.wdp)
-                    .debounceClickable(onClick = { onCheckedChange(!isChecked) }),
+                    .debounceClickable(onClick = { 
+                        Log.d(TAG, "切换协议同意状态: $isChecked -> ${!isChecked}")
+                        onCheckedChange(!isChecked) 
+                    }),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.matchParentSize()) {
                     if (isChecked) {
-                        // 实心圆
+                        // 绘制实心圆
                         drawCircle(color = checkedColor, style = Fill)
                     } else {
-                        // 空心圆
+                        // 绘制空心圆
                         drawCircle(
                             color = uncheckedColor,
                             style = Stroke(width = 1.wdp.toPx())
@@ -95,14 +106,17 @@ fun AgreementSection(
 
             Spacer(modifier = Modifier.width(8.wdp))
 
-            // 构建第一行可点击文本
+            // 构建第一行可点击文本（运营商认证服务协议）
             val annotatedText = buildAnnotatedString {
                 append("已阅读并同意 ")
                 addLink(
                     LinkAnnotation.Clickable(
                         tag = "TEL",
                         styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
-                        linkInteractionListener = { onTelServiceClick() }
+                        linkInteractionListener = { 
+                            Log.d(TAG, "点击运营商认证服务协议: $operator")
+                            onTelServiceClick() 
+                        }
                     ),
                     start = this.length,
                     end = this.length + operator.length + "认证服务协议".length
@@ -117,13 +131,16 @@ fun AgreementSection(
             )
         }
 
-        // 构建第二行可点击文本
+        // 构建第二行可点击文本（用户协议和注册协议）
         val policyText = buildAnnotatedString {
             addLink(
                 LinkAnnotation.Clickable(
                     tag = "USER",
                     styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
-                    linkInteractionListener = { onUserAgreementClick() }
+                    linkInteractionListener = { 
+                        Log.d(TAG, "点击用户协议")
+                        onUserAgreementClick() 
+                    }
                 ),
                 start = this.length,
                 end = this.length + "用户协议".length
@@ -134,7 +151,10 @@ fun AgreementSection(
                 LinkAnnotation.Clickable(
                     tag = "REGISTER",
                     styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
-                    linkInteractionListener = { onRegisterAgreementClick() }
+                    linkInteractionListener = { 
+                        Log.d(TAG, "点击注册协议")
+                        onRegisterAgreementClick() 
+                    }
                 ),
                 start = this.length,
                 end = this.length + "注册协议".length

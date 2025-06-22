@@ -1,16 +1,13 @@
 package com.novel.page.search.component
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
@@ -25,7 +22,7 @@ fun SearchFilterChip(
     text: String,
     selected: Boolean = false,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val backgroundColor = if (selected) {
         NovelColors.NovelMain.copy(alpha = 0.1f)
@@ -67,7 +64,7 @@ fun CategoryFilterChip(
     text: String,
     selected: Boolean = false,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val textColor = if (selected) {
         NovelColors.NovelMain

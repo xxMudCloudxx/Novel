@@ -24,7 +24,6 @@ import com.novel.utils.wdp
 import androidx.compose.ui.graphics.TransformOrigin
 import com.facebook.react.uimanager.PixelUtil.dpToPx
 import kotlinx.coroutines.coroutineScope
-import com.novel.page.book.BookDetailPage
 import com.novel.utils.NavViewModel
 import android.util.Log
 import com.novel.page.read.ReaderPage
@@ -204,11 +203,6 @@ class FlipBookAnimationController {
         )
 
         coroutineScope {
-            // 优化：使用单个动画状态对象减少状态更新
-            val animationState = object {
-                var coverRotation = 0f
-                var scale = 0f
-            }
 
             // 创建并行动画
             val coverRotationAnimatable = Animatable(0f)
@@ -280,9 +274,7 @@ class FlipBookAnimationController {
      * 开始倒放动画（合上书籍）
      * 恢复原始图片显示，隐藏全局动画
      */
-    private suspend fun startReverseAnimation(
-        bookId: String,
-    ) {
+    private suspend fun startReverseAnimation() {
         val currentAnimationType = _animationState.animationType
         
         _animationState = _animationState.copy(
@@ -434,9 +426,7 @@ class FlipBookAnimationController {
     suspend fun triggerReverseAnimation() {
         if (_animationState.isAnimating && _animationState.isOpening) {
             Log.d("FlipBookController", "开始执行倒放动画: ${_animationState.animationType}")
-            startReverseAnimation(
-                bookId = _animationState.bookId ?: "",
-            )
+            startReverseAnimation()
         } else {
             Log.w("FlipBookController", "无法触发倒放动画 - isAnimating: ${_animationState.isAnimating}, isOpening: ${_animationState.isOpening}")
         }
@@ -526,7 +516,7 @@ fun GlobalFlipBookOverlay(
                 
                 AnimationType.FLIP_3D -> {
                     // 3D翻书动画：原有的缩放动画
-                    val (currentScale, transformOrigin) = remember(
+                    val (currentScale, _) = remember(
                         animationState.scaleProgress,
                         animationState.originalPosition,
                         screenSize
@@ -602,9 +592,8 @@ fun GlobalFlipBookOverlay(
                         val offsetX = baseX + (centerX - baseX - animationState.originalSize.width * 0.5f) * easedProgress
                         val offsetY = baseY + (centerY - baseY - animationState.originalSize.height * 0.5f) * easedProgress
                         val scale = 1f + (animationState.targetScale - 1f) * scaleProgress
-                        val alpha = alphaProgress
 
-                        Tuple4(offsetX, offsetY, scale, alpha)
+                        Tuple4(offsetX, offsetY, scale, alphaProgress)
                     }
 
                     Box(

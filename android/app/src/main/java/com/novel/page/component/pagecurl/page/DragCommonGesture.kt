@@ -2,6 +2,7 @@
 
 package com.novel.page.component.pagecurl.page
 
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector4D
 import androidx.compose.animation.core.VectorConverter
@@ -45,9 +46,8 @@ internal data class DragConfig(
 )
 
 /**
- * 检测卷曲手势
- * 
- * 这是PageCurl组件的核心手势检测逻辑，支持拖拽和惯性滑动
+ * 检测卷曲手势的核心函数
+ * 支持拖拽和惯性滑动，提供流畅的翻页体验
  *
  * @param scope 协程作用域
  * @param newEdgeCreator 新边缘创建器
@@ -58,17 +58,26 @@ internal suspend fun PointerInputScope.detectCurlGestures(
     newEdgeCreator: NewEdgeCreator,
     getConfig: (Offset, Offset) -> DragConfig?,
 ) {
+    val TAG = "DragCommonGesture"
     // 使用速度追踪器支持惯性滑动
     val velocityTracker = VelocityTracker()
 
     var config: DragConfig? = null
     var startOffset: Offset = Offset.Zero
 
+    Log.d(TAG, "开始监听卷曲手势")
+
     detectCustomDragGestures(
         onDragStart = { start, end ->
             startOffset = start
             config = getConfig(start, end)
-            config != null
+            val hasConfig = config != null
+            
+            if (hasConfig) {
+                Log.v(TAG, "开始拖拽 - 起始位置: $start")
+            }
+            
+            hasConfig
         },
         onDragEnd = { endOffset, complete ->
             config?.apply {
@@ -87,8 +96,11 @@ internal suspend fun PointerInputScope.detectCurlGestures(
                     )
                 }
 
+                val isSuccessful = complete && isDragSucceed(startOffset, flingEndOffset)
+                Log.d(TAG, "拖拽结束 - 成功: $isSuccessful, 完成: $complete")
+
                 scope.launch {
-                    if (complete && isDragSucceed(startOffset, flingEndOffset)) {
+                    if (isSuccessful) {
                         // 拖拽成功，完成翻页动画
                         try {
                             edge.animateTo(end)
@@ -110,6 +122,7 @@ internal suspend fun PointerInputScope.detectCurlGestures(
         onDrag = { change, _ ->
             config?.apply {
                 if (!isEnabled()) {
+                    Log.w(TAG, "拖拽被禁用，取消手势")
                     throw CancellationException()
                 }
 
@@ -188,7 +201,7 @@ internal abstract class NewEdgeCreator {
     abstract fun createNew(size: IntSize, startOffset: Offset, currentOffset: Offset): Edge
 
     /**
-     * 创建向量对
+     * 创建向量对，计算页面卷曲的基础向量
      * 
      * @param size 容器尺寸
      * @param startOffset 起始偏移
@@ -203,6 +216,7 @@ internal abstract class NewEdgeCreator {
 
     /**
      * 默认边缘创建器
+     * 创建基础的卷曲边缘效果
      */
     class Default : NewEdgeCreator() {
         override fun createNew(size: IntSize, startOffset: Offset, currentOffset: Offset): Edge {
@@ -213,6 +227,7 @@ internal abstract class NewEdgeCreator {
 
     /**
      * 页面边缘创建器
+     * 创建更真实的页面翻页效果
      */
     class PageEdge : NewEdgeCreator() {
         override fun createNew(size: IntSize, startOffset: Offset, currentOffset: Offset): Edge {

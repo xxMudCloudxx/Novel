@@ -1,28 +1,23 @@
 package com.novel.page.read.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,20 +25,16 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.novel.page.component.NovelText
 import com.novel.page.component.PaperTexture
-import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.utils.HtmlTextUtil
 import com.novel.utils.ssp
 import com.novel.utils.wdp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -79,14 +70,11 @@ private fun ChapterContentText(content: String, readerSettings: ReaderSettings, 
  * 上下滚动容器 - 章节无缝衔接版本，包含纸张纹理，支持边界检测和章节切换
  * 优化版：动态更新导航信息，无缝拼接章节内容，实时更新页码和章节信息
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VerticalScrollContainer(
     uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onChapterChange: (FlipDirection) -> Unit,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
-    onSwipeBack: (() -> Unit)? = null,
     onVerticalScrollPageChange: (Int) -> Unit,
     onClick: () -> Unit
 ) {
@@ -98,19 +86,19 @@ fun VerticalScrollContainer(
     
     // 当前显示的页码信息（实时计算）
     var currentPageInfo by remember { mutableStateOf("1 / 1") }
-    var currentAbsolutePage by remember { mutableStateOf(1) }
+    var currentAbsolutePage by remember { mutableIntStateOf(1) }
 
     // 实时同步页面变化到 ViewModel - 添加防抖机制
-    var lastReportedPage by remember { mutableStateOf(-1) }
+    var lastReportedPage by remember { mutableIntStateOf(-1) }
     
     // 动态更新当前显示的章节名称和页码信息
     LaunchedEffect(listState) {
         snapshotFlow { 
             listState.layoutInfo.visibleItemsInfo to listState.firstVisibleItemScrollOffset 
         }
-            .map { (visibleItems, scrollOffset) ->
+            .map { (visibleItems, _) ->
                 // 计算当前滚动位置对应的章节和页码
-                calculateCurrentPositionInfo(visibleItems, scrollOffset, uiState, loadedChapters)
+                calculateCurrentPositionInfo(visibleItems, uiState, loadedChapters)
             }
             .distinctUntilChanged()
             .collect { positionInfo ->
@@ -255,15 +243,14 @@ private fun LoadingItem(readerSettings: ReaderSettings, text: String) {
  * 返回 Triple(章节名称, 页码信息, 绝对页码)
  */
 private fun calculateCurrentPositionInfo(
-    visibleItems: List<androidx.compose.foundation.lazy.LazyListItemInfo>,
-    scrollOffset: Int,
+    visibleItems: List<LazyListItemInfo>,
     uiState: ReaderUiState,
     loadedChapters: List<PageData>
 ): Triple<String, String, Int>? {
     if (visibleItems.isEmpty() || loadedChapters.isEmpty()) return null
 
     // 找到当前可见的主要章节（占据最大可见面积的章节）
-    val mainVisibleChapter = findMainVisibleChapter(visibleItems, scrollOffset, loadedChapters)
+    val mainVisibleChapter = findMainVisibleChapter(visibleItems, loadedChapters)
         ?: return null
 
     val (chapterData, visibleOffset) = mainVisibleChapter
@@ -284,7 +271,7 @@ private fun calculateCurrentPositionInfo(
     )
 
     // 计算总页数
-    val totalPages = calculateTotalPages(uiState, loadedChapters)
+    val totalPages = calculateTotalPages(uiState)
 
     val pageInfo = "$absolutePage / $totalPages"
 
@@ -295,8 +282,7 @@ private fun calculateCurrentPositionInfo(
  * 找到占据最大可见面积的章节 - 改进版，支持更精确的滚动偏移计算
  */
 private fun findMainVisibleChapter(
-    visibleItems: List<androidx.compose.foundation.lazy.LazyListItemInfo>,
-    scrollOffset: Int,
+    visibleItems: List<LazyListItemInfo>,
     loadedChapters: List<PageData>
 ): Pair<PageData, Float>? {
     // 找到第一个可见的章节项
@@ -311,7 +297,7 @@ private fun findMainVisibleChapter(
     // 计算更精确的可见偏移比例
     val visibleOffset = if (firstChapterItem.size > 0) {
         // 考虑第一个可见项的滚动偏移
-        val itemVisibleHeight = firstChapterItem.size - (-firstChapterItem.offset).coerceAtLeast(0)
+        firstChapterItem.size - (-firstChapterItem.offset).coerceAtLeast(0)
         val scrollProgress = (-firstChapterItem.offset).toFloat() / firstChapterItem.size.toFloat()
         scrollProgress.coerceIn(0f, 1f)
     } else 0f
@@ -382,14 +368,14 @@ private fun calculateAbsolutePageNumber(
     for (i in 0 until currentChapterIndex) {
         val chapter = chapterList[i]
         val loadedChapter = loadedChapters.find { it.chapterId == chapter.id }
-        if (loadedChapter != null) {
-            pagesBeforeCurrentChapter += if (loadedChapter.pages.isNotEmpty()) {
+        pagesBeforeCurrentChapter += if (loadedChapter != null) {
+            if (loadedChapter.pages.isNotEmpty()) {
                 loadedChapter.pages.size
             } else {
                 estimateChapterPages(loadedChapter.content, uiState.readerSettings)
             }
         } else {
-            pagesBeforeCurrentChapter += 10 // 默认估算
+            10 // 默认估算
         }
     }
 
@@ -400,8 +386,7 @@ private fun calculateAbsolutePageNumber(
  * 计算总页数
  */
 private fun calculateTotalPages(
-    uiState: ReaderUiState,
-    loadedChapters: List<PageData>
+    uiState: ReaderUiState
 ): Int {
     // 优先使用页码缓存
     if (uiState.pageCountCache != null) {

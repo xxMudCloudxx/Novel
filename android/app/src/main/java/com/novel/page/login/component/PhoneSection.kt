@@ -11,8 +11,12 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 手机号输入框
- * @param phone 手机号
+ * 手机号展示组件
+ * 
+ * 显示用户的手机号码，支持空值处理
+ * 包含测试标签，便于UI自动化测试
+ * 
+ * @param phone 手机号码字符串，为空时显示默认提示文字
  */
 @Composable
 fun PhoneSection(phone: String) {
@@ -24,6 +28,6 @@ fun PhoneSection(phone: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 22.5.wdp, top = 5.wdp, bottom = 9.wdp)
-            .testTag("PhoneText")
+            .testTag("PhoneText") // 测试标签
     )
 }

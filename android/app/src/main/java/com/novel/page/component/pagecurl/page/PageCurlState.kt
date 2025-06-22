@@ -8,6 +8,7 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,7 +63,7 @@ class PageCurlState(
     /**
      * 可观察的当前页面索引
      */
-    var current: Int by mutableStateOf(initialCurrent)
+    var current: Int by mutableIntStateOf(initialCurrent)
         internal set
 
     /**

@@ -16,6 +16,29 @@ import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 用户服务类
+ * 
+ * 核心功能：
+ * - 用户认证：登录、注册、验证码处理
+ * - 用户信息管理：查询、更新用户资料
+ * - 书架操作：添加/移除书籍、状态查询
+ * - 评论系统：发布、修改、删除、查询评论
+ * - 用户反馈：意见建议提交
+ * 
+ * 技术特点：
+ * - 单例模式设计，全局唯一实例
+ * - 基于ApiService的统一网络调用
+ * - 完善的异步回调和协程支持
+ * - 统一的响应处理和错误处理
+ * - 详细的操作日志记录
+ * 
+ * 数据结构：
+ * - 登录注册相关DTO
+ * - 用户信息相关DTO
+ * - 分页响应和评论相关DTO
+ * - 统一的基础响应格式
+ */
 @Singleton
 class UserService @Inject constructor() {
     
@@ -332,8 +355,6 @@ class UserService @Inject constructor() {
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
         Log.d("UserService", "开始 submitFeedback()，参数：$feedback")
-        
-        val json = Gson().toJson(feedback)
         
         ApiService.post(
             baseUrl = BASE_URL_USER,

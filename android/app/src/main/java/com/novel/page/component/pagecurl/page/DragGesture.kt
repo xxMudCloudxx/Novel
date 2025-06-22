@@ -1,5 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
+import android.util.Log
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -11,9 +12,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * 手势拖拽修饰符
- * 
- * 基于拖拽方向的交互模式，根据手势方向自动判断前进或后退
+ * 基于拖拽方向的手势交互修饰符
+ * 根据手势方向自动判断前进或后退翻页
  *
  * @param dragInteraction 拖拽交互配置
  * @param state PageCurl内部状态
@@ -35,10 +35,20 @@ internal fun Modifier.dragGesture(
     val isEnabledForward = rememberUpdatedState(enabledForward)
     val isEnabledBackward = rememberUpdatedState(enabledBackward)
 
+    Log.d("DragGesture", "配置拖拽手势 - 向前: $enabledForward, 向后: $enabledBackward")
+
     pointerInput(state) {
         // 计算目标区域的实际像素坐标
-        val forwardTargetRect by lazy { dragInteraction.forward.target.multiply(size) }
-        val backwardTargetRect by lazy { dragInteraction.backward.target.multiply(size) }
+        val forwardTargetRect by lazy { 
+            val rect = dragInteraction.forward.target.multiply(size)
+            Log.v("DragGesture", "向前拖拽区域: $rect")
+            rect
+        }
+        val backwardTargetRect by lazy { 
+            val rect = dragInteraction.backward.target.multiply(size)
+            Log.v("DragGesture", "向后拖拽区域: $rect")
+            rect
+        }
 
         // 向前拖拽配置
         val forwardConfig = DragConfig(
@@ -47,7 +57,10 @@ internal fun Modifier.dragGesture(
             end = state.leftEdge,
             isEnabled = { isEnabledForward.value },
             isDragSucceed = { start, end -> end.x < start.x }, // 向左拖拽
-            onChange = { onChange(+1) }
+            onChange = { 
+                Log.d("DragGesture", "向前翻页")
+                onChange(+1) 
+            }
         )
         
         // 向后拖拽配置
@@ -57,7 +70,10 @@ internal fun Modifier.dragGesture(
             end = state.rightEdge,
             isEnabled = { isEnabledBackward.value },
             isDragSucceed = { start, end -> end.x > start.x }, // 向右拖拽
-            onChange = { onChange(-1) }
+            onChange = { 
+                Log.d("DragGesture", "向后翻页")
+                onChange(-1) 
+            }
         )
 
         // 检测卷曲手势
@@ -69,8 +85,10 @@ internal fun Modifier.dragGesture(
             },
             getConfig = { start, end ->
                 val config = if (forwardTargetRect.contains(start) && end.x < start.x) {
+                    Log.v("DragGesture", "检测到向前拖拽手势")
                     forwardConfig
                 } else if (backwardTargetRect.contains(start) && end.x > start.x) {
+                    Log.v("DragGesture", "检测到向后拖拽手势")
                     backwardConfig
                 } else {
                     null

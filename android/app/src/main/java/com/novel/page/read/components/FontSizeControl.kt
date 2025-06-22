@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -21,57 +22,30 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 优化后：不在组件内部再存一份 state，只依据外层传入的 fontSize 来渲染并判断可点范围
+ * 字体大小控制组件
+ * 
+ * 提供字体大小的增大和减小操作
+ * 使用预定义的字号列表，支持范围限制和防抖点击
+ * 
+ * @param fontSize 当前字体大小
+ * @param onFontSizeChange 字体大小变化回调
  */
 @Composable
 fun FontSizeControl(
     fontSize: Int,
     onFontSizeChange: (Int) -> Unit
 ) {
-    // 预定义的字号列表（可根据需求增减）
+    val TAG = "FontSizeControl"
+    // 预定义的字号列表（12-44）
     val fontSizes = listOf(
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23,
-        24,
-        25,
-        26,
-        27,
-        28,
-        29,
-        30,
-        31,
-        32,
-        33,
-        34,
-        35,
-        36,
-        37,
-        38,
-        39,
-        40,
-        41,
-        42,
-        43,
-        44
+        12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44
     )
 
-    // 找到当前 fontSize 在 fontSizes 列表里的索引
-    // 如果传进来的 fontSize 不在列表里，就把索引当作 -1（之后会把它视作"可以递增到第一个"）
+    // 找到当前字体大小在列表中的索引
     val currentIndex = fontSizes.indexOf(fontSize).coerceAtLeast(0)
 
-    // 是否能减小（大于最小一档）
+    // 边界检查
     val canDecrease = currentIndex > 0
-    // 是否能增大（小于最大一档）
     val canIncrease = currentIndex < fontSizes.size - 1
 
     Row(
@@ -79,14 +53,14 @@ fun FontSizeControl(
         horizontalArrangement = Arrangement.spacedBy(12.wdp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // 左侧"字号"标签
+        // 左侧标签
         NovelText(
             text = "字号",
             fontSize = 14.ssp,
             color = NovelColors.NovelText
         )
 
-        // —— 减号按钮 ——
+        // 减小字号按钮
         Card(
             modifier = Modifier
                 .size(width = 48.wdp, height = 32.wdp)
@@ -96,6 +70,7 @@ fun FontSizeControl(
                     onClick = {
                         if (canDecrease) {
                             val newSize = fontSizes[currentIndex - 1]
+                            Log.d(TAG, "减小字号: $fontSize -> $newSize")
                             onFontSizeChange(newSize)
                         }
                     }
@@ -118,8 +93,7 @@ fun FontSizeControl(
             }
         }
 
-        // —— 中间显示当前字体大小的数字 ——
-        // 这里直接展示参数 fontSize，而不再读组件内部的任何 state。
+        // 当前字号显示
         NovelText(
             text = fontSize.toString(),
             fontSize = 12.ssp,
@@ -127,7 +101,7 @@ fun FontSizeControl(
             fontWeight = FontWeight.Medium
         )
 
-        // —— 加号按钮 ——
+        // 增大字号按钮
         Card(
             modifier = Modifier
                 .size(width = 48.wdp, height = 32.wdp)
@@ -137,6 +111,7 @@ fun FontSizeControl(
                     onClick = {
                         if (canIncrease) {
                             val newSize = fontSizes[currentIndex + 1]
+                            Log.d(TAG, "增大字号: $fontSize -> $newSize")
                             onFontSizeChange(newSize)
                         }
                     }

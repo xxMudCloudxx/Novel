@@ -9,7 +9,13 @@ import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 
 /**
- * 默认分割线
+ * 自定义分割线组件
+ * 
+ * 功能：
+ * - 统一的分割线样式
+ * - 主题色适配
+ * - 可自定义厚度
+ * 
  * @param modifier 修饰符
  * @param thickness 分割线厚度
  */
@@ -19,9 +25,8 @@ fun NovelDivider(
     thickness: Dp = 1.wdp
 ) {
     HorizontalDivider(
-        modifier = modifier
-            .fillMaxWidth(),
-        thickness = thickness,  // 分割线厚度
-        color = NovelColors.NovelDivider  // 颜色设置
+        modifier = modifier.fillMaxWidth(),
+        thickness = thickness,
+        color = NovelColors.NovelDivider
     )
 }

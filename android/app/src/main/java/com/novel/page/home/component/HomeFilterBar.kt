@@ -79,7 +79,7 @@ private fun FilterChip(
     val pressModifier = Modifier.pointerInput(Unit) {
         forEachGesture {
             awaitPointerEventScope {
-                val down = awaitFirstDown(requireUnconsumed = false)
+                awaitFirstDown(requireUnconsumed = false)
                 pressed = true          // 👉 立即进入放大态
                 val up = waitForUpOrCancellation()
                 pressed = false         // 👉 松手/取消复位

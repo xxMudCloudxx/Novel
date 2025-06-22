@@ -1,5 +1,6 @@
 package com.novel.page.read.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,11 @@ import com.novel.utils.wdp
 
 /**
  * 章节信息数据类
+ * 
+ * @property id 章节唯一标识
+ * @property chapterName 章节名称
+ * @property chapterNum 章节序号（可选）
+ * @property isVip VIP标识（"0"为免费，"1"为VIP）
  */
 data class Chapter(
     val id: String,
@@ -33,10 +39,14 @@ data class Chapter(
 )
 
 /**
- * 章节列表侧滑面板
- * @param chapters 章节列表
- * @param currentChapterId 当前章节ID
- * @param backgroundColor 背景颜色
+ * 章节列表侧滑面板组件
+ * 
+ * 从底部弹起的章节目录面板，支持章节选择和VIP标识
+ * 自动滚动到当前阅读章节
+ * 
+ * @param chapters 章节列表数据
+ * @param currentChapterId 当前正在阅读的章节ID
+ * @param backgroundColor 面板背景颜色
  * @param onChapterSelected 章节选择回调
  * @param onDismiss 关闭面板回调
  * @param modifier 修饰符
@@ -50,21 +60,23 @@ fun ChapterListPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val TAG = "ChapterListPanel"
     val listState = rememberLazyListState()
     
     // 自动滚动到当前章节
     LaunchedEffect(currentChapterId, chapters) {
         val currentIndex = chapters.indexOfFirst { it.id == currentChapterId }
         if (currentIndex >= 0) {
+            Log.d(TAG, "自动滚动到章节: $currentIndex")
             listState.scrollToItem(currentIndex)
         }
     }
     
-    // 改为从下方弹起的布局
+    // 从下方弹起的布局，占据屏幕高度的75%
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.75f) // 占据屏幕高度的75%
+            .fillMaxHeight(0.75f)
             .background(
                 backgroundColor,
                 RoundedCornerShape(topStart = 16.wdp, topEnd = 16.wdp)
@@ -88,7 +100,10 @@ fun ChapterListPanel(
                 )
                 
                 IconButton(
-                    onClick = onDismiss,
+                    onClick = {
+                        Log.d(TAG, "关闭章节列表面板")
+                        onDismiss()
+                    },
                     modifier = Modifier.size(24.wdp)
                 ) {
                     Icon(
@@ -110,11 +125,14 @@ fun ChapterListPanel(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 8.wdp)
             ) {
-                items(chapters) { chapter ->
+                items(chapters, key = { it.id }) { chapter ->
                     ChapterItem(
                         chapter = chapter,
                         isSelected = chapter.id == currentChapterId,
-                        onClick = { onChapterSelected(chapter) }
+                        onClick = { 
+                            Log.d(TAG, "选择章节: ${chapter.chapterName}")
+                            onChapterSelected(chapter) 
+                        }
                     )
                 }
             }
@@ -123,7 +141,13 @@ fun ChapterListPanel(
 }
 
 /**
- * 章节项组件
+ * 单个章节项组件
+ * 
+ * 显示章节名称、VIP标识和选中状态
+ * 
+ * @param chapter 章节数据
+ * @param isSelected 是否为当前选中章节
+ * @param onClick 点击回调
  */
 @Composable
 private fun ChapterItem(

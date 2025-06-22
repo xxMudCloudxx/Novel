@@ -25,7 +25,7 @@ import com.valentinilk.shimmer.shimmer
 @Composable
 fun FullRankingPageSkeleton() {
     val skeletonColor = NovelColors.NovelTextGray.copy(alpha = 0.2f)
-    val density = LocalDensity.current
+    LocalDensity.current
     val expandedHeight = 180.dp
     
     Column(
@@ -55,7 +55,7 @@ private fun FullRankingTopBarSkeleton(
             .height(expandedHeight)
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFFDF8F6), androidx.compose.ui.graphics.Color.White),
+                    listOf(Color(0xFFFDF8F6), Color.White),
                     startY = 0f,
                     endY = with(density) { expandedHeight.toPx() }
                 )
@@ -99,7 +99,7 @@ private fun FullRankingListSkeleton(skeletonColor: Color) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(androidx.compose.ui.graphics.Color.White),
+            .background(Color.White),
         contentPadding = PaddingValues(vertical = 8.wdp)
     ) {
         items(20) { index -> // 显示20个骨架项目

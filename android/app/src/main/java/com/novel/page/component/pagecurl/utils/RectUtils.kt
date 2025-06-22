@@ -32,19 +32,3 @@ fun Rect.multiply(size: IntSize): Rect {
         bottomRight = Offset(right * size.width, bottom * size.height)
     )
 }
-
-/**
- * 创建相对坐标矩形
- * 
- * @param left 左边界（0-1）
- * @param top 顶边界（0-1）
- * @param right 右边界（0-1）
- * @param bottom 底边界（0-1）
- * @return 相对坐标矩形
- */
-fun relativeRect(left: Float, top: Float, right: Float, bottom: Float): Rect {
-    return Rect(
-        topLeft = Offset(left, top),
-        bottomRight = Offset(right, bottom)
-    )
-}

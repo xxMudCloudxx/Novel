@@ -10,18 +10,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * 自定义动画：在两个 TextStyle 之间做插值
+ * 文本样式动画工具
+ * 
+ * 功能：
+ * - 在两个TextStyle之间做平滑插值动画
+ * - 支持字体大小动画过渡
+ * - 保持其他样式属性不变
+ * 
+ * 注意：
+ * - 目前只支持字体大小的动画插值
+ * - 其他属性（颜色、粗细等）直接使用目标值
+ * 
+ * @param targetValue 目标文本样式
+ * @param animationSpec 动画规格
+ * @return 动画状态的文本样式
  */
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun animateTextStyleAsState(
     targetValue: TextStyle,
-    animationSpec: AnimationSpec<Float> = spring(),
-    label: String = "TextStyleAnimation"
+    animationSpec: AnimationSpec<Float> = spring()
 ): State<TextStyle> {
-    // Animatable 只支持数值，需要将 TextStyle 转换为 Float（这里只演示字号插值，忽略其它属性）
+    // 字体大小动画控制器
     val fontSizeAnim = remember { Animatable(targetValue.fontSize.value) }
 
+    // 监听目标值变化，启动动画
     LaunchedEffect(targetValue) {
         fontSizeAnim.animateTo(
             targetValue = targetValue.fontSize.value,
@@ -29,13 +42,13 @@ fun animateTextStyleAsState(
         )
     }
 
-    // 返回的状态：把当前数值再套回 TextStyle，保持字体粗细/颜色等与 targetValue 一致
+    // 返回动画状态：插值字体大小，保持其他属性
     return derivedStateOf {
         TextStyle(
             fontSize = fontSizeAnim.value.sp,
             fontWeight = targetValue.fontWeight ?: FontWeight.Normal,
             color = targetValue.color
-            // 如有其他属性（fontFamily、lineHeight 等），可一并 copy
+            // 如需支持其他属性动画，可在此扩展
         )
     }
 }

@@ -1,7 +1,9 @@
 package com.novel.utils.security
 
+import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
+
 
 /**
  * 安全配置管理 - 统一管理安全相关的配置和常量
@@ -11,6 +13,8 @@ import javax.inject.Singleton
 class SecurityConfig @Inject constructor() {
     
     companion object {
+        
+        const val TAG = "SecurityConfig"
         // ——— 密码安全配置 ———
         const val MIN_PASSWORD_LENGTH = 6
         const val MAX_PASSWORD_LENGTH = 20
@@ -27,7 +31,7 @@ class SecurityConfig @Inject constructor() {
         const val CAPTCHA_FILE_EXTENSION = ".jpg"
         
         // ——— Token安全配置 ———
-        const val TOKEN_EXPIRY_DURATION_MS = 30 * 24 * 3600_000L // 1小时
+        const val TOKEN_EXPIRY_DURATION_MS = 30 * 24 * 3600_000L // 30天
         const val TOKEN_REFRESH_THRESHOLD_MS = 300_000L // 5分钟内刷新
         
         // ——— 文件安全配置 ———
@@ -61,7 +65,9 @@ class SecurityConfig @Inject constructor() {
      * @return 过期时间戳
      */
     fun getTokenExpiryTimestamp(): Long {
-        return System.currentTimeMillis() + TOKEN_EXPIRY_DURATION_MS
+        val timestamp = System.currentTimeMillis() + TOKEN_EXPIRY_DURATION_MS
+        Log.d(TAG, "生成Token过期时间戳: $timestamp")
+        return timestamp
     }
     
     /**
@@ -70,7 +76,9 @@ class SecurityConfig @Inject constructor() {
      * @return 是否需要刷新
      */
     fun shouldRefreshToken(expiryTimestamp: Long): Boolean {
-        return (expiryTimestamp - System.currentTimeMillis()) <= TOKEN_REFRESH_THRESHOLD_MS
+        val shouldRefresh = (expiryTimestamp - System.currentTimeMillis()) <= TOKEN_REFRESH_THRESHOLD_MS
+        Log.d(TAG, "检查Token刷新需求: ${if (shouldRefresh) "需要刷新" else "无需刷新"}")
+        return shouldRefresh
     }
     
     /**
@@ -80,7 +88,9 @@ class SecurityConfig @Inject constructor() {
      */
     fun isFileExtensionAllowed(fileName: String): Boolean {
         val extension = fileName.substringAfterLast('.', "").lowercase()
-        return extension in ALLOWED_IMAGE_EXTENSIONS
+        val isAllowed = extension in ALLOWED_IMAGE_EXTENSIONS
+        Log.v(TAG, "文件扩展名验证: $extension -> ${if (isAllowed) "允许" else "拒绝"}")
+        return isAllowed
     }
     
     /**
@@ -89,7 +99,9 @@ class SecurityConfig @Inject constructor() {
      * @return 客服电话
      */
     fun getOperatorServiceNumber(operatorName: String): String {
-        return OPERATOR_SERVICE_NUMBERS[operatorName] ?: OPERATOR_SERVICE_NUMBERS["default"]!!
+        val serviceNumber = OPERATOR_SERVICE_NUMBERS[operatorName] ?: OPERATOR_SERVICE_NUMBERS["default"]!!
+        Log.d(TAG, "获取运营商客服电话: $operatorName -> $serviceNumber")
+        return serviceNumber
     }
     
     /**
@@ -99,7 +111,9 @@ class SecurityConfig @Inject constructor() {
      */
     fun generateCaptchaFileName(sessionId: String): String {
         val timestamp = System.currentTimeMillis()
-        return "${CAPTCHA_CACHE_PREFIX}${sessionId}_${timestamp}${CAPTCHA_FILE_EXTENSION}"
+        val fileName = "${CAPTCHA_CACHE_PREFIX}${sessionId}_${timestamp}${CAPTCHA_FILE_EXTENSION}"
+        Log.d(TAG, "生成验证码文件名: ${sanitizeForLog(sessionId)} -> $fileName")
+        return fileName
     }
     
     /**
@@ -108,8 +122,10 @@ class SecurityConfig @Inject constructor() {
      * @return 是否是验证码文件
      */
     fun isCaptchaFile(fileName: String): Boolean {
-        return fileName.startsWith(CAPTCHA_CACHE_PREFIX) && 
+        val isCaptcha = fileName.startsWith(CAPTCHA_CACHE_PREFIX) && 
                fileName.endsWith(CAPTCHA_FILE_EXTENSION)
+        Log.v(TAG, "验证码文件检查: $fileName -> ${if (isCaptcha) "是" else "否"}")
+        return isCaptcha
     }
     
     /**
@@ -120,7 +136,9 @@ class SecurityConfig @Inject constructor() {
      * @return 是否在有效范围内
      */
     fun isInputLengthValid(input: String, minLength: Int, maxLength: Int): Boolean {
-        return input.length in minLength..maxLength
+        val isValid = input.length in minLength..maxLength
+        Log.v(TAG, "输入长度验证: 长度${input.length} 范围[$minLength-$maxLength] -> ${if (isValid) "有效" else "无效"}")
+        return isValid
     }
     
     /**

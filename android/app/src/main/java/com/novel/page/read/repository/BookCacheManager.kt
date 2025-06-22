@@ -1,6 +1,7 @@
 package com.novel.page.read.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Density
 import com.google.gson.Gson
@@ -92,11 +93,23 @@ data class ChapterPageCountData(
 /**
  * 书籍缓存管理器
  * 
- * 功能：
- * 1. 缓存全书内容，支持增量更新
- * 2. 缓存不同字号的页数信息
- * 3. 两周过期自动清理
- * 4. 渐进式页数计算
+ * 核心功能：
+ * 1. 全书内容缓存：支持章节内容的本地存储和增量更新
+ * 2. 智能页数缓存：针对不同字号和容器尺寸的页数信息缓存
+ * 3. 渐进式计算：大型书籍的页数渐进计算，提升用户体验
+ * 4. 自动过期管理：两周过期自动清理，平衡存储空间和性能
+ * 5. 响应式状态：提供计算进度的实时反馈
+ * 
+ * 缓存策略：
+ * - 内容缓存：以书籍ID为键，存储完整章节列表
+ * - 页数缓存：以书籍ID+字号+容器尺寸为复合键
+ * - 增量更新：仅更新变更的章节内容
+ * - 智能清理：基于LRU策略和时间过期双重管理
+ * 
+ * 性能优化：
+ * - 异步IO操作避免阻塞UI线程
+ * - JSON序列化使用Gson高效处理
+ * - 分片计算减少内存占用
  */
 @Singleton
 class BookCacheManager @Inject constructor(
@@ -114,10 +127,17 @@ class BookCacheManager @Inject constructor(
     private val _progressiveCalculationState = MutableStateFlow(ProgressiveCalculationState())
     val progressiveCalculationState: StateFlow<ProgressiveCalculationState> = _progressiveCalculationState.asStateFlow()
     
+    companion object {
+        private const val TAG = "BookCacheManager"
+    }
+    
     init {
         // 创建缓存目录
         contentCacheDir.mkdirs()
         pageCountCacheDir.mkdirs()
+        Log.d(TAG, "书籍缓存管理器初始化")
+        Log.d(TAG, "内容缓存目录: ${contentCacheDir.absolutePath}")
+        Log.d(TAG, "页数缓存目录: ${pageCountCacheDir.absolutePath}")
         
         // 清理过期缓存
         cleanExpiredCaches()
@@ -250,7 +270,6 @@ class BookCacheManager @Inject constructor(
                     // 分页计算
                     val pages = PageSplitter.splitContent(
                         content = chapter.content,
-                        chapterTitle = chapter.chapterName,
                         containerSize = containerSize,
                         readerSettings = readerSettings,
                         density = density

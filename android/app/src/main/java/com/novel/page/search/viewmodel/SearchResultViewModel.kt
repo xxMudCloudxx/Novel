@@ -1,11 +1,11 @@
 package com.novel.page.search.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.novel.page.component.BaseViewModel
 import com.novel.page.component.StateHolderImpl
 import com.novel.page.search.usecase.SearchBooksUseCase
 import com.novel.page.search.usecase.GetCategoryFiltersUseCase
-import com.novel.utils.network.api.front.BookService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,13 +16,30 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 搜索结果页面ViewModel
+ * 
+ * 主要职责：
+ * - 管理搜索结果的加载和分页
+ * - 处理搜索过滤条件和分类选择
+ * - 管理筛选面板的显示状态
+ * - 协调搜索相关的用户交互
+ * 
+ * 继承BaseViewModel获得统一的加载状态管理能力
+ */
 @HiltViewModel
 class SearchResultViewModel @Inject constructor(
+    /** 搜索书籍用例，处理搜索请求 */
     private val searchBooksUseCase: SearchBooksUseCase,
-    private val getCategoryFiltersUseCase: GetCategoryFiltersUseCase,
-    private val bookService: BookService
+    /** 获取分类筛选项用例 */
+    private val getCategoryFiltersUseCase: GetCategoryFiltersUseCase
 ) : BaseViewModel() {
 
+    companion object {
+        private const val TAG = "SearchResultViewModel"
+    }
+
+    /** UI状态流，包装搜索结果数据和加载状态 */
     private val _uiState = MutableStateFlow(
         StateHolderImpl(
             data = SearchResultUiState(),
@@ -32,16 +49,25 @@ class SearchResultViewModel @Inject constructor(
     )
     val uiState: StateFlow<StateHolderImpl<SearchResultUiState>> = _uiState.asStateFlow()
 
+    /** 事件流，处理一次性事件如导航和提示 */
     private val _events = MutableSharedFlow<SearchResultEvent>()
     val events: SharedFlow<SearchResultEvent> = _events.asSharedFlow()
 
+    /** 当前页码，用于分页加载 */
     private var currentPage = 1
+    /** 分页加载状态锁，防止重复请求 */
     private var isLoadingMore = false
 
     init {
+        Log.d(TAG, "SearchResultViewModel初始化")
+        // 预加载分类筛选配置
         loadCategoryFilters()
     }
 
+    /**
+     * 处理用户操作的统一入口
+     * 根据操作类型分发到对应的处理方法
+     */
     fun onAction(action: SearchResultAction) {
         when (action) {
             is SearchResultAction.UpdateQuery -> updateQuery(action.query)
@@ -58,6 +84,10 @@ class SearchResultViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 更新搜索查询内容
+     * 实时更新UI状态，不触发搜索
+     */
     private fun updateQuery(query: String) {
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
@@ -65,9 +95,15 @@ class SearchResultViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 执行搜索操作
+     * 重置分页状态，发起新的搜索请求
+     */
     private fun performSearch(query: String) {
+        Log.d(TAG, "执行搜索: $query")
         viewModelScope.launch {
             try {
+                // 重置分页状态
                 currentPage = 1
                 isLoadingMore = false
                 
@@ -84,6 +120,7 @@ class SearchResultViewModel @Inject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
+                        Log.d(TAG, "搜索成功，获得${response.list.size}条结果")
                         val loadedFilters = _uiState.value.data.categoryFilters
                         _uiState.value = _uiState.value.copy(
                             data = currentData.copy(
@@ -99,6 +136,7 @@ class SearchResultViewModel @Inject constructor(
                         )
                     },
                     onFailure = { exception ->
+                        Log.e(TAG, "搜索失败", exception)
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             error = exception.message ?: "搜索失败"
@@ -106,6 +144,7 @@ class SearchResultViewModel @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                Log.e(TAG, "搜索异常", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "搜索失败"
@@ -114,18 +153,27 @@ class SearchResultViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 选择搜索分类
+     * 更新分类状态并重新搜索
+     */
     private fun selectCategory(categoryId: Int?) {
+        Log.d(TAG, "选择分类: $categoryId")
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
             data = currentData.copy(selectedCategoryId = categoryId)
         )
         
-        // 重新搜索
+        // 如果有搜索内容则重新搜索
         if (currentData.query.isNotEmpty()) {
             performSearch(currentData.query)
         }
     }
 
+    /**
+     * 打开筛选面板
+     * 更新面板显示状态
+     */
     private fun openFilterSheet() {
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
@@ -133,6 +181,10 @@ class SearchResultViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 关闭筛选面板
+     * 隐藏面板但不重置筛选条件
+     */
     private fun closeFilterSheet() {
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
@@ -140,6 +192,10 @@ class SearchResultViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 更新筛选条件
+     * 实时更新筛选状态，不触发搜索
+     */
     private fun updateFilters(filters: FilterState) {
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
@@ -147,7 +203,12 @@ class SearchResultViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 应用筛选条件
+     * 关闭面板并重新搜索
+     */
     private fun applyFilters() {
+        Log.d(TAG, "应用筛选条件")
         closeFilterSheet()
         val currentData = _uiState.value.data
         if (currentData.query.isNotEmpty()) {
@@ -155,16 +216,29 @@ class SearchResultViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 清除所有筛选条件
+     * 重置为默认筛选状态
+     */
     private fun clearFilters() {
+        Log.d(TAG, "清除筛选条件")
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
             data = currentData.copy(filters = FilterState())
         )
     }
 
+    /**
+     * 加载下一页数据
+     * 支持分页加载，防止重复请求
+     */
     private fun loadNextPage() {
-        if (isLoadingMore || !_uiState.value.data.hasMore) return
+        if (isLoadingMore || !_uiState.value.data.hasMore) {
+            Log.d(TAG, "跳过分页加载：isLoadingMore=$isLoadingMore, hasMore=${_uiState.value.data.hasMore}")
+            return
+        }
         
+        Log.d(TAG, "加载第${currentPage + 1}页数据")
         viewModelScope.launch {
             try {
                 isLoadingMore = true
@@ -181,6 +255,7 @@ class SearchResultViewModel @Inject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
+                        Log.d(TAG, "分页加载成功，新增${response.list.size}条结果")
                         val loadedFilters = _uiState.value.data.categoryFilters
                         val newBooks = response.list
                         _uiState.value = _uiState.value.copy(
@@ -191,11 +266,13 @@ class SearchResultViewModel @Inject constructor(
                             )
                         )
                     },
-                    onFailure = { 
+                    onFailure = { exception ->
+                        Log.w(TAG, "分页加载失败", exception)
                         currentPage-- // 恢复页码
                     }
                 )
             } catch (e: Exception) {
+                Log.w(TAG, "分页加载异常", e)
                 currentPage-- // 恢复页码
             } finally {
                 isLoadingMore = false

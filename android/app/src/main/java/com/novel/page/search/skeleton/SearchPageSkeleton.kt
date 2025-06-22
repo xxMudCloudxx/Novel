@@ -6,17 +6,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.NovelTheme
-import com.novel.utils.ssp
 import com.novel.utils.wdp
 import com.valentinilk.shimmer.shimmer
 
@@ -64,7 +61,7 @@ private fun SearchTopBarSkeleton(skeletonColor: Color) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.wdp)
-            .background(androidx.compose.ui.graphics.Color.White)
+            .background(Color.White)
             .padding(horizontal = 16.wdp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.wdp)
@@ -133,21 +130,16 @@ private fun RankingSectionSkeleton(skeletonColor: Color) {
         verticalArrangement = Arrangement.spacedBy(16.wdp)
     ) {
         // 榜单区域 - 重复三个榜单
-        repeat(3) { rankIndex ->
+        repeat(3) {
             RankingListSkeleton(
-                skeletonColor = skeletonColor,
-                title = when (rankIndex) {
-                    0 -> "点击榜"
-                    1 -> "推荐榜"
-                    else -> "新书榜"
-                }
+                skeletonColor = skeletonColor
             )
         }
     }
 }
 
 @Composable
-private fun RankingListSkeleton(skeletonColor: Color, title: String) {
+private fun RankingListSkeleton(skeletonColor: Color) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.wdp)
     ) {
@@ -175,14 +167,14 @@ private fun RankingListSkeleton(skeletonColor: Color, title: String) {
         }
         
         // 榜单书籍列表骨架
-        repeat(5) { index ->
-            RankingBookItemSkeleton(skeletonColor, index + 1)
+        repeat(5) {
+            RankingBookItemSkeleton(skeletonColor)
         }
     }
 }
 
 @Composable
-private fun RankingBookItemSkeleton(skeletonColor: Color, rank: Int) {
+private fun RankingBookItemSkeleton(skeletonColor: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

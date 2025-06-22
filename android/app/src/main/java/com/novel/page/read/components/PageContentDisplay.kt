@@ -2,14 +2,11 @@ package com.novel.page.read.components
 
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,10 +25,6 @@ import com.novel.page.book.components.BookDescriptionSection
 import com.novel.page.book.components.BookReviewsSection
 import com.novel.page.book.viewmodel.BookDetailUiState
 import com.novel.utils.debounceClickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import com.novel.utils.SwipeBackContainer
-import com.novel.page.read.viewmodel.FlipDirection
 
 /**
  * 通用页面内容显示组件（供PageCurl等新组件使用）
@@ -42,18 +35,11 @@ fun PageContentDisplay(
     page: String,
     chapterName: String,
     isFirstPage: Boolean = false,
-    isLastPage: Boolean = false,
     isBookDetailPage: Boolean = false, // 新增：是否是书籍详情页
     bookInfo: PageData.BookInfo? = null, // 新增：书籍信息
-    nextChapterData: PageData? = null,
-    previousChapterData: PageData? = null,
     readerSettings: ReaderSettings = ReaderSettings(),
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null, // 新增：导航到阅读器回调
-    onSwipeBack: (() -> Unit)? = null, // 新增：iOS侧滑返回回调
-    onPageChange: ((FlipDirection) -> Unit)? = null, // 新增：页面切换回调
+    // 新增：导航到阅读器回调
     showNavigationInfo: Boolean = true, // 新增：是否显示导航信息
-    currentPageIndex: Int = 0, // 新增：当前页面索引
-    totalPages: Int = 1, // 新增：总页面数
     onClick: () -> Unit = {}
 ) {
     Column(
@@ -80,7 +66,7 @@ fun PageContentDisplay(
                     .fillMaxSize()
                     .debounceClickable(onClick = onClick)
             ) {
-                BookDetailPageContent(bookInfo, onNavigateToReader)
+                BookDetailPageContent(bookInfo)
             }
         } else {
             // 正常页面内容
@@ -95,9 +81,6 @@ fun PageContentDisplay(
                     page = page,
                     chapterName = chapterName,
                     isFirstPage = isFirstPage,
-                    isLastPage = isLastPage,
-                    nextChapterData = nextChapterData,
-                    previousChapterData = previousChapterData,
                     readerSettings = readerSettings
                 )
             }
@@ -117,13 +100,11 @@ fun PageContentDisplay(
  */
 @Composable
 private fun BookDetailPageContent(
-    bookInfo: PageData.BookInfo?,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)?
+    bookInfo: PageData.BookInfo?
 ) {
     if (bookInfo != null) {
         BookDetailContent(
-            bookInfo = bookInfo,
-            onNavigateToReader = onNavigateToReader
+            bookInfo = bookInfo
         )
     }
 }
@@ -136,9 +117,6 @@ private fun NormalPageContent(
     page: String,
     chapterName: String,
     isFirstPage: Boolean,
-    isLastPage: Boolean,
-    nextChapterData: PageData?,
-    previousChapterData: PageData?,
     readerSettings: ReaderSettings
 ) {
     Log.d("PageContentDisplay", "page: $page")
@@ -174,8 +152,7 @@ private fun NormalPageContent(
  */
 @Composable
 private fun BookDetailContent(
-    bookInfo: PageData.BookInfo,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
+    bookInfo: PageData.BookInfo
 ) {
     // 转换为BookDetailUiState.BookInfo格式
     val uiStateBookInfo = BookDetailUiState.BookInfo(
@@ -231,9 +208,7 @@ private fun BookDetailContent(
         )
 
         BookDescriptionSection(
-            description = uiStateBookInfo.bookDesc,
-            onToggleExpand = { /* 在阅读器中不需要展开功能 */ },
-            bookId = uiStateBookInfo.id
+            description = uiStateBookInfo.bookDesc
         )
 
         BookReviewsSection(reviews = reviews)

@@ -35,13 +35,10 @@ import com.novel.utils.wdp
  * - 性能优化：缓存计算结果，减少重组
  * 
  * @param description 书籍简介原始内容（可能包含HTML标签）
- * @param onToggleExpand 展开/收起回调（当前未使用，为向后兼容保留）
  */
 @Composable
 fun BookDescriptionSection(
-    description: String,
-    bookId: String,
-    onToggleExpand: () -> Unit
+    description: String
 ) {
     // 性能优化：使用remember缓存HTML清理结果
     val cleaned = remember(description) { 
@@ -76,7 +73,7 @@ fun BookDescriptionSection(
                 val totalLines = fullLayout.lineCount
                 val showExpand = totalLines > 2
                 
-                if (showExpand && totalLines > 0) {
+                if (showExpand) {
                     val firstEnd = fullLayout.getLineEnd(0).coerceAtMost(cleaned.length)
                     val firstLine = cleaned.substring(0, firstEnd)
                     val restAll = cleaned.substring(firstEnd)

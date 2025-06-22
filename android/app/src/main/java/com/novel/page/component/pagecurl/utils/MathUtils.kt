@@ -5,15 +5,21 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * 线段相交工具函数
+ * 数学工具类
+ * 提供PageCurl组件所需的几何计算函数
+ */
+
+/**
+ * 计算两条线段的交点
  * 
- * 计算两条线段的交点坐标
+ * 使用参数方程求解两条线段的交点坐标
+ * 常用于计算页面卷曲时的折叠线
  *
  * @param p1 第一条线的起点
  * @param p2 第一条线的终点
  * @param p3 第二条线的起点
  * @param p4 第二条线的终点
- * @return 交点坐标，如果没有交点则返回null
+ * @return 交点坐标，如果两线平行则返回null
  */
 fun lineLineIntersection(p1: Offset, p2: Offset, p3: Offset, p4: Offset): Offset? {
     val denominator = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x)
@@ -30,9 +36,10 @@ fun lineLineIntersection(p1: Offset, p2: Offset, p3: Offset, p4: Offset): Offset
 }
 
 /**
- * 点旋转工具函数
+ * 点绕指定中心旋转
  * 
- * 将一个点围绕另一个点旋转指定角度
+ * 使用旋转矩阵实现点的旋转变换
+ * 用于实现页面卷曲时的几何变换
  *
  * @param center 旋转中心点
  * @param angle 旋转角度（弧度）
@@ -51,9 +58,9 @@ fun Offset.rotate(center: Offset, angle: Float): Offset {
 }
 
 /**
- * 点围绕原点旋转工具函数
+ * 点绕原点旋转
  * 
- * 将一个点围绕原点(0,0)旋转指定角度
+ * 简化版本的旋转函数，以原点(0,0)为旋转中心
  *
  * @param angle 旋转角度（弧度）
  * @return 旋转后的点坐标

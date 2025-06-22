@@ -1,20 +1,51 @@
 package com.novel.utils
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.ReactContext
-import com.facebook.react.bridge.WritableMap
-import com.facebook.react.bridge.WritableArray
 import com.novel.MainApplication
 import com.novel.utils.network.api.front.HomeService
 
+/**
+ * React Native 桥接工具类
+ * 
+ * 功能职责：
+ * - Android原生与RN之间的数据通信
+ * - 用户登录状态同步
+ * - 书籍推荐数据传递
+ * - 测试数据模拟发送
+ * 
+ * 技术实现：
+ * - 基于RCTDeviceEventEmitter事件机制
+ * - Arguments数据序列化
+ * - ReactContext生命周期管理
+ * - 异常安全处理机制
+ * 
+ * 事件类型：
+ * - onUserDataReceived: 用户数据接收
+ * - onRecommendBooksReceived: 推荐书籍接收
+ */
 object ReactNativeBridge {
     
     private const val TAG = "ReactNativeBridge"
     
     /**
      * 发送用户登录数据到RN
+     * 
+     * 数据包含：
+     * - uid: 用户ID
+     * - token: 认证令牌
+     * - nickname: 用户昵称
+     * - photo: 头像URL
+     * - sex: 性别（可选）
+     * 
+     * @param uid 用户ID
+     * @param token 认证令牌
+     * @param nickname 用户昵称
+     * @param photo 头像URL
+     * @param sex 性别信息（可选）
      */
+    @SuppressLint("VisibleForTests")
     fun sendUserDataToRN(
         uid: String,
         token: String,
@@ -22,7 +53,7 @@ object ReactNativeBridge {
         photo: String,
         sex: String? = null
     ) {
-        Log.d(TAG, "🚀 发送用户数据到RN: uid=$uid, nickname=$nickname")
+        Log.d(TAG, "🚀 发送用户数据到RN: uid=${uid.take(8)}***, nickname=$nickname")
         
         val application = MainApplication.getInstance()
         val reactContext = application?.reactNativeHost?.reactInstanceManager?.currentReactContext
@@ -50,8 +81,16 @@ object ReactNativeBridge {
     
     /**
      * 发送推荐书籍数据到RN
+     * 
+     * 数据转换：
+     * - HomeService.HomeBook -> RN Map格式
+     * - 添加阅读量、评分等扩展数据
+     * - 数组格式批量传输
+     * 
+     * @param books 书籍列表
      */
-    fun sendRecommendBooksToRN(books: List<HomeService.HomeBook>) {
+    @SuppressLint("VisibleForTests")
+    private fun sendRecommendBooksToRN(books: List<HomeService.HomeBook>) {
         Log.d(TAG, "📚 发送${books.size}本推荐书籍到RN")
         
         val application = MainApplication.getInstance()
@@ -92,6 +131,7 @@ object ReactNativeBridge {
     
     /**
      * 发送测试用户数据到RN
+     * 用于开发调试和功能验证
      */
     fun sendTestUserDataToRN() {
         Log.d(TAG, "🧪 发送测试用户数据到RN")
@@ -106,6 +146,7 @@ object ReactNativeBridge {
     
     /**
      * 发送测试推荐书籍数据到RN
+     * 包含热门小说样本数据
      */
     fun sendTestRecommendBooksToRN() {
         Log.d(TAG, "🧪 发送测试推荐书籍到RN")

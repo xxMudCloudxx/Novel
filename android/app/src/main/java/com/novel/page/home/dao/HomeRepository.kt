@@ -1,7 +1,7 @@
 package com.novel.page.home.dao
 
 import android.util.Log
-import com.novel.repository.CachedBookRepository
+import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.cache.NetworkCacheManager
 import com.novel.utils.network.cache.CacheStrategy
@@ -16,8 +16,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 首页数据仓库
- * 负责协调网络数据和本地缓存，集成缓存优先策略
+ * 首页数据仓库类
+ * 
+ * 职责：
+ * - 协调网络数据和本地缓存的访问
+ * - 实现缓存优先的数据获取策略
+ * - 统一管理首页相关的所有数据源
+ * - 提供一致的错误处理和重试机制
+ * 
+ * 数据来源：
+ * - 本地Room数据库（离线优先）
+ * - 网络API（实时数据）
+ * - 内存缓存（性能优化）
+ * 
+ * @param homeDao 本地数据访问对象
+ * @param homeService 首页网络服务
+ * @param cachedBookRepository 带缓存的书籍数据仓库
+ * @param cacheManager 网络缓存管理器
  */
 @Singleton
 class HomeRepository @Inject constructor(
@@ -30,26 +45,33 @@ class HomeRepository @Inject constructor(
     companion object {
         private const val TAG = "HomeRepository"
         
-        // 书籍类型常量
-        const val TYPE_CAROUSEL = "carousel"
-        const val TYPE_HOT = "hot"
-        const val TYPE_NEW = "new"
-        const val TYPE_VIP = "vip"
-        const val TYPE_WEEKLY = "weekly"
-        
-        // 榜单类型常量
+        /** 榜单类型常量 - 点击榜（按阅读量排序） */
         const val RANK_TYPE_VISIT = "点击榜"
+        
+        /** 榜单类型常量 - 更新榜（按更新时间排序） */
         const val RANK_TYPE_UPDATE = "更新榜"
+        
+        /** 榜单类型常量 - 新书榜（按发布时间排序） */
         const val RANK_TYPE_NEWEST = "新书榜"
         
-        // 榜单显示数量
+        /** 榜单书籍显示数量限制 - 控制界面展示的书籍数量 */
         const val RANK_BOOK_LIMIT = 16
     }
     
     // region 榜单相关 - 使用缓存策略
     
     /**
-     * 获取榜单书籍数据 - 缓存优先
+     * 获取榜单书籍数据
+     * 
+     * 实现缓存优先策略：
+     * 1. 首先尝试从本地缓存获取数据
+     * 2. 缓存无效或过期时从网络加载
+     * 3. 网络请求失败时降级到缓存数据
+     * 4. 自动处理新书榜的特殊重试逻辑
+     * 
+     * @param rankType 榜单类型（点击榜/更新榜/新书榜）
+     * @param strategy 缓存策略（默认缓存优先）
+     * @return 榜单书籍列表，最多包含RANK_BOOK_LIMIT本书
      */
     suspend fun getRankBooks(
         rankType: String,
@@ -81,14 +103,6 @@ class HomeRepository @Inject constructor(
         }
     }
     
-    /**
-     * 清理榜单缓存
-     */
-    suspend fun clearRankCache() {
-        cachedBookRepository.clearRankCache()
-        Log.d(TAG, "榜单缓存已清理")
-    }
-    
     // region 首页推荐数据 - 使用缓存策略
     
     /**
@@ -101,12 +115,12 @@ class HomeRepository @Inject constructor(
             homeService.getHomeBookseCached(
                 cacheManager = cacheManager,
                 strategy = strategy,
-                onCacheUpdate = { response ->
+                onCacheUpdate = {
                     Log.d(TAG, "首页推荐数据缓存已更新")
                 }
-            ).onSuccess { response, fromCache ->
-                Log.d(TAG, "首页推荐数据加载成功，来源: ${if (fromCache) "缓存" else "网络"}")
-            }.onError { error, cachedData ->
+            ).onSuccess { _, fromCache ->
+                // 首页推荐数据加载成功
+            }.onError { error, _ ->
                 Log.e(TAG, "首页推荐数据加载失败", error)
             }.let { result ->
                 when (result) {
@@ -123,19 +137,19 @@ class HomeRepository @Inject constructor(
     /**
      * 获取友情链接 - 缓存优先
      */
-    suspend fun getFriendLinks(
+    private suspend fun getFriendLinks(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): List<HomeService.FriendLink> {
         return try {
             homeService.getFriendLinksCached(
                 cacheManager = cacheManager,
                 strategy = strategy,
-                onCacheUpdate = { response ->
+                onCacheUpdate = {
                     Log.d(TAG, "友情链接缓存已更新")
                 }
-            ).onSuccess { response, fromCache ->
-                Log.d(TAG, "友情链接加载成功，来源: ${if (fromCache) "缓存" else "网络"}")
-            }.onError { error, cachedData ->
+            ).onSuccess { _, fromCache ->
+                // 友情链接加载成功
+            }.onError { error, _ ->
                 Log.e(TAG, "友情链接加载失败", error)
             }.let { result ->
                 when (result) {
@@ -270,20 +284,6 @@ class HomeRepository @Inject constructor(
     // region 缓存管理
     
     /**
-     * 清理所有首页相关缓存
-     */
-    suspend fun clearAllCache() {
-        try {
-            cacheManager.clearCache("home_books")
-            cacheManager.clearCache("friend_links")
-            cachedBookRepository.clearRankCache()
-            Log.d(TAG, "所有首页缓存已清理")
-        } catch (e: Exception) {
-            Log.e(TAG, "清理缓存失败", e)
-        }
-    }
-    
-    /**
      * 强制刷新所有数据（绕过缓存）
      */
     suspend fun refreshAllData(): Triple<
@@ -303,19 +303,6 @@ class HomeRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "强制刷新数据失败", e)
             Triple(emptyList(), emptyList(), emptyList())
-        }
-    }
-    
-    /**
-     * 检查缓存是否存在
-     */
-    suspend fun isCacheAvailable(): Boolean {
-        return try {
-            cacheManager.isCacheExists("home_books") &&
-            cacheManager.isCacheExists("visit_rank_books")
-        } catch (e: Exception) {
-            Log.e(TAG, "检查缓存状态失败", e)
-            false
         }
     }
 } 

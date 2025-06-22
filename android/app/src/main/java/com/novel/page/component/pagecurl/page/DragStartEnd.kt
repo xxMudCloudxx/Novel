@@ -1,5 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
+import android.util.Log
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -12,8 +13,8 @@ import kotlinx.coroutines.launch
 
 /**
  * 起始-结束拖拽手势修饰符
- * 
- * 基于拖拽起始和结束位置的交互模式，用户需要从指定区域开始拖拽并在指定区域结束
+ * 基于拖拽起始和结束位置的交互模式
+ * 用户需要从指定区域开始拖拽并在指定区域结束才能完成翻页
  *
  * @param dragInteraction 拖拽交互配置
  * @param state PageCurl内部状态
@@ -35,12 +36,30 @@ internal fun Modifier.dragStartEnd(
     val isEnabledForward = rememberUpdatedState(enabledForward)
     val isEnabledBackward = rememberUpdatedState(enabledBackward)
 
+    Log.d("DragStartEnd", "配置起始-结束拖拽手势 - 向前: $enabledForward, 向后: $enabledBackward")
+
     pointerInput(state) {
         // 计算相对区域的实际像素坐标
-        val forwardStartRect by lazy { dragInteraction.forward.start.multiply(size) }
-        val forwardEndRect by lazy { dragInteraction.forward.end.multiply(size) }
-        val backwardStartRect by lazy { dragInteraction.backward.start.multiply(size) }
-        val backwardEndRect by lazy { dragInteraction.backward.end.multiply(size) }
+        val forwardStartRect by lazy { 
+            val rect = dragInteraction.forward.start.multiply(size)
+            Log.v("DragStartEnd", "向前拖拽起始区域: $rect")
+            rect
+        }
+        val forwardEndRect by lazy { 
+            val rect = dragInteraction.forward.end.multiply(size)
+            Log.v("DragStartEnd", "向前拖拽结束区域: $rect")
+            rect
+        }
+        val backwardStartRect by lazy { 
+            val rect = dragInteraction.backward.start.multiply(size)
+            Log.v("DragStartEnd", "向后拖拽起始区域: $rect")
+            rect
+        }
+        val backwardEndRect by lazy { 
+            val rect = dragInteraction.backward.end.multiply(size)
+            Log.v("DragStartEnd", "向后拖拽结束区域: $rect")
+            rect
+        }
 
         // 向前拖拽配置
         val forwardConfig = DragConfig(
@@ -48,8 +67,17 @@ internal fun Modifier.dragStartEnd(
             start = state.rightEdge,
             end = state.leftEdge,
             isEnabled = { isEnabledForward.value },
-            isDragSucceed = { _, end -> forwardEndRect.contains(end) },
-            onChange = { onChange(+1) }
+            isDragSucceed = { _, end -> 
+                val success = forwardEndRect.contains(end)
+                if (success) {
+                    Log.d("DragStartEnd", "向前拖拽成功结束于目标区域")
+                }
+                success
+            },
+            onChange = { 
+                Log.d("DragStartEnd", "向前翻页完成")
+                onChange(+1) 
+            }
         )
         
         // 向后拖拽配置
@@ -58,8 +86,17 @@ internal fun Modifier.dragStartEnd(
             start = state.leftEdge,
             end = state.rightEdge,
             isEnabled = { isEnabledBackward.value },
-            isDragSucceed = { _, end -> backwardEndRect.contains(end) },
-            onChange = { onChange(-1) }
+            isDragSucceed = { _, end -> 
+                val success = backwardEndRect.contains(end)
+                if (success) {
+                    Log.d("DragStartEnd", "向后拖拽成功结束于目标区域")
+                }
+                success
+            },
+            onChange = { 
+                Log.d("DragStartEnd", "向后翻页完成")
+                onChange(-1) 
+            }
         )
 
         // 检测卷曲手势
@@ -71,8 +108,10 @@ internal fun Modifier.dragStartEnd(
             },
             getConfig = { start, _ ->
                 val config = if (forwardStartRect.contains(start)) {
+                    Log.v("DragStartEnd", "从向前拖拽起始区域开始")
                     forwardConfig
                 } else if (backwardStartRect.contains(start)) {
+                    Log.v("DragStartEnd", "从向后拖拽起始区域开始")
                     backwardConfig
                 } else {
                     null

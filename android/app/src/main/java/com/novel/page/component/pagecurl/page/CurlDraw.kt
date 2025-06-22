@@ -197,11 +197,11 @@ private fun CacheDrawScope.prepareCurl(
 
     // 准备所有绘制层
     val drawShadow = prepareShadow(config, polygon, angle, progress)
-    val drawEdgeShadow = prepareEdgeShadow(config, foldPath, angle)
+    val drawEdgeShadow = prepareEdgeShadow(config, foldPath)
     val drawSelfShadow = prepareSelfShadow(config, foldPath, angle, progress)
     val drawAmbientFalloff = prepareAmbientFalloff(config, topCurlOffset, bottomCurlOffset, progress)
     val drawThickness = prepareThickness(config, polygon, angle)
-    val drawSpecular = prepareSpecular(config, foldPath, angle)
+    val drawSpecular = prepareSpecular(config, foldPath)
 
     return result@{
         withTransform({
@@ -259,14 +259,12 @@ private fun CacheDrawScope.prepareCurl(
  * 
  * @param config PageCurl配置
  * @param foldPath 折痕路径
- * @param angle 角度
  * @return 边缘阴影绘制方法
  */
 @ExperimentalPageCurlApi
 private fun CacheDrawScope.prepareEdgeShadow(
     config: PageCurlConfig,
-    foldPath: Path,
-    angle: Float
+    foldPath: Path
 ): ContentDrawScope.() -> Unit {
     if (config.shadowAlpha == 0f || config.creaseShadowStrength == 0f) {
         return { /* 不需要折痕阴影 */ }
@@ -369,14 +367,12 @@ private fun CacheDrawScope.prepareAmbientFalloff(
  * 
  * @param config PageCurl配置
  * @param foldPath 折痕路径
- * @param angle 角度
  * @return 镜面光绘制方法
  */
 @ExperimentalPageCurlApi
 private fun CacheDrawScope.prepareSpecular(
     config: PageCurlConfig,
-    foldPath: Path,
-    angle: Float
+    foldPath: Path
 ): ContentDrawScope.() -> Unit {
     if (config.highlightStrength <= 0f) return { /* 不需要边缘光 */ }
 

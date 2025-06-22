@@ -1,47 +1,83 @@
 package com.novel.utils.network.cache
 
+import com.google.gson.reflect.TypeToken
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.NewsService
 import com.novel.utils.network.api.front.user.UserService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 /**
  * 缓存键生成器
+ * 
+ * 为不同类型的数据生成唯一的缓存键
+ * 采用命名空间设计，避免键冲突
  */
 object CacheKeys {
+    /** 书籍信息缓存键 */
     fun bookInfo(bookId: Long) = "book_info_$bookId"
+    /** 书籍章节列表缓存键 */
     fun bookChapters(bookId: Long) = "book_chapters_$bookId"
+    /** 章节内容缓存键 */
     fun bookContent(chapterId: Long) = "book_content_$chapterId"
+    /** 访问排行榜缓存键 */
     fun visitRankBooks() = "visit_rank_books"
+    /** 更新排行榜缓存键 */
     fun updateRankBooks() = "update_rank_books"
+    /** 新书排行榜缓存键 */
     fun newestRankBooks() = "newest_rank_books"
+    /** 书籍分类缓存键 */
     fun bookCategories(workDirection: Int) = "book_categories_$workDirection"
+    /** 搜索结果缓存键 */
     fun searchBooks(params: String) = "search_books_$params"
+    /** 首页推荐缓存键 */
     fun homeBooks() = "home_books"
+    /** 友情链接缓存键 */
     fun friendLinks() = "friend_links"
+    /** 最新资讯缓存键 */
     fun latestNews() = "latest_news"
+    /** 资讯详情缓存键 */  
     fun newsInfo(newsId: Long) = "news_info_$newsId"
+    /** 用户信息缓存键 */
     fun userInfo() = "user_info"
+    /** 用户评论缓存键 */
     fun userComments(pageNum: Int, pageSize: Int) = "user_comments_${pageNum}_$pageSize"
 }
 
 /**
- * 常用缓存配置
+ * 常用缓存配置预设
+ * 
+ * 根据数据特点定义不同的缓存时长：
+ * - SHORT_CACHE: 适用于实时性要求高的数据
+ * - MEDIUM_CACHE: 适用于一般业务数据
+ * - LONG_CACHE: 适用于相对稳定的数据
+ * - EXTRA_LONG_CACHE: 适用于基础配置数据
  */
 object CacheConfigs {
-    val SHORT_CACHE = CacheConfig(maxAge = TimeUnit.MINUTES.toMillis(5)) // 5分钟
-    val MEDIUM_CACHE = CacheConfig(maxAge = TimeUnit.MINUTES.toMillis(30)) // 30分钟
-    val LONG_CACHE = CacheConfig(maxAge = TimeUnit.HOURS.toMillis(2)) // 2小时
-    val EXTRA_LONG_CACHE = CacheConfig(maxAge = TimeUnit.HOURS.toMillis(24)) // 24小时
+    /** 短期缓存：5分钟，适用于排行榜等实时数据 */
+    val SHORT_CACHE = CacheConfig(maxAge = TimeUnit.MINUTES.toMillis(5))
+    /** 中期缓存：30分钟，适用于书籍信息等业务数据 */
+    val MEDIUM_CACHE = CacheConfig(maxAge = TimeUnit.MINUTES.toMillis(30))
+    /** 长期缓存：2小时，适用于章节内容等稳定数据 */
+    val LONG_CACHE = CacheConfig(maxAge = TimeUnit.HOURS.toMillis(2))
+    /** 超长期缓存：24小时，适用于分类等基础数据 */
+    val EXTRA_LONG_CACHE = CacheConfig(maxAge = TimeUnit.HOURS.toMillis(24))
 }
 
 /**
- * BookService 缓存扩展
+ * BookService 缓存扩展函数
+ * 
+ * 为BookService添加缓存功能，提升用户体验和应用性能
+ * 所有扩展函数都支持不同的缓存策略和更新回调
+ */
+
+/**
+ * 获取书籍详情（带缓存）
+ * @param bookId 书籍ID
+ * @param cacheManager 缓存管理器
+ * @param strategy 缓存策略，默认缓存优先
+ * @param onCacheUpdate 缓存更新回调
  */
 suspend fun BookService.getBookByIdCached(
     bookId: Long,
@@ -54,7 +90,8 @@ suspend fun BookService.getBookByIdCached(
         config = CacheConfigs.MEDIUM_CACHE,
         networkCall = { getBookByIdBlocking(bookId) },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookInfoResponse>() {}
     )
 }
 
@@ -69,7 +106,8 @@ suspend fun BookService.getBookChaptersCached(
         config = CacheConfigs.MEDIUM_CACHE,
         networkCall = { getBookChaptersBlocking(bookId) },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookChapterResponse>() {}
     )
 }
 
@@ -84,7 +122,8 @@ suspend fun BookService.getBookContentCached(
         config = CacheConfigs.LONG_CACHE, // 章节内容缓存时间长一些
         networkCall = { getBookContentBlocking(chapterId) },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookContentResponse>() {}
     )
 }
 
@@ -98,7 +137,8 @@ suspend fun BookService.getVisitRankBooksCached(
         config = CacheConfigs.SHORT_CACHE, // 排行榜更新频繁，缓存时间短
         networkCall = { getVisitRankBooksBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookRankResponse>() {}
     )
 }
 
@@ -112,7 +152,8 @@ suspend fun BookService.getUpdateRankBooksCached(
         config = CacheConfigs.SHORT_CACHE,
         networkCall = { getUpdateRankBooksBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookRankResponse>() {}
     )
 }
 
@@ -126,7 +167,8 @@ suspend fun BookService.getNewestRankBooksCached(
         config = CacheConfigs.SHORT_CACHE,
         networkCall = { getNewestRankBooksBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookRankResponse>() {}
     )
 }
 
@@ -141,7 +183,8 @@ suspend fun BookService.getBookCategoriesCached(
         config = CacheConfigs.EXTRA_LONG_CACHE, // 分类信息基本不变，缓存时间长
         networkCall = { getBookCategoriesBlocking(workDirection) },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<BookService.BookCategoryResponse>() {}
     )
 }
 
@@ -189,7 +232,8 @@ suspend fun SearchService.searchBooksCached(
             )
         },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<SearchService.BookSearchResponse>() {}
     )
 }
 
@@ -206,7 +250,8 @@ suspend fun HomeService.getHomeBookseCached(
         config = CacheConfigs.MEDIUM_CACHE,
         networkCall = { getHomeBooksBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<HomeService.HomeBooksResponse>() {}
     )
 }
 
@@ -220,7 +265,8 @@ suspend fun HomeService.getFriendLinksCached(
         config = CacheConfigs.EXTRA_LONG_CACHE, // 友情链接变动较少
         networkCall = { getFriendLinksBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<HomeService.FriendLinksResponse>() {}
     )
 }
 
@@ -237,7 +283,8 @@ suspend fun NewsService.getLatestNewsCached(
         config = CacheConfigs.SHORT_CACHE, // 新闻更新频繁
         networkCall = { getLatestNewsBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<NewsService.NewsListResponse>() {}
     )
 }
 
@@ -252,7 +299,8 @@ suspend fun NewsService.getNewsByIdCached(
         config = CacheConfigs.LONG_CACHE,
         networkCall = { getNewsByIdBlocking(newsId) },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<NewsService.NewsInfoResponse>() {}
     )
 }
 
@@ -269,7 +317,8 @@ suspend fun UserService.getUserInfoCached(
         config = CacheConfigs.MEDIUM_CACHE,
         networkCall = { getUserInfoBlocking() },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<UserService.UserInfoResponse?>() {}
     )
 }
 
@@ -284,7 +333,8 @@ suspend fun UserService.getUserCommentsCached(
         config = CacheConfigs.SHORT_CACHE,
         networkCall = { getUserCommentsBlocking(pageRequest) },
         strategy = strategy,
-        onCacheUpdate = onCacheUpdate
+        onCacheUpdate = onCacheUpdate,
+        typeToken = object : TypeToken<UserService.UserCommentsResponse>() {}
     )
 }
 
@@ -314,24 +364,3 @@ inline fun <T> CacheResult<T>.fold(
         is CacheResult.Error -> onError(error, cachedData)
     }
 }
-
-/**
- * 异步缓存更新帮助函数
- */
-fun <T> CoroutineScope.launchCacheUpdate(
-    cacheManager: NetworkCacheManager,
-    key: String,
-    config: CacheConfig,
-    networkCall: suspend () -> T,
-    onUpdate: ((T) -> Unit)? = null
-) {
-    launch(Dispatchers.IO) {
-        try {
-            val data = networkCall()
-            // 手动保存到缓存（这里需要添加对应的方法到NetworkCacheManager）
-            onUpdate?.invoke(data)
-        } catch (e: Exception) {
-            // 更新失败，静默处理
-        }
-    }
-} 

@@ -14,14 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.novel.page.component.LoadingStateComponent
 import com.novel.page.component.NovelText
 import com.novel.page.search.component.*
 import com.novel.page.search.skeleton.SearchResultPageSkeleton
@@ -31,7 +25,6 @@ import com.novel.utils.NavViewModel
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
-import kotlinx.coroutines.launch
 
 /**
  * 搜索结果页面
@@ -44,7 +37,6 @@ fun SearchResultPage(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle(initialValue = null)
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
 
     // 处理事件
     LaunchedEffect(events) {

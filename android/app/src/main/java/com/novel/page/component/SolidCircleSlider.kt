@@ -46,10 +46,10 @@ fun SolidCircleSlider(
     val progressClamped = progress.coerceIn(0f, 1f)
 
     // 2. 先记录整个组件的“像素宽度” fullWidthPx
-    var fullWidthPx by remember { mutableStateOf(0f) }
+    var fullWidthPx by remember { mutableFloatStateOf(0f) }
 
     // 3. Thumb 的圆心在 x 方向的真实位置（像素值），它要介于 [thumbRadiusPx, fullWidthPx - thumbRadiusPx]
-    var thumbCenterX by remember { mutableStateOf(0f) }
+    var thumbCenterX by remember { mutableFloatStateOf(0f) }
 
     // 4. Dp → Px
     val thumbRadiusPx = with(LocalDensity.current) { thumbRadiusDp.toPx() }
@@ -105,8 +105,8 @@ fun SolidCircleSlider(
     ) {
         // 8. 用 Canvas 先画“充满全宽”的 Track（背景 + 进度）
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val fullWidth = size.width.toFloat()
-            val fullHeight = size.height.toFloat()
+            val fullWidth = size.width
+            val fullHeight = size.height
 
             // 8.1. 先画“背景 Track”：从 x=0 开始，宽度 = fullWidth
             drawRoundRect(

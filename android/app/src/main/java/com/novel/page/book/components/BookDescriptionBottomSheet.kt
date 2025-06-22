@@ -28,7 +28,6 @@ import com.novel.utils.HtmlTextUtil
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**

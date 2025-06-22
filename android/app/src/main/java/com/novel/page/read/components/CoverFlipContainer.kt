@@ -5,10 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -21,7 +19,6 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import com.novel.page.read.viewmodel.FlipDirection
-import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
 import com.novel.utils.SwipeBackContainer
@@ -37,7 +34,6 @@ fun CoverFlipContainer(
     uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
-    onChapterChange: (FlipDirection) -> Unit,
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null, // 新增：iOS侧滑返回回调
     onClick: () -> Unit
@@ -69,18 +65,10 @@ fun CoverFlipContainer(
                 page = "",
                 chapterName = uiState.currentChapter?.chapterName ?: "",
                 isFirstPage = false,
-                isLastPage = false,
                 isBookDetailPage = true,
                 bookInfo = bookInfo,
-                nextChapterData = uiState.nextChapterData,
-                previousChapterData = uiState.previousChapterData,
                 readerSettings = readerSettings,
-                onNavigateToReader = onNavigateToReader,
-                onSwipeBack = onSwipeBack,
-                onPageChange = onPageChange,
                 showNavigationInfo = false,
-                currentPageIndex = 0,
-                totalPages = 1,
                 onClick = onClick
             )
         }
@@ -220,18 +208,10 @@ private fun PageRenderer(
                 page = "",
                 chapterName = uiState.currentChapter?.chapterName ?: "",
                 isFirstPage = false,
-                isLastPage = false,
                 isBookDetailPage = true,
                 bookInfo = bookInfo,
-                nextChapterData = uiState.nextChapterData,
-                previousChapterData = uiState.previousChapterData,
                 readerSettings = readerSettings,
-                onNavigateToReader = onNavigateToReader,
-                onSwipeBack = onSwipeBack,
-                onPageChange = onPageChange,
                 showNavigationInfo = false,
-                currentPageIndex = 0,
-                totalPages = 1,
                 onClick = onClick
             )
         }
@@ -243,17 +223,10 @@ private fun PageRenderer(
                     page = pageContent,
                     chapterName = chapterData.chapterName,
                     isFirstPage = virtualPage.pageIndex == 0,
-                    isLastPage = virtualPage.pageIndex == chapterData.pages.size - 1,
                     isBookDetailPage = false,
                     bookInfo = null,
-                    nextChapterData = if (isCurrentPage) uiState.nextChapterData else null,
-                    previousChapterData = if (isCurrentPage) uiState.previousChapterData else null,
                     readerSettings = readerSettings,
-                    onNavigateToReader = onNavigateToReader,
-                    onPageChange = onPageChange,
                     showNavigationInfo = true,
-                    currentPageIndex = virtualPage.pageIndex + 1,
-                    totalPages = chapterData.contentPageCount,
                     onClick = onClick
                 )
             }

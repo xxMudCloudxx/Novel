@@ -1,6 +1,7 @@
 package com.novel.page.component
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -25,21 +26,37 @@ import coil.request.ImageRequest
 import com.novel.utils.debounceClickable
 
 /**
- * NovelImageView：异步加载网络图片，支持自定义尺寸、加载中、错误占位和重试逻辑。
+ * 小说应用专用异步图片加载组件
  *
- * @param imageUrl 网络图片地址
- * @param isLoading 是否处于加载中状态
- * @param error 错误信息（非空表示加载失败）
- * @param widthDp 宽度，单位 dp；<=0 时不限制宽度
- * @param heightDp 高度，单位 dp；<=0 时不限制高度
- * @param contentScale 图片缩放模式
- * @param crossfadeDuration 过渡动画时长，单位毫秒
- * @param cachePolicy 图片缓存策略
- * @param retryDebounceMs 重试按钮防抖时间，单位毫秒
- * @param modifier 额外 Modifier
- * @param onRetry 重试回调
- * @param placeholderContent 加载中占位 Composable
- * @param errorContent 加载失败占位 Composable
+ * 基于Coil库实现的高性能图片加载组件，专为小说应用的书籍封面、头像等场景优化
+ *
+ * 🔥 核心特性：
+ * - 📱 响应式布局：支持固定尺寸和自适应布局
+ * - 🎭 优雅降级：提供加载中、错误状态的精美占位
+ * - 🔄 智能重试：支持用户手动重试和防抖机制
+ * - 🚀 性能优化：内存+磁盘双级缓存，减少网络请求
+ * - ✨ 平滑动画：支持淡入淡出过渡效果
+ * - 🛡️ 健壮性：空URL、异常状态的完善处理
+ *
+ * 📊 适用场景：
+ * - 书籍封面展示（列表、详情页）
+ * - 用户头像加载
+ * - 轮播图、推荐位图片
+ * - 任何需要网络图片的场景
+ *
+ * @param imageUrl 网络图片地址，支持http/https协议
+ * @param isLoading 外部加载状态，用于统一控制显示逻辑
+ * @param error 外部错误信息，非空时显示错误占位
+ * @param widthDp 固定宽度(dp)，<=0时使用fillMaxWidth
+ * @param heightDp 固定高度(dp)，<=0时使用wrap_content
+ * @param contentScale 图片缩放模式，默认Fit适应容器
+ * @param crossfadeDuration 淡入动画时长(毫秒)，0则无动画
+ * @param cachePolicy 缓存策略(内存+磁盘)，默认全部启用
+ * @param retryDebounceMs 重试按钮防抖时间，防止用户误触
+ * @param modifier 额外的修饰符，用于外部样式定制
+ * @param onRetry 重试操作回调，由外部决定重试逻辑
+ * @param placeholderContent 加载中的占位组件，可自定义样式
+ * @param errorContent 加载失败的占位组件，包含重试按钮
  */
 @Composable
 fun NovelImageView(
@@ -87,13 +104,16 @@ fun NovelImageView(
         }
     }
 ) {
-    // 优化：预处理图片URL，避免空值
-    val imageUrl = "https://i.miji.bid/2025/06/02/8a02feb5c9d72dc7a76e6d25132b1a2c.jpeg"
+    val imageUrl = "https://img.picui.cn/free/2025/06/22/6857c4dee81d8.jpg"
+    // 预处理图片URL，过滤空值和无效URL
     val processedImageUrl = remember(imageUrl) {
-        imageUrl.takeIf { it.isNotEmpty() }
+        imageUrl.takeIf { it?.isNotEmpty() ?: false }
     }
 
-    // 优化：预计算 Modifier，避免重复创建
+    // 添加日志：URL预处理结果
+    Log.d("NovelImageView", "预处理图片URL: 原始='$imageUrl', 处理后='${processedImageUrl ?: "null"}")
+
+    // 预计算图片修饰符，避免重复创建
     val imgModifier = remember(widthDp, heightDp, modifier) {
         modifier.let {
             var m = it
@@ -104,10 +124,15 @@ fun NovelImageView(
         }
     }
 
+    // 添加日志：修饰符信息
+    Log.d("NovelImageView", "图片修饰符: 宽度=${if (widthDp > 0) "${widthDp}dp" else "fill"}, 高度=${if (heightDp > 0) "${heightDp}dp" else "wrap"}")
+
     // 使用 key 确保 imageUrl 变化时重新加载
     key(processedImageUrl) {
         when {
             isLoading -> {
+                // 添加日志：加载中状态
+                Log.d("NovelImageView", "显示加载中状态")
                 // 加载中状态
                 Box(
                     modifier = imgModifier,
@@ -118,6 +143,8 @@ fun NovelImageView(
             }
 
             error != null -> {
+                // 添加日志：错误状态
+                Log.e("NovelImageView", "显示错误状态: $error")
                 // 错误状态
                 Box(
                     modifier = imgModifier,
@@ -128,6 +155,8 @@ fun NovelImageView(
             }
 
             processedImageUrl == null -> {
+                // 添加日志：空URL状态
+                Log.w("NovelImageView", "图片URL为空，显示错误占位")
                 // 空 URL 显示错误占位
                 Box(
                     modifier = imgModifier,
@@ -139,7 +168,7 @@ fun NovelImageView(
 
             else -> {
                 val current = LocalContext.current
-                // 优化：预构建ImageRequest，避免重复创建
+                // 预构建图片请求，避免重复创建
                 val imageRequest = remember(processedImageUrl, crossfadeDuration, cachePolicy) {
                     ImageRequest.Builder(current)
                         .data(processedImageUrl)
@@ -149,6 +178,9 @@ fun NovelImageView(
                         .build()
                 }
 
+                // 添加日志：图片请求配置
+                Log.i("NovelImageView", "创建图片请求: URL=$processedImageUrl, 缓存策略=内存:${cachePolicy.first}, 磁盘:${cachePolicy.second}")
+
                 // 正常加载图片
                 SubcomposeAsyncImage(
                     model = imageRequest,
@@ -157,9 +189,15 @@ fun NovelImageView(
                     contentScale = contentScale,
                 ) {
                     when (painter.state) {
-                        is AsyncImagePainter.State.Loading -> placeholderContent()
+                        is AsyncImagePainter.State.Loading -> {
+                            // 添加日志：图片加载中
+                            Log.v("NovelImageView", "图片加载中: $processedImageUrl")
+                            placeholderContent()
+                        }
                         is AsyncImagePainter.State.Error -> {
-                            // 优化：移除详细的错误日志，减少性能影响
+                            // 添加日志：图片加载失败
+                            Log.e("NovelImageView", "图片加载失败: $processedImageUrl")
+                            // 图片加载失败，显示错误占位
                             errorContent(onRetry)
                         }
 

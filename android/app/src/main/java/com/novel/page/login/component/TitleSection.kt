@@ -12,7 +12,10 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- *标题
+ * 登录页面标题组件
+ * 
+ * 显示登录页面的主标题和副标题信息
+ * 包含无障碍支持，提供语音朗读功能
  */
 @Composable
 fun TitleSection() {
@@ -24,7 +27,7 @@ fun TitleSection() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 22.5.wdp, bottom = 40.wdp)
-            //无障碍
+            // 无障碍支持 - 为屏幕阅读器提供描述
             .semantics { contentDescription = "登录，可领现金红包" },
     )
 }

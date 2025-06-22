@@ -5,12 +5,24 @@ import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 新闻服务API
+ * 
+ * 功能：
+ * - 最新新闻列表获取
+ * - 新闻详情内容查询
+ * - 分类新闻数据管理
+ * 
+ * 特点：
+ * - 支持协程和回调调用方式
+ * - JSON数据自动序列化
+ * - 统一错误处理机制
+ */
 @Singleton
 class NewsService @Inject constructor() {
     

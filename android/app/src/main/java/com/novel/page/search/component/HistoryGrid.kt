@@ -1,5 +1,6 @@
 package com.novel.page.search.component
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -17,7 +18,15 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
- * 搜索历史记录区域
+ * 搜索历史记录区域组件
+ * 
+ * 显示用户搜索历史记录，支持展开/收起和清空所有历史
+ * 超过4条记录时显示展开/收起按钮，提供删除所有历史功能
+ * 
+ * @param history 历史记录列表
+ * @param isExpanded 是否展开显示所有历史
+ * @param onHistoryClick 历史记录点击回调
+ * @param onToggleExpansion 展开/收起切换回调
  */
 @Composable
 fun SearchHistorySection(
@@ -26,6 +35,11 @@ fun SearchHistorySection(
     onHistoryClick: (String) -> Unit,
     onToggleExpansion: () -> Unit
 ) {
+    val TAG = "SearchHistorySection"
+    
+    // 记录历史记录状态
+    Log.d(TAG, "渲染搜索历史: 总数=${history.size}, 展开状态=$isExpanded")
+    
     Column(
         modifier = Modifier
             .padding(horizontal = 16.wdp)
@@ -49,7 +63,10 @@ fun SearchHistorySection(
                 if (history.size > 4) {
                     NovelText(
                         modifier = Modifier.debounceClickable(
-                            onClick = { onToggleExpansion() }
+                            onClick = { 
+                                Log.d(TAG, "切换历史展开状态: $isExpanded -> ${!isExpanded}")
+                                onToggleExpansion() 
+                            }
                         ),
                         text = if (isExpanded) "收起" else "展开",
                         fontSize = 14.ssp,
@@ -62,6 +79,7 @@ fun SearchHistorySection(
                     modifier = Modifier
                         .debounceClickable(
                             onClick = {
+                                Log.d(TAG, "清空所有搜索历史")
                                 onHistoryClick("")
                             }
                         )
@@ -84,7 +102,13 @@ fun SearchHistorySection(
 
 /**
  * 搜索历史记录网格组件
- * 使用两列固定布局，每条记录占一格
+ * 
+ * 使用两列固定布局展示历史记录，每条记录占一格
+ * 自动处理奇数个条目的布局对齐
+ * 
+ * @param history 要显示的历史记录列表
+ * @param onItemClick 单个历史记录点击回调
+ * @param modifier 修饰符
  */
 @Composable
 fun HistoryGrid(
@@ -92,6 +116,11 @@ fun HistoryGrid(
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val TAG = "HistoryGrid"
+    
+    // 记录网格渲染信息
+    Log.v(TAG, "渲染历史网格: ${history.size}条记录")
+    
     // 将历史记录按两列分组
     val chunkedHistory = history.chunked(2)
 
@@ -108,7 +137,10 @@ fun HistoryGrid(
                 if (rowItems.isNotEmpty()) {
                     HistoryItem(
                         text = rowItems[0],
-                        onClick = { onItemClick(rowItems[0]) },
+                        onClick = { 
+                            Log.d(TAG, "点击历史记录: ${rowItems[0]}")
+                            onItemClick(rowItems[0]) 
+                        },
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -119,7 +151,10 @@ fun HistoryGrid(
                 if (rowItems.size > 1) {
                     HistoryItem(
                         text = rowItems[1],
-                        onClick = { onItemClick(rowItems[1]) },
+                        onClick = { 
+                            Log.d(TAG, "点击历史记录: ${rowItems[1]}")
+                            onItemClick(rowItems[1]) 
+                        },
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -131,7 +166,13 @@ fun HistoryGrid(
 }
 
 /**
- * 单个历史记录项
+ * 单个历史记录项组件
+ * 
+ * 显示单条搜索历史，支持文本溢出省略显示
+ * 
+ * @param text 历史记录文本内容
+ * @param onClick 点击回调
+ * @param modifier 修饰符
  */
 @Composable
 private fun HistoryItem(

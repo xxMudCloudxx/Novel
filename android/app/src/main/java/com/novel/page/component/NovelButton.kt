@@ -14,10 +14,19 @@ import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 
 /**
- * 实现主按钮（登录按钮）
- * @param content 按钮内容，可以是文本或任意组件
+ * 主要按钮组件（渐变背景）
+ * 
+ * 特点：
+ * - 渐变色背景
+ * - 防抖点击处理
+ * - 可自定义圆角和颜色
+ * 
+ * @param content 按钮内容
  * @param modifier 修饰符
  * @param onClick 点击事件
+ * @param round 圆角大小
+ * @param enabldeClicke 是否可点击
+ * @param colors 渐变色列表
  */
 @Composable
 fun NovelMainButton(
@@ -44,10 +53,18 @@ fun NovelMainButton(
 }
 
 /**
- * 实现弱化按钮（注册按钮）
- * @param content 按钮内容，可以是文本或任意组件
+ * 次要按钮组件（纯色背景）
+ * 
+ * 特点：
+ * - 纯色背景
+ * - 防抖点击处理
+ * - 适合次要操作
+ * 
+ * @param content 按钮内容
  * @param modifier 修饰符
  * @param onClick 点击事件
+ * @param round 圆角大小
+ * @param color 背景颜色
  */
 @Composable
 fun NovelWeakenButton(
