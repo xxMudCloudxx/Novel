@@ -24,7 +24,7 @@ import com.novel.utils.wdp
 /**
  * Android 设置页面
  * 上方显示导航栏（返回按钮 + 设置标题）
- * 下方嵌入RN的SettingsPage组件
+ * 下方嵌入缓存的RN SettingsPage组件，确保状态一致性
  */
 @Composable
 fun SettingsPage() {
@@ -79,73 +79,56 @@ private fun SettingsTopBar() {
 private fun ReactNativeSettingsContent(
     modifier: Modifier = Modifier
 ) {
+    val TAG = "SettingsPage"
     val context = LocalContext.current
+    val mainApplication = context.applicationContext as MainApplication
     
-    // 仿照ReactNativePage的实现
-    val reactInstanceManager = remember {
-        (context.applicationContext as MainApplication).reactNativeHost.reactInstanceManager
-    }
+    // 获取 ReactInstanceManager
+    val reactInstanceManager = remember { mainApplication.reactNativeHost.reactInstanceManager }
     
     var isContextReady by remember { 
         mutableStateOf(reactInstanceManager.currentReactContext != null) 
     }
     
-    Log.d("SettingsPage", "Composed SettingsPage, initial isContextReady: $isContextReady")
-    Log.d("SettingsPage", "Has started creating initial context: ${reactInstanceManager.hasStartedCreatingInitialContext()}")
+    Log.d(TAG, "组件渲染 - isContextReady: $isContextReady")
 
+    // 获取缓存的ReactRootView实例
     val rootView = remember {
-        Log.d("SettingsPage", "Creating ReactRootView for Settings")
-        ReactRootView(context).apply {
-            setIsFabric(BuildConfig.IS_NEW_ARCHITECTURE_ENABLED)
-            
-            // 当 RN Context 已准备好时立刻启动
-            if (reactInstanceManager.currentReactContext != null) {
-                Log.d("SettingsPage", "Context ready, starting SettingsPageComponent immediately")
-                startReactApplication(
-                    reactInstanceManager,
-                    "SettingsPageComponent",
-                    bundleOf("source" to "android_settings")
-                )
-            } else {
-                Log.d("SettingsPage", "Context not ready, adding listener")
-                reactInstanceManager.addReactInstanceEventListener(
-                    object : ReactInstanceManager.ReactInstanceEventListener {
-                        override fun onReactContextInitialized(context: ReactContext) {
-                            Log.d("SettingsPage", "Context initialized, starting SettingsPageComponent")
-                            startReactApplication(
-                                reactInstanceManager,
-                                "SettingsPageComponent",
-                                bundleOf("source" to "android_settings")
-                            )
-                            reactInstanceManager.removeReactInstanceEventListener(this)
-                        }
-                    }
-                )
-            }
-        }
+        Log.d(TAG, "获取缓存的ReactRootView for SettingsPageComponent")
+        mainApplication.getOrCreateReactRootView(
+            "SettingsPageComponent",
+            bundleOf("source" to "android_settings")
+        )
     }
 
+    // 管理RN上下文监听器的生命周期
     DisposableEffect(reactInstanceManager) {
-        Log.d("SettingsPage", "DisposableEffect started")
-        if (!isContextReady) {
-            Log.d("SettingsPage", "Adding context ready listener")
-            val listener = ReactInstanceManager.ReactInstanceEventListener { 
+        Log.d(TAG, "DisposableEffect启动")
+        
+        val contextListener = if (!isContextReady) {
+            Log.d(TAG, "添加RN上下文监听器")
+            ReactInstanceManager.ReactInstanceEventListener { 
+                Log.d(TAG, "RN上下文状态变更为就绪")
                 isContextReady = true 
-                Log.d("SettingsPage", "Context ready listener triggered")
+            }.also { listener ->
+                reactInstanceManager.addReactInstanceEventListener(listener)
             }
-            reactInstanceManager.addReactInstanceEventListener(listener)
-            onDispose {
-                Log.d("SettingsPage", "Removing context ready listener")
+        } else null
+        
+        onDispose {
+            contextListener?.let { listener ->
+                Log.d(TAG, "移除RN上下文监听器")
                 reactInstanceManager.removeReactInstanceEventListener(listener)
             }
-        } else {
-            onDispose {}
         }
     }
 
-    // 使用AndroidView嵌入ReactRootView，仿照ReactNativePage的方式
+    // 使用AndroidView嵌入缓存的ReactRootView
     androidx.compose.ui.viewinterop.AndroidView(
-        factory = { rootView },
+        factory = { 
+            Log.d(TAG, "AndroidView factory返回缓存的ReactRootView")
+            rootView 
+        },
         modifier = modifier
     )
 

@@ -1,6 +1,7 @@
 package com.novel
 
 import android.app.Application
+import android.os.Bundle
 import android.util.Log
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -19,6 +20,11 @@ import com.novel.utils.network.interceptor.AuthInterceptor
 import com.novel.utils.rn.NavigationPackage
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
+import com.facebook.react.ReactRootView
+import androidx.core.os.bundleOf
+import java.util.concurrent.ConcurrentHashMap
+import com.facebook.react.bridge.ReactContext
+import com.facebook.react.ReactInstanceManager
 
 /**
  * 主应用类
@@ -53,6 +59,9 @@ class MainApplication : Application(), ReactApplication {
     @Inject
     lateinit var settingsUtils: com.novel.utils.SettingsUtils
 
+    // 添加ReactRootView缓存管理
+    private val reactRootViewCache = ConcurrentHashMap<String, ReactRootView>()
+    
     override val reactNativeHost: ReactNativeHost =
         object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> =
@@ -100,5 +109,57 @@ class MainApplication : Application(), ReactApplication {
         
         Log.d(TAG, "✅ MainApplication 初始化完成")
         Log.d(TAG, "====================================")
+    }
+
+    /**
+     * 获取或创建ReactRootView实例
+     * @param componentName React组件名称
+     * @param initialProps 初始属性
+     * @return 缓存的或新创建的ReactRootView
+     */
+    fun getOrCreateReactRootView(
+        componentName: String, 
+        initialProps: Bundle? = null
+    ): ReactRootView {
+        return reactRootViewCache.getOrPut(componentName) {
+            Log.d("MainApplication", "创建新的ReactRootView: $componentName")
+            ReactRootView(this).apply {
+                setIsFabric(BuildConfig.IS_NEW_ARCHITECTURE_ENABLED)
+                
+                val rim = reactNativeHost.reactInstanceManager
+                if (rim.currentReactContext != null) {
+                    Log.d("MainApplication", "立即启动React应用: $componentName")
+                    startReactApplication(rim, componentName, initialProps)
+                } else {
+                    Log.d("MainApplication", "等待React上下文初始化: $componentName")
+                    rim.addReactInstanceEventListener(
+                        object : ReactInstanceManager.ReactInstanceEventListener {
+                            override fun onReactContextInitialized(context: ReactContext) {
+                                Log.d("MainApplication", "React上下文就绪，启动应用: $componentName")
+                                startReactApplication(rim, componentName, initialProps)
+                                rim.removeReactInstanceEventListener(this)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 清理指定的ReactRootView缓存
+     */
+    fun clearReactRootViewCache(componentName: String) {
+        reactRootViewCache.remove(componentName)?.let {
+            Log.d("MainApplication", "清理ReactRootView缓存: $componentName")
+        }
+    }
+    
+    /**
+     * 清理所有ReactRootView缓存
+     */
+    fun clearAllReactRootViewCache() {
+        reactRootViewCache.clear()
+        Log.d("MainApplication", "清理所有ReactRootView缓存")
     }
 }

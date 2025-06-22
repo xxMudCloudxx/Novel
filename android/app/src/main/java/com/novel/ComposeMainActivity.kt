@@ -99,6 +99,9 @@ class ComposeMainActivity : ComponentActivity() {
         Log.d(TAG, "Activity销毁")
         // 清理React Native实例资源
         rim.onHostDestroy(this)
+        
+        // 清理ReactRootView缓存
+        (application as MainApplication).clearAllReactRootViewCache()
     }
     
     override fun onConfigurationChanged(newConfig: Configuration) {
