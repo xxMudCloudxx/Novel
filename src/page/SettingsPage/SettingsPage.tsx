@@ -20,7 +20,7 @@ const SettingsPage: React.FC = () => {
     pushNotificationEnabled,
     benefitNotificationEnabled,
     followSystemTheme,
-    colorScheme: settingsColorScheme,
+
     autoSwitchNightMode,
     useMobileDataWhenWiFiPoor,
     enableFloatingWindow,
@@ -40,6 +40,7 @@ const SettingsPage: React.FC = () => {
     navigateToCustomerService,
     navigateToPrivacyPolicy,
     navigateToFontSettings,
+    getCurrentDisplayTheme,
   } = useSettingsStore();
 
   /**
@@ -99,7 +100,7 @@ const SettingsPage: React.FC = () => {
           id: 'colorSchemeToggle',
           title: '主题模式',
           type: 'toggle',
-          value: settingsColorScheme,
+          value: getCurrentDisplayTheme(),
           onPress: toggleColorScheme,
         },
         {

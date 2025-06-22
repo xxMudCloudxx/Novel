@@ -58,6 +58,7 @@ export interface SettingsActions {
   setBenefitNotification: (enabled: boolean) => void;
 
   // 主题设置
+  getCurrentDisplayTheme: () => ColorScheme;
   setFollowSystemTheme: (follow: boolean) => void;
   setColorScheme: (scheme: ColorScheme) => void;
   setAutoSwitchNightMode: (enabled: boolean) => void;

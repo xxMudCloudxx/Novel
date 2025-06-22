@@ -61,7 +61,7 @@ export const SettingRow: React.FC<SettingRowProps> = ({ item, onPress }) => {
             disabled={item.disabled}
           >
             <Text style={styles.themeToggleText}>
-              {item.value === 'dark' ? '🌙' : item.value === 'light' ? '☀️' : '🔄'}
+              {item.value === 'dark' ? '🌙' : '☀️'}
             </Text>
           </TouchableOpacity>
         );

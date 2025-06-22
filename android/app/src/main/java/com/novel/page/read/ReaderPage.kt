@@ -246,15 +246,7 @@ fun ReaderPage(
                                         } else {
                                             showControls = !showControls
                                         }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .onSizeChanged { size ->
-                                            // 确保容器尺寸信息及时更新到ViewModel
-                                            if (size.width > 0 && size.height > 0) {
-                                                viewModel.updateContainerSize(size, density)
-                                            }
-                                        }
+                                    }
                                 )
                             }
                         } else {
@@ -267,13 +259,6 @@ fun ReaderPage(
                                         showSettings = false
                                     } else {
                                         showControls = !showControls
-                                    }
-                                },
-                                onPageChange = { direction ->
-                                    if (direction > 0) {
-                                        viewModel.nextPage()
-                                    } else {
-                                        viewModel.previousPage()
                                     }
                                 },
                                 modifier = Modifier
@@ -401,7 +386,6 @@ fun ReaderPage(
 @Composable
 private fun IntegratedPageFlipContainer(
     viewModel: ReaderViewModel,
-    modifier: Modifier = Modifier,
     uiState: ReaderUiState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
@@ -467,7 +451,6 @@ private fun IntegratedPageFlipContainer(
 private fun ReaderContent(
     uiState: ReaderUiState,
     onClick: () -> Unit,
-    onPageChange: (direction: Int) -> Unit,
     modifier: Modifier
 ) {
     val listState = rememberLazyListState()

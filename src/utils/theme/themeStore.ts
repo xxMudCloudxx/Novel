@@ -91,34 +91,82 @@ export const initializeTheme = async (): Promise<() => void> => {
     // 从AsyncStorage恢复主题
     const savedTheme = await restoreThemeFromStorage();
 
+    // 如果是跟随系统主题，从Android端获取当前实际主题状态
+    let actualIsDark = savedTheme === 'dark' || (savedTheme === 'auto' && isSystemDarkMode());
+    
+    if (savedTheme === 'auto') {
+      try {
+        // 从Android端获取当前实际主题状态
+        const actualTheme = await new Promise<string>((resolve, reject) => {
+          if (NativeModules.NavigationUtilModule?.getCurrentActualTheme) {
+            NativeModules.NavigationUtilModule.getCurrentActualTheme((error: string | null, result: string) => {
+              if (error) {
+                reject(new Error(error));
+              } else {
+                resolve(result);
+              }
+            });
+          } else {
+            reject(new Error('NavigationUtilModule not available'));
+          }
+        });
+        
+        actualIsDark = actualTheme === 'dark';
+        console.log('[ThemeStore] 从Android获取实际主题状态:', actualTheme, 'isDark:', actualIsDark);
+      } catch (e) {
+        console.warn('[ThemeStore] 获取Android实际主题失败，使用系统检测:', e);
+        actualIsDark = isSystemDarkMode();
+      }
+    }
+
     // 设置主题（不触发保存，因为已经是从存储中恢复的）
-    const isDark = savedTheme === 'dark' || (savedTheme === 'auto' && isSystemDarkMode());
     useThemeStore.setState({
       currentTheme: savedTheme,
-      isDarkMode: isDark,
+      isDarkMode: actualIsDark,
       isInitialized: true,
     });
 
     // 监听原生主题变更事件
     const subscription = DeviceEventEmitter.addListener('ThemeChanged', (data: { colorScheme: string }) => {
-      console.log('[ThemeStore] 收到Android主题变更事件:', data);
-      const newTheme = data.colorScheme as ThemeMode;
-      if (['light', 'dark', 'auto'].includes(newTheme)) {
-        // 更新状态但不重新保存，因为这是从Android端传来的变更
-        const isDark = newTheme === 'dark' || (newTheme === 'auto' && isSystemDarkMode());
+      console.log('[ThemeStore] 🎯 收到Android主题变更事件:', JSON.stringify(data));
+      const receivedTheme = data.colorScheme;
+      
+      if (['light', 'dark'].includes(receivedTheme)) {
+        // 收到的是实际主题状态，直接应用
+        const isDark = receivedTheme === 'dark';
+        console.log('[ThemeStore] ✅ 应用实际主题状态:', receivedTheme, 'isDark:', isDark);
+        
+        const currentState = useThemeStore.getState();
+        console.log('[ThemeStore] 当前状态 - currentTheme:', currentState.currentTheme, 'isDarkMode:', currentState.isDarkMode);
+        
         useThemeStore.setState({
-          currentTheme: newTheme,
+          isDarkMode: isDark,
+          // 保持currentTheme不变，因为这可能仍然是'auto'
+        });
+
+        const newState = useThemeStore.getState();
+        console.log('[ThemeStore] 更新后状态 - currentTheme:', newState.currentTheme, 'isDarkMode:', newState.isDarkMode);
+
+        // 不需要保存到AsyncStorage，因为这是系统主题变化的结果
+      } else if (receivedTheme === 'auto') {
+        // 如果还是收到auto，按原来的逻辑处理
+        const isDark = isSystemDarkMode();
+        console.log('[ThemeStore] 收到auto主题，使用系统检测结果:', isDark);
+        useThemeStore.setState({
+          currentTheme: 'auto',
           isDarkMode: isDark,
         });
 
         // 同步保存到AsyncStorage
-        AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme).catch(e => {
+        AsyncStorage.setItem(THEME_STORAGE_KEY, 'auto').catch(e => {
           console.warn('[ThemeStore] 同步保存主题失败:', e);
         });
+      } else {
+        console.warn('[ThemeStore] ⚠️ 收到未知主题类型:', receivedTheme);
       }
     });
 
-    console.log('[ThemeStore] 主题初始化完成:', savedTheme);
+    console.log('[ThemeStore] 主题初始化完成:', savedTheme, 'actualIsDark:', actualIsDark);
 
     // 返回清理函数
     return () => {

@@ -1,5 +1,6 @@
 package com.novel
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import com.novel.page.component.ImageLoaderService
 import com.novel.page.component.LocalImageLoaderService
 import com.novel.ui.theme.NovelTheme
+import com.novel.ui.theme.ThemeManager
 import com.novel.utils.AdaptiveScreen
 import com.novel.utils.NavigationSetup
 import dagger.hilt.android.AndroidEntryPoint
@@ -97,5 +99,29 @@ class ComposeMainActivity : ComponentActivity() {
         Log.d(TAG, "Activity销毁")
         // 清理React Native实例资源
         rim.onHostDestroy(this)
+    }
+    
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Log.d(TAG, "配置发生变化")
+        
+        // 检查是否为主题变化
+        val uiMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        when (uiMode) {
+            Configuration.UI_MODE_NIGHT_YES -> {
+                Log.d(TAG, "系统切换到深色模式")
+            }
+            Configuration.UI_MODE_NIGHT_NO -> {
+                Log.d(TAG, "系统切换到浅色模式")
+            }
+        }
+        
+        // 通知ThemeManager系统主题发生变化
+        try {
+            val themeManager = ThemeManager.getInstance(this)
+            themeManager.notifySystemThemeChanged()
+        } catch (e: Exception) {
+            Log.e(TAG, "通知主题变化失败", e)
+        }
     }
 }

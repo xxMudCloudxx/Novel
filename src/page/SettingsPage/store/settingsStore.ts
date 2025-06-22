@@ -153,6 +153,15 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     console.log('[SettingsStore] 福利通知设置:', enabled);
   },
 
+  // 获取当前实际的主题模式（用于显示icon）
+  getCurrentDisplayTheme: () => {
+    const themeStore = useThemeStore.getState();
+    
+    // 始终返回实际的主题状态（从themeStore中获取）
+    // 这样可以正确反映Android端传来的实际主题状态
+    return themeStore.isDarkMode ? 'dark' : 'light';
+  },
+
   // 主题设置
   setFollowSystemTheme: async (follow: boolean) => {
     try {
@@ -162,6 +171,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             console.error('[SettingsStore] 设置跟随系统主题失败:', error);
           } else {
             console.log('[SettingsStore] 跟随系统主题设置结果:', result);
+            // 设置成功后，如果是开启跟随系统，同步主题状态到主题Store
+            if (follow) {
+              console.log('[SettingsStore] 开启跟随系统主题，等待Android端发送实际主题状态');
+            }
           }
         });
       }
@@ -170,6 +183,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         followSystemTheme: follow,
         colorScheme: follow ? 'auto' : get().colorScheme,
       });
+      
+      // 同步到主题Store
+      if (follow) {
+        useThemeStore.getState().setTheme('auto');
+      }
+      
       console.log('[SettingsStore] 跟随系统主题:', follow);
     } catch (error) {
       console.error('[SettingsStore] 设置跟随系统主题失败:', error);
@@ -204,7 +223,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       // 同步到主题Store
       useThemeStore.getState().setTheme(newMode as ColorScheme);
 
-      set({ colorScheme: newMode as ColorScheme });
+      // 更新设置状态
+      set({ 
+        colorScheme: newMode as ColorScheme,
+        followSystemTheme: newMode === 'auto'
+      });
     } catch (error) {
       console.error('[SettingsStore] 切换夜间模式失败:', error);
     }

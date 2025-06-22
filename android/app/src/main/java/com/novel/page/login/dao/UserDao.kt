@@ -1,6 +1,5 @@
 package com.novel.page.login.dao
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -27,10 +26,6 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface UserDao {
-
-    companion object {
-        private const val TAG = "UserDao"
-    }
 
     // ——— 写操作 ———
 

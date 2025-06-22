@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Color
  * 支持深色模式和用户自定义主题设置
  */
 object NovelColors {
-    private const val TAG = "NovelColors"
 
     /** 应用主色调 - 橙色 */
     val NovelMain: Color
@@ -80,13 +79,15 @@ fun dynamicColor(light: Color, dark: Color): Color {
     
     // 根据设置确定实际的主题模式
     val actualDarkMode = if (followSystemTheme) {
+        // 当跟随系统时，直接使用系统主题
         isSystemInDarkTheme()
     } else {
+        // 当不跟随系统时，使用用户手动设置的主题模式
         isDarkMode
     }
     
     if (Log.isLoggable(TAG, Log.VERBOSE)) {
-        Log.v(TAG, "主题模式: 深色=$actualDarkMode, 跟随系统=$followSystemTheme")
+        Log.v(TAG, "主题模式: 深色=$actualDarkMode, 跟随系统=$followSystemTheme, 手动设置深色=$isDarkMode")
     }
     
     return if (actualDarkMode) dark else light

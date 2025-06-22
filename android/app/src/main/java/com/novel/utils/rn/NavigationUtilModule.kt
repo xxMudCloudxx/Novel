@@ -52,7 +52,13 @@ class NavigationUtilModule(
     /** 全局主题管理器实例 */
     private val themeManager by lazy { 
         Log.d(TAG, "初始化ThemeManager")
-        ThemeManager.getInstance(reactContext.applicationContext) 
+        val manager = ThemeManager.getInstance(reactContext.applicationContext)
+        // 设置系统主题变化回调
+        manager.setSystemThemeChangeCallback { actualTheme ->
+            Log.d(TAG, "系统主题变化回调: $actualTheme")
+            sendThemeChangeEvent(actualTheme)
+        }
+        manager
     }
 
     override fun getName(): String = "NavigationUtil"
@@ -142,21 +148,38 @@ class NavigationUtilModule(
     /**
      * 切换夜间模式
      * 
-     * 自动在浅色和深色主题间切换
-     * 完成后发送主题变更事件到RN端
+     * 根据当前设置智能切换主题模式：
+     * - 如果跟随系统：在light/dark间切换，不影响auto设置
+     * - 如果不跟随系统：在light/dark间切换
      */
     @ReactMethod
     fun toggleNightMode(callback: Callback) {
         Log.d(TAG, "切换夜间模式")
         try {
-            val result = settingsUtils.toggleNightMode()
+            val currentMode = themeManager.getCurrentThemeMode()
+            val newMode = when (currentMode) {
+                "light" -> "dark"
+                "dark" -> "light"
+                "auto" -> {
+                    // 当前跟随系统，根据实际主题状态切换到相反的手动模式
+                    val currentlyDark = android.content.res.Configuration.UI_MODE_NIGHT_YES == 
+                        (reactContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    if (currentlyDark) "light" else "dark"
+                }
+                else -> "light"
+            }
             
-            // 获取切换后的模式并发送事件
-            val newMode = themeManager.getCurrentThemeMode()
-            sendThemeChangeEvent(newMode)
+            // 设置新的主题模式
+            themeManager.setThemeMode(newMode)
+            settingsUtils.setNightMode(newMode)
             
-            Log.d(TAG, "夜间模式切换完成: $newMode")
-            callback.invoke(null, result)
+            // 发送实际主题到RN端
+            val actualTheme = themeManager.getCurrentActualThemeMode()
+            Log.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $newMode)")
+            sendThemeChangeEvent(actualTheme)
+            
+            Log.d(TAG, "夜间模式切换完成: $currentMode -> $newMode")
+            callback.invoke(null, "已切换到${if (newMode == "dark") "深色" else "浅色"}模式")
         } catch (e: Exception) {
             Log.e(TAG, "切换夜间模式失败", e)
             callback.invoke(e.message, null)
@@ -178,8 +201,10 @@ class NavigationUtilModule(
             // 直接使用主题管理器设置主题，确保原生Android也响应变更
             themeManager.setThemeMode(mode)
             
-            // 发送主题变更事件到RN
-            sendThemeChangeEvent(mode)
+            // 发送实际主题到RN端
+            val actualTheme = themeManager.getCurrentActualThemeMode()
+            Log.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $mode)")
+            sendThemeChangeEvent(actualTheme)
             
             callback.invoke(null, "夜间模式已设置为: $mode")
         } catch (e: Exception) {
@@ -212,6 +237,17 @@ class NavigationUtilModule(
         Log.d(TAG, "设置跟随系统主题: $follow")
         try {
             settingsUtils.setFollowSystemTheme(follow)
+            
+            // 同步到主题管理器
+            if (follow) {
+                themeManager.setThemeMode("auto")
+                
+                // 立即发送当前的实际主题状态到RN端
+                val actualTheme = themeManager.getCurrentActualThemeMode()
+                Log.d(TAG, "开启跟随系统主题，当前实际主题: $actualTheme")
+                sendThemeChangeEvent(actualTheme)
+            }
+            
             callback.invoke(null, "跟随系统主题已设置为: $follow")
         } catch (e: Exception) {
             Log.e(TAG, "设置跟随系统主题失败", e)
@@ -265,6 +301,21 @@ class NavigationUtilModule(
     }
 
     /**
+     * 获取当前实际主题状态（用于RN端初始化）
+     */
+    @ReactMethod
+    fun getCurrentActualTheme(callback: Callback) {
+        try {
+            val actualTheme = themeManager.getCurrentActualThemeMode()
+            Log.d(TAG, "获取当前实际主题: $actualTheme")
+            callback.invoke(null, actualTheme)
+        } catch (e: Exception) {
+            Log.e(TAG, "获取当前实际主题失败", e)
+            callback.invoke(e.message, null)
+        }
+    }
+
+    /**
      * 统一主题切换接口
      * 
      * Promise形式的异步接口，支持RN端的async/await调用
@@ -276,8 +327,10 @@ class NavigationUtilModule(
             // 使用全局主题管理器来切换主题
             themeManager.setThemeMode(theme)
             
-            // 发送主题变更事件到RN端
-            sendThemeChangeEvent(theme)
+            // 发送实际主题到RN端（而不是设置的主题模式）
+            val actualTheme = themeManager.getCurrentActualThemeMode()
+            Log.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $theme)")
+            sendThemeChangeEvent(actualTheme)
             
             promise.resolve("主题已切换到: $theme")
         } catch (e: Exception) {
@@ -290,17 +343,21 @@ class NavigationUtilModule(
      */
     private fun sendThemeChangeEvent(theme: String) {
         try {
+            Log.d(TAG, "准备发送主题变更事件到RN: $theme")
+            
             val params = Arguments.createMap().apply {
                 putString("colorScheme", theme)
             }
+            
+            Log.d(TAG, "创建事件参数: colorScheme = $theme")
             
             reactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit("ThemeChanged", params)
                 
-            Log.d("NavigationUtilModule", "主题变更事件已发送: $theme")
+            Log.d(TAG, "✅ 主题变更事件已发送到RN: $theme")
         } catch (e: Exception) {
-            Log.e("NavigationUtilModule", "发送主题变更事件失败", e)
+            Log.e(TAG, "❌ 发送主题变更事件失败: $theme", e)
         }
     }
 }

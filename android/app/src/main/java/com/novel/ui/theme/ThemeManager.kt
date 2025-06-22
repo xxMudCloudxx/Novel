@@ -3,6 +3,7 @@ package com.novel.ui.theme
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
@@ -72,6 +73,9 @@ class ThemeManager private constructor(private val context: Context) : ViewModel
     private val _followSystemTheme = MutableStateFlow(true)
     val followSystemTheme: StateFlow<Boolean> = _followSystemTheme.asStateFlow()
     
+    // 系统主题变化回调
+    private var systemThemeChangeCallback: ((String) -> Unit)? = null
+    
     /**
      * 从缓存恢复主题设置
      */
@@ -129,7 +133,7 @@ class ThemeManager private constructor(private val context: Context) : ViewModel
             }
             "auto" -> {
                 _followSystemTheme.value = true
-                _isDarkMode.value = false // 系统会自动处理
+                // 当跟随系统时，不要手动设置 _isDarkMode，让系统决定
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
             }
         }
@@ -162,6 +166,39 @@ class ThemeManager private constructor(private val context: Context) : ViewModel
             _followSystemTheme.value -> "auto"
             _isDarkMode.value -> "dark"
             else -> "light"
+        }
+    }
+    
+    /**
+     * 获取当前实际的主题模式（用于RN端显示）
+     * 当跟随系统时，返回系统当前的实际主题
+     */
+    fun getCurrentActualThemeMode(): String {
+        return if (_followSystemTheme.value) {
+            // 跟随系统时，检查系统当前是否为深色模式
+            val isSystemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            if (isSystemDark) "dark" else "light"
+        } else {
+            // 手动设置时，返回当前设置
+            if (_isDarkMode.value) "dark" else "light"
+        }
+    }
+    
+    /**
+     * 设置系统主题变化回调
+     */
+    fun setSystemThemeChangeCallback(callback: ((String) -> Unit)?) {
+        systemThemeChangeCallback = callback
+    }
+    
+    /**
+     * 通知系统主题发生变化（由外部调用）
+     */
+    fun notifySystemThemeChanged() {
+        if (_followSystemTheme.value) {
+            val actualTheme = getCurrentActualThemeMode()
+            println("[ThemeManager] 系统主题变化，当前实际主题: $actualTheme")
+            systemThemeChangeCallback?.invoke(actualTheme)
         }
     }
     

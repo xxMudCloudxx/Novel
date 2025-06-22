@@ -246,6 +246,8 @@ class CaptchaService @Inject constructor(
                 
             if (cleanedCount > 0) {
                 Log.d(TAG, "清理了 $cleanedCount 个过期验证码文件")
+            }else{
+                Log.d(TAG, "没有过期验证码文件需要清理")
             }
         } catch (e: Exception) {
             Log.e(TAG, "清理过期文件失败", e)

@@ -1,7 +1,10 @@
 package com.novel.utils
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
@@ -24,15 +27,28 @@ import com.novel.page.search.FullRankingPage
  */
 @Composable
 fun NavigationSetup() {
-    // 创建 NavController
+    Log.d("NavigationSetup", "NavigationSetup 重新组合")
+    
+    // 创建NavController
     val navController = rememberNavController()
 
-    LaunchedEffect(navController) {
+    // 使用DisposableEffect确保在组件销毁时正确清理
+    DisposableEffect(navController) {
+        Log.d("NavigationSetup", "DisposableEffect: 设置 NavController")
         NavViewModel.navController.value = navController
+        
+        onDispose {
+            Log.d("NavigationSetup", "DisposableEffect: 清理 NavController")
+            // 确保在组件销毁时清理引用
+            if (NavViewModel.navController.value == navController) {
+                NavViewModel.navController.value = null
+            }
+        }
     }
 
+    // 添加错误处理，防止在主题切换时出现NavController生命周期问题
     NavHost(
-        navController = NavViewModel.navController.value ?: navController,
+        navController = navController,
         startDestination = "main"
     ) {
         composable("main") {
@@ -61,14 +77,14 @@ fun NavigationSetup() {
         composable("full_ranking/{rankingType}/{encodedData}") { backStackEntry ->
             val rankingType = backStackEntry.arguments?.getString("rankingType") ?: ""
             val encodedData = backStackEntry.arguments?.getString("encodedData") ?: ""
-            
+
             // 解码榜单数据
             val rankingItems = try {
                 NavViewModel.decodeRankingData(encodedData)
             } catch (e: Exception) {
                 emptyList()
             }
-            
+
             FullRankingPage(
                 rankingType = rankingType,
                 rankingItems = rankingItems,

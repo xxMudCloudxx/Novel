@@ -127,7 +127,7 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun <T> set(value: T, forKey: NovelUserDefaultsKey) {
         try {
-            Log.d(TAG, "存储配置: key=${forKey.key}, type=${value?.javaClass?.simpleName}")
+            Log.d(TAG, "存储配置: key=${forKey.key}, type=${value}")
             prefs.edit {
                 when (value) {
                     is String -> putString(forKey.key, value)
@@ -138,7 +138,7 @@ class SharedPrefsUserDefaults @Inject constructor(
                     is Set<*> -> @Suppress("UNCHECKED_CAST")
                     putStringSet(forKey.key, value as Set<String>)
                     else -> {
-                        Log.w(TAG, "不支持的配置类型: ${value?.javaClass?.simpleName}")
+//                        Log.w(TAG, "不支持的配置类型: ${value?.javaClass?.simpleName}")
                         throw IllegalArgumentException("不支持的类型：${value}")
                     }
                 }
