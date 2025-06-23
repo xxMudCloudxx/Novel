@@ -8,6 +8,7 @@ import { useRefreshLogic } from './hooks/useRefreshLogic';
 import { convertHomeBooksToBooks } from './utils/helpers';
 import { createHomePageStyles } from './styles/ProfilePageStyles';
 import { Book } from './types';
+import { useThemeStore } from '../../utils/theme/themeStore';
 import {
   TopBar,
   LoginBar,
@@ -33,6 +34,9 @@ const ProfilePage: React.FC = () => {
     loadMoreBooks,
   } = useHomeStore();
 
+  // 添加主题store
+  const { initializeFromNative } = useThemeStore();
+
   const colors = useNovelColors();
   const styles = createHomePageStyles(colors);
 
@@ -57,10 +61,27 @@ const ProfilePage: React.FC = () => {
     refreshLogic.PULL_THRESHOLD
   );
 
-  // 初始化数据
+  // 初始化数据和主题
   useEffect(() => {
-    loadHomeRecommendBooks();
-  }, [loadHomeRecommendBooks]);
+    const initializePageData = async () => {
+      try {
+        // 🎯 首先从原生端获取最新的主题状态
+        console.log('[ProfilePage] 开始初始化主题和数据');
+        await initializeFromNative();
+        console.log('[ProfilePage] 主题初始化完成');
+        
+        // 然后加载数据
+        await loadHomeRecommendBooks();
+        console.log('[ProfilePage] 数据加载完成');
+      } catch (error) {
+        console.error('[ProfilePage] 初始化失败:', error);
+        // 即使主题初始化失败，也要尝试加载数据
+        loadHomeRecommendBooks();
+      }
+    };
+
+    initializePageData();
+  }, [loadHomeRecommendBooks, initializeFromNative]);
 
   // 登录函数
   const toLogin = useCallback(() => {
