@@ -17,16 +17,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.os.bundleOf
 import com.facebook.react.ReactInstanceManager
-import com.facebook.react.ReactRootView
-import com.facebook.react.bridge.ReactContext
-import com.novel.BuildConfig
 import com.novel.MainApplication
+import com.novel.ui.theme.ThemeManager
 
 /**
  * React Native 页面容器组件
  * 
  * 使用缓存的ReactRootView实例，避免重复创建导致状态丢失
  * 支持页面状态保持和快速切换
+ * 在RN上下文就绪时主动同步主题信息
  */
 @SuppressLint("VisibleForTests")
 @Composable
@@ -60,10 +59,17 @@ fun ReactNativePage() {
             ReactInstanceManager.ReactInstanceEventListener { 
                 Log.d(TAG, "RN上下文状态变更为就绪")
                 isContextReady = true 
+                
+                // 🎯 RN上下文就绪时，主动同步主题信息
+                syncThemeToRN()
             }.also { listener ->
                 reactInstanceManager.addReactInstanceEventListener(listener)
             }
-        } else null
+        } else {
+            // 如果RN上下文已经就绪，直接同步主题
+            syncThemeToRN()
+            null
+        }
         
         onDispose {
             contextListener?.let { listener ->
@@ -88,5 +94,23 @@ fun ReactNativePage() {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
+    }
+}
+
+/**
+ * 同步当前主题信息到RN端
+ */
+private fun syncThemeToRN() {
+    try {
+        Log.d("ReactNativePage", "🎯 开始同步主题信息到RN")
+        val themeManager = ThemeManager.getInstance()
+        val actualTheme = themeManager.getCurrentActualThemeMode()
+        Log.d("ReactNativePage", "当前实际主题: $actualTheme")
+        
+        // 通过ThemeManager发送主题变更事件到RN
+        themeManager.notifyThemeChangedToRN(actualTheme)
+        Log.d("ReactNativePage", "✅ 主题信息已同步到RN: $actualTheme")
+    } catch (e: Exception) {
+        Log.e("ReactNativePage", "❌ 同步主题信息到RN失败", e)
     }
 }

@@ -13,6 +13,9 @@ import androidx.lifecycle.ViewModelStoreOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.ReactContext
+import com.facebook.react.modules.core.DeviceEventManagerModule
 
 /**
  * 全局主题管理器
@@ -199,6 +202,39 @@ class ThemeManager private constructor(private val context: Context) : ViewModel
             val actualTheme = getCurrentActualThemeMode()
             println("[ThemeManager] 系统主题变化，当前实际主题: $actualTheme")
             systemThemeChangeCallback?.invoke(actualTheme)
+        }
+    }
+    
+    /**
+     * 主动向RN端发送主题变更事件
+     * 用于在RN页面加载时同步当前主题状态
+     */
+    fun notifyThemeChangedToRN(theme: String) {
+        try {
+            println("[ThemeManager] 准备发送主题变更事件到RN: $theme")
+            
+            // 获取当前RN上下文
+            val mainApplication = context.applicationContext as com.novel.MainApplication
+            val reactInstanceManager = mainApplication.reactNativeHost.reactInstanceManager
+            val reactContext = reactInstanceManager.currentReactContext
+            
+            if (reactContext != null) {
+                val params = Arguments.createMap().apply {
+                    putString("colorScheme", theme)
+                }
+                
+                println("[ThemeManager] 创建事件参数: colorScheme = $theme")
+                
+                reactContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                    .emit("ThemeChanged", params)
+                    
+                println("[ThemeManager] ✅ 主题变更事件已发送到RN: $theme")
+            } else {
+                println("[ThemeManager] ❌ RN上下文为空，无法发送主题事件")
+            }
+        } catch (e: Exception) {
+            println("[ThemeManager] ❌ 发送主题变更事件失败: $theme, error: ${e.message}")
         }
     }
     

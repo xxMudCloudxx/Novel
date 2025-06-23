@@ -5,6 +5,7 @@ import { useSettingsStore } from './store/settingsStore';
 import { createSettingsPageStyles } from './styles/SettingsPageStyles';
 import { SettingsSection } from './types';
 import { useNovelColors } from '../../utils/theme/colors';
+import { useThemeStore } from '../../utils/theme/themeStore';
 
 /**
  * 设置页面主组件
@@ -13,6 +14,9 @@ import { useNovelColors } from '../../utils/theme/colors';
 const SettingsPage: React.FC = () => {
   const colors = useNovelColors();
   const styles = createSettingsPageStyles(colors);
+
+  // 添加主题store
+  const { initializeFromNative } = useThemeStore();
 
   const {
     // 状态
@@ -42,6 +46,21 @@ const SettingsPage: React.FC = () => {
     navigateToFontSettings,
     getCurrentDisplayTheme,
   } = useSettingsStore();
+
+  // 初始化主题状态
+  React.useEffect(() => {
+    const initializeTheme = async () => {
+      try {
+        console.log('[SettingsPage] 🎯 开始初始化主题状态');
+        await initializeFromNative();
+        console.log('[SettingsPage] ✅ 主题状态初始化完成');
+      } catch (error) {
+        console.error('[SettingsPage] ❌ 主题状态初始化失败:', error);
+      }
+    };
+
+    initializeTheme();
+  }, [initializeFromNative]);
 
   /**
    * 创建设置项配置

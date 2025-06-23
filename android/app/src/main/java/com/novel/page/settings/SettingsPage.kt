@@ -8,16 +8,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
-import com.facebook.react.ReactRootView
 import com.facebook.react.ReactInstanceManager
-import com.facebook.react.bridge.ReactContext
 import android.util.Log
 import androidx.core.os.bundleOf
-import com.novel.BuildConfig
 import com.novel.MainApplication
 import com.novel.page.component.BackButton
 import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
+import com.novel.ui.theme.ThemeManager
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 
@@ -110,10 +108,17 @@ private fun ReactNativeSettingsContent(
             ReactInstanceManager.ReactInstanceEventListener { 
                 Log.d(TAG, "RN上下文状态变更为就绪")
                 isContextReady = true 
+                
+                // 🎯 RN上下文就绪时，主动同步主题信息
+                syncThemeToRN()
             }.also { listener ->
                 reactInstanceManager.addReactInstanceEventListener(listener)
             }
-        } else null
+        } else {
+            // 如果RN上下文已经就绪，直接同步主题
+            syncThemeToRN()
+            null
+        }
         
         onDispose {
             contextListener?.let { listener ->
@@ -144,5 +149,23 @@ private fun ReactNativeSettingsContent(
                 color = NovelColors.NovelText
             )
         }
+    }
+}
+
+/**
+ * 同步当前主题信息到RN端
+ */
+private fun syncThemeToRN() {
+    try {
+        Log.d("SettingsPage", "🎯 开始同步主题信息到RN")
+        val themeManager = ThemeManager.getInstance()
+        val actualTheme = themeManager.getCurrentActualThemeMode()
+        Log.d("SettingsPage", "当前实际主题: $actualTheme")
+        
+        // 通过ThemeManager发送主题变更事件到RN
+        themeManager.notifyThemeChangedToRN(actualTheme)
+        Log.d("SettingsPage", "✅ 主题信息已同步到RN: $actualTheme")
+    } catch (e: Exception) {
+        Log.e("SettingsPage", "❌ 同步主题信息到RN失败", e)
     }
 } 

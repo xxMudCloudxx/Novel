@@ -9,6 +9,7 @@ interface ThemeState {
   setTheme: (theme: ThemeMode) => void;
   isDarkMode: boolean;
   isInitialized: boolean;
+  initializeFromNative: () => Promise<void>;
 }
 
 const THEME_STORAGE_KEY = 'novel_theme_mode';
@@ -36,12 +37,79 @@ export const useThemeStore = create<ThemeState>((set) => ({
 
     // 同步到Android原生
     try {
-      if (NativeModules.NavigationUtilModule?.changeTheme) {
-        await NativeModules.NavigationUtilModule.changeTheme(theme);
+      if (NativeModules.NavigationUtil?.changeTheme) {
+        await NativeModules.NavigationUtil.changeTheme(theme);
         console.log('[ThemeStore] 主题已同步到Android:', theme);
       }
     } catch (e) {
       console.warn('[ThemeStore] 同步主题到Android失败:', e);
+    }
+  },
+
+  // 🎯 新增：从原生端主动获取当前主题状态
+  initializeFromNative: async () => {
+    try {
+      console.log('[ThemeStore] 🎯 开始从原生端获取主题状态');
+      
+      // 从Android端获取当前实际主题状态
+      const actualTheme = await new Promise<string>((resolve, reject) => {
+        if (NativeModules.NavigationUtil?.getCurrentActualTheme) {
+          NativeModules.NavigationUtil.getCurrentActualTheme((error: string | null, result: string) => {
+            if (error) {
+              reject(new Error(error));
+            } else {
+              resolve(result);
+            }
+          });
+        } else {
+          reject(new Error('NavigationUtil.getCurrentActualTheme not available'));
+        }
+      });
+      
+      console.log('[ThemeStore] ✅ 从原生端获取到主题状态:', actualTheme);
+      
+      // 获取当前主题模式设置
+      const currentMode = await new Promise<string>((resolve, reject) => {
+        if (NativeModules.NavigationUtil?.getCurrentNightMode) {
+          NativeModules.NavigationUtil.getCurrentNightMode((error: string | null, result: string) => {
+            if (error) {
+              reject(new Error(error));
+            } else {
+              resolve(result);
+            }
+          });
+        } else {
+          reject(new Error('NavigationUtil.getCurrentNightMode not available'));
+        }
+      });
+      
+      console.log('[ThemeStore] ✅ 从原生端获取到主题模式:', currentMode);
+      
+      // 更新状态
+      const isDark = actualTheme === 'dark';
+      set({
+        currentTheme: currentMode as ThemeMode,
+        isDarkMode: isDark,
+        isInitialized: true,
+      });
+      
+      // 同步保存到AsyncStorage
+      await AsyncStorage.setItem(THEME_STORAGE_KEY, currentMode);
+      
+      console.log('[ThemeStore] ✅ 主题状态已同步:', { currentMode, actualTheme, isDark });
+      
+    } catch (e) {
+      console.warn('[ThemeStore] ⚠️ 从原生端获取主题状态失败，使用默认设置:', e);
+      
+      // 失败时从AsyncStorage恢复
+      const savedTheme = await restoreThemeFromStorage();
+      const isDark = savedTheme === 'dark' || (savedTheme === 'auto' && isSystemDarkMode());
+      
+      set({
+        currentTheme: savedTheme,
+        isDarkMode: isDark,
+        isInitialized: true,
+      });
     }
   },
 }));
@@ -98,8 +166,8 @@ export const initializeTheme = async (): Promise<() => void> => {
       try {
         // 从Android端获取当前实际主题状态
         const actualTheme = await new Promise<string>((resolve, reject) => {
-          if (NativeModules.NavigationUtilModule?.getCurrentActualTheme) {
-            NativeModules.NavigationUtilModule.getCurrentActualTheme((error: string | null, result: string) => {
+          if (NativeModules.NavigationUtil?.getCurrentActualTheme) {
+            NativeModules.NavigationUtil.getCurrentActualTheme((error: string | null, result: string) => {
               if (error) {
                 reject(new Error(error));
               } else {
@@ -107,7 +175,7 @@ export const initializeTheme = async (): Promise<() => void> => {
               }
             });
           } else {
-            reject(new Error('NavigationUtilModule not available'));
+            reject(new Error('NavigationUtil not available'));
           }
         });
         

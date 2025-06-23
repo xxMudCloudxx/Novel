@@ -1,5 +1,6 @@
 package com.novel
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Bundle
 import android.util.Log
@@ -21,7 +22,6 @@ import com.novel.utils.rn.NavigationPackage
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import com.facebook.react.ReactRootView
-import androidx.core.os.bundleOf
 import java.util.concurrent.ConcurrentHashMap
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.ReactInstanceManager
@@ -117,6 +117,7 @@ class MainApplication : Application(), ReactApplication {
      * @param initialProps 初始属性
      * @return 缓存的或新创建的ReactRootView
      */
+    @SuppressLint("VisibleForTests")
     fun getOrCreateReactRootView(
         componentName: String, 
         initialProps: Bundle? = null

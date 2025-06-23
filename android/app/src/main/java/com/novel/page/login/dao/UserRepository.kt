@@ -97,8 +97,8 @@ class UserRepository @Inject constructor(
     fun getAllUsersFlow(): Flow<List<UserEntity>> = flow {
         try {
             val users = userDao.getAllUsers()
-            emit(users)
             Log.v(TAG, "发射用户列表，数量: ${users.size}")
+            emit(users)
         } catch (e: Exception) {
             Log.e(TAG, "获取用户列表失败", e)
             emit(emptyList())
