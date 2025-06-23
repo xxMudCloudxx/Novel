@@ -1,15 +1,19 @@
 import React from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, SafeAreaView } from 'react-native';
 import { SettingRow } from './components/SettingRow';
 import { useSettingsStore } from './store/settingsStore';
 import { createSettingsPageStyles } from './styles/SettingsPageStyles';
 import { SettingsSection } from './types';
 import { useNovelColors } from '../../utils/theme/colors';
 import { useThemeStore } from '../../utils/theme/themeStore';
+import { NativeModules } from 'react-native';
+
+const { NavigationUtil } = NativeModules;
 
 /**
  * 设置页面主组件
  * 提供应用程序的各项设置功能
+ * 包含顶部导航栏和设置内容
  */
 const SettingsPage: React.FC = () => {
   const colors = useNovelColors();
@@ -61,6 +65,17 @@ const SettingsPage: React.FC = () => {
 
     initializeTheme();
   }, [initializeFromNative]);
+
+  /**
+   * 处理返回按钮点击
+   */
+  const handleBackPress = () => {
+    if (NavigationUtil?.navigateBack) {
+      NavigationUtil.navigateBack();
+    } else {
+      console.log('NavigationUtil.navigateBack not available');
+    }
+  };
 
   /**
    * 创建设置项配置
@@ -211,6 +226,30 @@ const SettingsPage: React.FC = () => {
   ];
 
   /**
+   * 渲染顶部导航栏
+   */
+  const renderTopBar = () => (
+    <View style={styles.topBar}>
+      {/* 返回按钮 */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={handleBackPress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.backArrow}>‹</Text>
+      </TouchableOpacity>
+      
+      {/* 设置标题 */}
+      <View style={styles.titleContainer}>
+        <Text style={styles.topBarTitle}>设置</Text>
+      </View>
+      
+      {/* 右侧占位，保持标题居中 */}
+      <View style={styles.rightPlaceholder} />
+    </View>
+  );
+
+  /**
    * 渲染设置分组
    */
   const renderSection = (section: SettingsSection) => (
@@ -229,7 +268,11 @@ const SettingsPage: React.FC = () => {
   const settingsSections = createSettingsSections();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* 顶部导航栏 */}
+      {renderTopBar()}
+      
+      {/* 设置内容 */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -237,7 +280,7 @@ const SettingsPage: React.FC = () => {
       >
         {settingsSections.map(renderSection)}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

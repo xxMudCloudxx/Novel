@@ -36,6 +36,52 @@ export const createSettingsPageStyles = (colors: NovelColors) => {
       paddingVertical: wp(10),
     },
 
+    // === 顶部导航栏样式 ===
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: wp(20),
+      paddingVertical: wp(16),
+      backgroundColor: colors.novelBackground,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.novelDivider,
+      minHeight: wp(56),
+    },
+
+    backButton: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      minWidth: wp(32),
+      minHeight: wp(32),
+    },
+
+    backArrow: {
+      fontSize: fp(40),
+      color: colors.novelText,
+      fontWeight: '300',
+      lineHeight: fp(28),
+    },
+
+    titleContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    topBarTitle: {
+      ...typography.bodyMedium,
+      fontSize: fp(18),
+      color: colors.novelText,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+
+    rightPlaceholder: {
+      width: wp(32),
+      height: wp(32),
+    },
+
     // === 设置项样式 ===
     settingRow: {
       flexDirection: 'row',

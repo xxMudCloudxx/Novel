@@ -14,7 +14,7 @@ import com.novel.page.book.BookDetailPage
 import com.novel.page.read.ReaderPage
 import com.novel.page.search.SearchPage
 import com.novel.page.search.SearchResultPage
-import com.novel.page.settings.SettingsPage
+import com.novel.page.ReactNativePage
 import android.util.Log
 import com.novel.page.component.FlipBookAnimationController
 import com.novel.page.search.FullRankingPage
@@ -111,8 +111,19 @@ fun NavigationSetup() {
                 chapterId = chapterId
             )
         }
+        composable("profile") {
+            // 个人中心页面 - 使用ReactNativePage
+            ReactNativePage(
+                componentName = "Novel",
+                initialProps = mapOf("nativeMessage" to "ProfilePage")
+            )
+        }
         composable("settings") {
-            SettingsPage()
+            // 设置页面 - 使用ReactNativePage加载SettingsPageComponent
+            ReactNativePage(
+                componentName = "SettingsPageComponent",
+                initialProps = mapOf("source" to "android_settings")
+            )
         }
     }
 }
