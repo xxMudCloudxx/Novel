@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { NativeModules } from 'react-native';
 import { SettingsStore, ColorScheme } from '../types';
-import { useThemeStore } from '../../../utils/theme/themeStore';
+import { useThemeStore } from '../../../../utils/theme/themeStore';
 
 const { NavigationUtil } = NativeModules;
 
@@ -174,7 +174,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   // 获取当前实际的主题模式（用于显示icon）
   getCurrentDisplayTheme: () => {
     const themeStore = useThemeStore.getState();
-    
+
     // 始终返回实际的主题状态（从themeStore中获取）
     // 这样可以正确反映Android端传来的实际主题状态
     return themeStore.isDarkMode ? 'dark' : 'light';
@@ -201,12 +201,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         followSystemTheme: follow,
         colorScheme: follow ? 'auto' : get().colorScheme,
       });
-      
+
       // 同步到主题Store
       if (follow) {
         useThemeStore.getState().setTheme('auto');
       }
-      
+
       console.log('[SettingsStore] 跟随系统主题:', follow);
     } catch (error) {
       console.error('[SettingsStore] 设置跟随系统主题失败:', error);
@@ -242,9 +242,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       useThemeStore.getState().setTheme(newMode as ColorScheme);
 
       // 更新设置状态
-      set({ 
+      set({
         colorScheme: newMode as ColorScheme,
-        followSystemTheme: newMode === 'auto'
+        followSystemTheme: newMode === 'auto',
       });
     } catch (error) {
       console.error('[SettingsStore] 切换夜间模式失败:', error);
@@ -254,7 +254,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setAutoSwitchNightMode: (enabled: boolean) => {
     set({ autoSwitchNightMode: enabled });
     console.log('[SettingsStore] 自动切换夜间模式:', enabled);
-    
+
     // 同步到Android端
     if (NavigationUtil?.setAutoNightMode) {
       NavigationUtil.setAutoNightMode(enabled, (error: string | null, result: string) => {
@@ -273,7 +273,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       nightModeEndTime: end,
     });
     console.log('[SettingsStore] 夜间模式时间:', start, '-', end);
-    
+
     // 同步到Android端
     if (NavigationUtil?.setNightModeTime) {
       NavigationUtil.setNightModeTime(start, end, (error: string | null, result: string) => {
@@ -292,15 +292,15 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       if (NavigationUtil?.getNightModeStartTime && NavigationUtil?.getNightModeEndTime) {
         const startTime = await new Promise<string>((resolve, reject) => {
           NavigationUtil.getNightModeStartTime((error: string | null, result: string) => {
-            if (error) reject(new Error(error));
-            else resolve(result);
+            if (error) {reject(new Error(error));}
+            else {resolve(result);}
           });
         });
 
         const endTime = await new Promise<string>((resolve, reject) => {
           NavigationUtil.getNightModeEndTime((error: string | null, result: string) => {
-            if (error) reject(new Error(error));
-            else resolve(result);
+            if (error) {reject(new Error(error));}
+            else {resolve(result);}
           });
         });
 
@@ -322,8 +322,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       if (NavigationUtil?.isAutoNightModeEnabled) {
         const enabled = await new Promise<boolean>((resolve, reject) => {
           NavigationUtil.isAutoNightModeEnabled((error: string | null, result: boolean) => {
-            if (error) reject(new Error(error));
-            else resolve(result);
+            if (error) {reject(new Error(error));}
+            else {resolve(result);}
           });
         });
 
@@ -368,12 +368,29 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   navigateToCustomerService: () => {
     console.log('[SettingsStore] 导航到客服页面');
-    // TODO: 实现导航逻辑
+    if (NavigationUtil?.navigateToHelpSupport) {
+      NavigationUtil.navigateToHelpSupport();
+    } else {
+      // Fallback：直接创建 RN 视图
+      if (NavigationUtil?.navigateToReactNativePage) {
+        NavigationUtil.navigateToReactNativePage('HelpSupportPageComponent');
+      } else {
+        console.warn('[SettingsStore] NavigationUtil.navigateToHelpSupport not available');
+      }
+    }
   },
 
   navigateToPrivacyPolicy: () => {
     console.log('[SettingsStore] 导航到隐私政策页面');
-    // TODO: 实现导航逻辑
+    if (NavigationUtil?.navigateToPrivacyPolicy) {
+      NavigationUtil.navigateToPrivacyPolicy();
+    } else {
+      if (NavigationUtil?.navigateToReactNativePage) {
+        NavigationUtil.navigateToReactNativePage('PrivacyPolicyPageComponent');
+      } else {
+        console.warn('[SettingsStore] NavigationUtil.navigateToPrivacyPolicy not available');
+      }
+    }
   },
 
   navigateToFontSettings: () => {

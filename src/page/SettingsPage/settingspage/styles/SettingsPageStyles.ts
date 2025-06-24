@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { wp, fp } from '../../../utils/theme/dimensions';
-import { typography } from '../../../utils/theme/typography';
-import { NovelColors } from '../../../utils/theme/colors';
+import { wp, fp } from '../../../../utils/theme/dimensions';
+import { typography } from '../../../../utils/theme/typography';
+import { NovelColors } from '../../../../utils/theme/colors';
 
 /**
  * 创建设置页面样式

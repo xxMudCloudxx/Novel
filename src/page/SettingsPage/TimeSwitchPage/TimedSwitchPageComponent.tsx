@@ -13,4 +13,4 @@ const TimedSwitchPageComponent: React.FC = () => {
 // 注册为独立的RN组件
 AppRegistry.registerComponent('TimedSwitchPageComponent', () => TimedSwitchPageComponent);
 
-export default TimedSwitchPageComponent; 
+export default TimedSwitchPageComponent;

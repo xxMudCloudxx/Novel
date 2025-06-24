@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import IconComponent from '../../../component/IconComponent';
-import { SettingItem } from '../types';
+import IconComponent from '../../../../component/IconComponent';
+import { SettingItem } from '../types/index';
 import { createSettingsPageStyles } from '../styles/SettingsPageStyles';
-import { commonSizes } from '../../../utils/theme/dimensions';
-import { useNovelColors } from '../../../utils/theme/colors';
+import { commonSizes } from '../../../../utils/theme/dimensions';
+import { useNovelColors } from '../../../../utils/theme/colors';
 
 interface SettingRowProps {
   item: SettingItem;

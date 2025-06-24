@@ -134,6 +134,20 @@ fun NavigationSetup() {
                 destroyOnBack = true
             )
         }
+        composable("privacy_policy") {
+            ReactNativePage(
+                componentName = "PrivacyPolicyPageComponent",
+                initialProps = mapOf("source" to "android_privacy_policy"),
+                destroyOnBack = true
+            )
+        }
+        composable("help_support") {
+            ReactNativePage(
+                componentName = "HelpSupportPageComponent",
+                initialProps = mapOf("source" to "android_privacy_policy"),
+                destroyOnBack = true
+            )
+        }
     }
 }
 

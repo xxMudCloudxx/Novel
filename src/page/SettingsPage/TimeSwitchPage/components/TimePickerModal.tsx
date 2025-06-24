@@ -6,8 +6,8 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { createSettingsPageStyles } from '../styles/SettingsPageStyles';
-import { useNovelColors } from '../../../utils/theme/colors';
+import { createTimedSwitchPageStyles } from '../styles/TimedSwitchPageStyles';
+import { useNovelColors } from '../../../../utils/theme/colors';
 
 // 简单的时间选择器组件
 interface TimePickerProps {
@@ -17,13 +17,13 @@ interface TimePickerProps {
 
 const TimePicker: React.FC<TimePickerProps> = ({ value, onTimeChange }) => {
   const colors = useNovelColors();
-  const styles = createSettingsPageStyles(colors);
+  const styles = createTimedSwitchPageStyles(colors);
 
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')), []);
   const minutes = useMemo(() => ['00', '15', '30', '45'], []); // 简化为15分钟间隔
 
   const [hour, minute] = value.split(':');
-  
+
   const hourScrollRef = useRef<any>(null);
   const minuteScrollRef = useRef<any>(null);
   const [hourScrollReady, setHourScrollReady] = useState(false);
@@ -76,9 +76,9 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onTimeChange }) => {
       {/* 小时选择 */}
       <View style={styles.timeColumn}>
         <Text style={styles.timeLabel}>时</Text>
-        <ScrollView 
+        <ScrollView
           ref={hourScrollRef}
-          style={styles.timeScrollView} 
+          style={styles.timeScrollView}
           showsVerticalScrollIndicator={false}
           decelerationRate="fast"
           snapToInterval={40} // 对应itemHeight
@@ -112,9 +112,9 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onTimeChange }) => {
       {/* 分钟选择 */}
       <View style={styles.timeColumn}>
         <Text style={styles.timeLabel}>分</Text>
-        <ScrollView 
+        <ScrollView
           ref={minuteScrollRef}
-          style={styles.timeScrollView} 
+          style={styles.timeScrollView}
           showsVerticalScrollIndicator={false}
           decelerationRate="fast"
           snapToInterval={40} // 对应itemHeight
@@ -166,7 +166,7 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
   title,
 }) => {
   const colors = useNovelColors();
-  const styles = createSettingsPageStyles(colors);
+  const styles = createTimedSwitchPageStyles(colors);
 
   const [selectedTime, setSelectedTime] = useState(initialTime);
 
@@ -226,4 +226,4 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
       </SafeAreaView>
     </View>
   );
-}; 
+};

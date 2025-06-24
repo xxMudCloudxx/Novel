@@ -433,6 +433,28 @@ class NavigationUtilModule(
     }
 
     /**
+     * 导航到帮助与支持页面
+     */
+    @ReactMethod
+    fun navigateToHelpSupport(){
+        Log.d(TAG, "导航到帮助与支持页面")
+        Handler(Looper.getMainLooper()).post {
+            NavViewModelHolder.navController.value?.navigate("help_support")
+        }
+    }
+
+    /**
+     * 导航到隐私政策页面
+     */
+    @ReactMethod
+    fun navigateToPrivacyPolicy(){
+        Log.d(TAG, "导航到隐私政策页面")
+        Handler(Looper.getMainLooper()).post {
+            NavViewModelHolder.navController.value?.navigate("privacy_policy")
+        }
+    }
+
+    /**
      * 检查当前时间的主题状态并进行必要的切换
      * 用于页面加载时主动触发主题检查
      */

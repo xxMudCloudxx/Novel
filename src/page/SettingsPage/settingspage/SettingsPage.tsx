@@ -4,8 +4,8 @@ import { SettingRow } from './components';
 import { useSettingsStore } from './store/settingsStore';
 import { createSettingsPageStyles } from './styles/SettingsPageStyles';
 import { SettingsSection } from './types';
-import { useNovelColors } from '../../utils/theme/colors';
-import { useThemeStore } from '../../utils/theme/themeStore';
+import { useNovelColors } from '../../../utils/theme/colors';
+import { useThemeStore } from '../../../utils/theme/themeStore';
 import { NativeModules } from 'react-native';
 
 const { NavigationUtil } = NativeModules;
@@ -243,19 +243,19 @@ const SettingsPage: React.FC = () => {
   const renderTopBar = () => (
     <View style={styles.topBar}>
       {/* 返回按钮 */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={handleBackPress}
         activeOpacity={0.7}
       >
         <Text style={styles.backArrow}>‹</Text>
       </TouchableOpacity>
-      
+
       {/* 设置标题 */}
       <View style={styles.titleContainer}>
         <Text style={styles.topBarTitle}>设置</Text>
       </View>
-      
+
       {/* 右侧占位，保持标题居中 */}
       <View style={styles.rightPlaceholder} />
     </View>
@@ -283,7 +283,7 @@ const SettingsPage: React.FC = () => {
     <SafeAreaView style={styles.container}>
       {/* 顶部导航栏 */}
       {renderTopBar()}
-      
+
       {/* 设置内容 */}
       <ScrollView
         style={styles.scrollView}

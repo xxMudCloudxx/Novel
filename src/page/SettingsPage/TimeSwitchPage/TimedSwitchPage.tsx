@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, DeviceEventEmitter, NativeModules, TouchableOpacity } from 'react-native';
-import { SettingRow } from './components/SettingRow';
+import { SettingRow } from '../settingspage/components/SettingRow';
 import { TimePickerModal } from './components/TimePickerModal';
-import { useSettingsStore } from './store/settingsStore';
-import { createSettingsPageStyles } from './styles/SettingsPageStyles';
-import { useNovelColors } from '../../utils/theme/colors';
-import { SettingItem } from './types';
+import { useSettingsStore } from '../settingspage/store/settingsStore';
+import { createTimedSwitchPageStyles } from './styles/TimedSwitchPageStyles';
+import { useNovelColors } from '../../../utils/theme/colors';
+import { SettingItem } from '../settingspage/types';
 
 const { NavigationUtil } = NativeModules;
 
@@ -15,8 +15,8 @@ const { NavigationUtil } = NativeModules;
  */
 const TimedSwitchPage: React.FC = () => {
   const colors = useNovelColors();
-  const styles = createSettingsPageStyles(colors);
-  const { 
+  const styles = createTimedSwitchPageStyles(colors);
+  const {
     autoSwitchNightMode,
     nightModeStartTime,
     nightModeEndTime,
@@ -114,7 +114,7 @@ const TimedSwitchPage: React.FC = () => {
       <View style={styles.container}>
         {/* 顶部导航栏 */}
         <View style={styles.topBar}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={handleBackPress}
             activeOpacity={0.7}
@@ -157,4 +157,4 @@ const TimedSwitchPage: React.FC = () => {
   );
 };
 
-export default TimedSwitchPage; 
+export default TimedSwitchPage;

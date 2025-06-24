@@ -36,7 +36,7 @@ export function clearPageState(pageId: string) {
 export async function syncThemeFromNative(): Promise<void> {
   try {
     console.log('[AppInit] 🎯 开始同步主题状态从原生端');
-    
+
     const themeStore = useThemeStore.getState();
     if (themeStore.initializeFromNative) {
       await themeStore.initializeFromNative();
@@ -72,7 +72,7 @@ export function initializeApp() {
  */
 export async function initializeRNPage(pageName: string): Promise<void> {
   console.log(`[AppInit] 初始化RN页面: ${pageName}`);
-  
+
   try {
     // 主动同步主题状态
     await syncThemeFromNative();
@@ -92,7 +92,7 @@ export function cleanupApp() {
   try {
     // 清理原生事件监听器
     nativeEventListener.cleanup();
-    
+
     // 清理页面状态缓存
     Object.keys(pageStateCache).forEach(key => {
       delete pageStateCache[key];
@@ -105,5 +105,7 @@ export function cleanupApp() {
 }
 
 // 导入RN页面组件，确保它们被注册
-import '../page/SettingsPage/SettingsPageComponent';
-import '../page/SettingsPage/TimedSwitchPageComponent';
+import '../page/SettingsPage/settingspage/SettingsPageComponent';
+import '../page/SettingsPage/TimeSwitchPage/TimedSwitchPageComponent';
+import '../page/SettingsPage/helpsupportPage/HelpSupportPageComponent';
+import '../page/SettingsPage/privacypolicyPage/PrivacyPolicyPageComponent';

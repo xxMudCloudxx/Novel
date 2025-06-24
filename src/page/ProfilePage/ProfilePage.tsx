@@ -69,7 +69,7 @@ const ProfilePage: React.FC = () => {
         console.log('[ProfilePage] 开始初始化主题和数据');
         await initializeFromNative();
         console.log('[ProfilePage] 主题初始化完成');
-        
+
         // 然后加载数据
         await loadHomeRecommendBooks();
         console.log('[ProfilePage] 数据加载完成');

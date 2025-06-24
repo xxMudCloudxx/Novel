@@ -50,7 +50,7 @@ export const useThemeStore = create<ThemeState>((set) => ({
   initializeFromNative: async () => {
     try {
       console.log('[ThemeStore] 🎯 开始从原生端获取主题状态');
-      
+
       // 从Android端获取当前实际主题状态
       const actualTheme = await new Promise<string>((resolve, reject) => {
         if (NativeModules.NavigationUtil?.getCurrentActualTheme) {
@@ -65,9 +65,9 @@ export const useThemeStore = create<ThemeState>((set) => ({
           reject(new Error('NavigationUtil.getCurrentActualTheme not available'));
         }
       });
-      
+
       console.log('[ThemeStore] ✅ 从原生端获取到主题状态:', actualTheme);
-      
+
       // 获取当前主题模式设置
       const currentMode = await new Promise<string>((resolve, reject) => {
         if (NativeModules.NavigationUtil?.getCurrentNightMode) {
@@ -82,9 +82,9 @@ export const useThemeStore = create<ThemeState>((set) => ({
           reject(new Error('NavigationUtil.getCurrentNightMode not available'));
         }
       });
-      
+
       console.log('[ThemeStore] ✅ 从原生端获取到主题模式:', currentMode);
-      
+
       // 更新状态
       const isDark = actualTheme === 'dark';
       set({
@@ -92,19 +92,19 @@ export const useThemeStore = create<ThemeState>((set) => ({
         isDarkMode: isDark,
         isInitialized: true,
       });
-      
+
       // 同步保存到AsyncStorage
       await AsyncStorage.setItem(THEME_STORAGE_KEY, currentMode);
-      
+
       console.log('[ThemeStore] ✅ 主题状态已同步:', { currentMode, actualTheme, isDark });
-      
+
     } catch (e) {
       console.warn('[ThemeStore] ⚠️ 从原生端获取主题状态失败，使用默认设置:', e);
-      
+
       // 失败时从AsyncStorage恢复
       const savedTheme = await restoreThemeFromStorage();
       const isDark = savedTheme === 'dark' || (savedTheme === 'auto' && isSystemDarkMode());
-      
+
       set({
         currentTheme: savedTheme,
         isDarkMode: isDark,
@@ -161,7 +161,7 @@ export const initializeTheme = async (): Promise<() => void> => {
 
     // 如果是跟随系统主题，从Android端获取当前实际主题状态
     let actualIsDark = savedTheme === 'dark' || (savedTheme === 'auto' && isSystemDarkMode());
-    
+
     if (savedTheme === 'auto') {
       try {
         // 从Android端获取当前实际主题状态
@@ -178,7 +178,7 @@ export const initializeTheme = async (): Promise<() => void> => {
             reject(new Error('NavigationUtil not available'));
           }
         });
-        
+
         actualIsDark = actualTheme === 'dark';
         console.log('[ThemeStore] 从Android获取实际主题状态:', actualTheme, 'isDark:', actualIsDark);
       } catch (e) {
@@ -198,15 +198,15 @@ export const initializeTheme = async (): Promise<() => void> => {
     const subscription = DeviceEventEmitter.addListener('ThemeChanged', (data: { colorScheme: string }) => {
       console.log('[ThemeStore] 🎯 收到Android主题变更事件:', JSON.stringify(data));
       const receivedTheme = data.colorScheme;
-      
+
       if (['light', 'dark'].includes(receivedTheme)) {
         // 收到的是实际主题状态，直接应用
         const isDark = receivedTheme === 'dark';
         console.log('[ThemeStore] ✅ 应用实际主题状态:', receivedTheme, 'isDark:', isDark);
-        
+
         const currentState = useThemeStore.getState();
         console.log('[ThemeStore] 当前状态 - currentTheme:', currentState.currentTheme, 'isDarkMode:', currentState.isDarkMode);
-        
+
         useThemeStore.setState({
           isDarkMode: isDark,
           // 保持currentTheme不变，因为这可能仍然是'auto'
