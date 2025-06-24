@@ -44,6 +44,7 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - **Kotlin + React Native** - 混合架构，发挥两端优势
 - **Hilt 依赖注入** - 模块化依赖管理
 - **React Native Bridge** - 原生与RN双向通信
+- **主题状态跨端同步** - Native ➜ RN ➜ Native 双向事件流，`ThemeStore.initializeFromNative` 首屏拉取 & `DeviceEventEmitter` 实时推送系统主题变化
 - **NavigationPackage** - 自定义RN原生模块
 - **智能缓存系统** - Cache-First策略，离线优先 & 实时同步
 
@@ -162,6 +163,14 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - **SecurityConfig** - 统一安全配置管理
 - **ReactNativeBridge** - 双端事件通信桥梁
 - **PageSplitter** - **新增** 智能文本分页工具类
+- **AdaptiveScreen** - 屏幕适配工具，针对 Compose 与 RN 统一的 `wp/hp/fp/sp` 像素转换，自动根据设备尺寸缩放 UI
+- **DebounceClickable** - 防抖点击扩展，Compose/RN 统一防重复点击，避免多次触发事件
+- **NovelImageView** - 基于 **Coil** 的高性能图片加载组件，双级缓存 + 优雅占位 + 智能重试
+- **PhoneInfoUtil** - 系统信息工具，异步获取手机号与运营商，兼容 Android 13 权限模型
+- **RCTDeviceEventEmitter** - Android → RN 事件发射器封装，统一 Native 事件发送入口
+- **NativeEventListener** - RN 侧原生事件监听器，支持用户数据、书籍数据秒级同步
+- **GlobalFlipBookAnimationController** - 全局 3D 翻书动画控制器 & Overlay，跨页面共享动画状态
+- **ReactRootView 缓存机制** - `ReactNativePage` 复用 RootView，秒级切换 RN 页面并保持组件状态
 
 #### 🔐 登录页面 (LoginPage)
 - **登录注册功能** - 手机号验证码登录
