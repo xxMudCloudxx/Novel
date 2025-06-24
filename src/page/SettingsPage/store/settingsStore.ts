@@ -101,6 +101,24 @@ const getCurrentNightModeNative = (): Promise<string> => {
   });
 };
 
+// Android原生获取是否跟随系统主题
+const isFollowSystemThemeNative = (): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    if (NavigationUtil?.isFollowSystemTheme) {
+      NavigationUtil.isFollowSystemTheme((error: string | null, result: boolean) => {
+        if (error) {
+          reject(new Error(error));
+        } else {
+          resolve(result);
+        }
+      });
+    } else {
+      console.warn('[SettingsStore] isFollowSystemTheme not available, falling back to true.');
+      resolve(true); // 默认启用
+    }
+  });
+};
+
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   // 初始状态
   cacheSize: '计算中...',
@@ -236,6 +254,17 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setAutoSwitchNightMode: (enabled: boolean) => {
     set({ autoSwitchNightMode: enabled });
     console.log('[SettingsStore] 自动切换夜间模式:', enabled);
+    
+    // 同步到Android端
+    if (NavigationUtil?.setAutoNightMode) {
+      NavigationUtil.setAutoNightMode(enabled, (error: string | null, result: string) => {
+        if (error) {
+          console.error('[SettingsStore] 设置自动切换夜间模式失败:', error);
+        } else {
+          console.log('[SettingsStore] 自动切换夜间模式设置结果:', result);
+        }
+      });
+    }
   },
 
   setNightModeTime: (start: string, end: string) => {
@@ -244,6 +273,66 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       nightModeEndTime: end,
     });
     console.log('[SettingsStore] 夜间模式时间:', start, '-', end);
+    
+    // 同步到Android端
+    if (NavigationUtil?.setNightModeTime) {
+      NavigationUtil.setNightModeTime(start, end, (error: string | null, result: string) => {
+        if (error) {
+          console.error('[SettingsStore] 设置夜间模式时间失败:', error);
+        } else {
+          console.log('[SettingsStore] 夜间模式时间设置结果:', result);
+        }
+      });
+    }
+  },
+
+  // 获取夜间模式时间设置
+  loadNightModeTime: async () => {
+    try {
+      if (NavigationUtil?.getNightModeStartTime && NavigationUtil?.getNightModeEndTime) {
+        const startTime = await new Promise<string>((resolve, reject) => {
+          NavigationUtil.getNightModeStartTime((error: string | null, result: string) => {
+            if (error) reject(new Error(error));
+            else resolve(result);
+          });
+        });
+
+        const endTime = await new Promise<string>((resolve, reject) => {
+          NavigationUtil.getNightModeEndTime((error: string | null, result: string) => {
+            if (error) reject(new Error(error));
+            else resolve(result);
+          });
+        });
+
+        set({
+          nightModeStartTime: startTime,
+          nightModeEndTime: endTime,
+        });
+
+        console.log('[SettingsStore] 夜间模式时间已加载:', startTime, '-', endTime);
+      }
+    } catch (error) {
+      console.error('[SettingsStore] 加载夜间模式时间失败:', error);
+    }
+  },
+
+  // 加载自动切换夜间模式设置
+  loadAutoSwitchNightMode: async () => {
+    try {
+      if (NavigationUtil?.isAutoNightModeEnabled) {
+        const enabled = await new Promise<boolean>((resolve, reject) => {
+          NavigationUtil.isAutoNightModeEnabled((error: string | null, result: boolean) => {
+            if (error) reject(new Error(error));
+            else resolve(result);
+          });
+        });
+
+        set({ autoSwitchNightMode: enabled });
+        console.log('[SettingsStore] 自动切换夜间模式设置已加载:', enabled);
+      }
+    } catch (error) {
+      console.error('[SettingsStore] 加载自动切换夜间模式设置失败:', error);
+    }
   },
 
   // 字体设置
@@ -290,6 +379,16 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   navigateToFontSettings: () => {
     console.log('[SettingsStore] 导航到字体设置页面');
     // TODO: 实现导航逻辑
+  },
+
+  loadFollowSystemTheme: async () => {
+    try {
+      const enabled = await isFollowSystemThemeNative();
+      set({ followSystemTheme: enabled });
+      console.log('[SettingsStore] 跟随系统主题设置已加载:', enabled);
+    } catch (error) {
+      console.error('[SettingsStore] 加载跟随系统主题设置失败:', error);
+    }
   },
 }));
 

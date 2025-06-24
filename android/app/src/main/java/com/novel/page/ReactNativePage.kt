@@ -19,6 +19,8 @@ import androidx.core.os.bundleOf
 import com.facebook.react.ReactInstanceManager
 import com.novel.MainApplication
 import com.novel.ui.theme.ThemeManager
+import androidx.activity.compose.BackHandler
+import com.novel.utils.rn.NavViewModelHolder
 
 /**
  * 通用React Native 页面容器组件
@@ -29,12 +31,14 @@ import com.novel.ui.theme.ThemeManager
  * 
  * @param componentName RN组件名称，决定加载哪个RN页面
  * @param initialProps 传递给RN组件的初始属性
+ * @param destroyOnBack 是否在返回时销毁当前RN页面的缓存，默认为false
  */
 @SuppressLint("VisibleForTests")
 @Composable
 fun ReactNativePage(
     componentName: String = "Novel",
-    initialProps: Map<String, Any> = mapOf("nativeMessage" to "ProfilePage")
+    initialProps: Map<String, Any> = mapOf("nativeMessage" to "ProfilePage"),
+    destroyOnBack: Boolean = false
 ) {
     
     val TAG = "ReactNativePage"
@@ -45,7 +49,17 @@ fun ReactNativePage(
     val reactInstanceManager = remember { mainApplication.reactNativeHost.reactInstanceManager }
     var isContextReady by remember { mutableStateOf(reactInstanceManager.currentReactContext != null) }
 
-    Log.d(TAG, "组件渲染 - componentName: $componentName, isContextReady: $isContextReady")
+    Log.d(TAG, "组件渲染 - componentName: $componentName, isContextReady: $isContextReady, destroyOnBack: $destroyOnBack")
+
+    // 如果启用了返回时销毁，则设置BackHandler
+    if (destroyOnBack) {
+        val navController = NavViewModelHolder.navController.value
+        BackHandler(enabled = true) {
+            Log.d(TAG, "BackHandler触发 for $componentName, 准备销毁缓存并返回。")
+            mainApplication.clearReactRootViewCache(componentName)
+            navController?.popBackStack()
+        }
+    }
 
     // 获取缓存的ReactRootView实例
     val rootView = remember(componentName, initialProps) {

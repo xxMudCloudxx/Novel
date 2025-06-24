@@ -103,3 +103,7 @@ export function cleanupApp() {
     console.error('[AppInit] Failed to cleanup application:', error);
   }
 }
+
+// 导入RN页面组件，确保它们被注册
+import '../page/SettingsPage/SettingsPageComponent';
+import '../page/SettingsPage/TimedSwitchPageComponent';

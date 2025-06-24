@@ -107,8 +107,23 @@ class MainApplication : Application(), ReactApplication {
             load()
         }
         
+        // 初始化自动主题切换功能
+        Log.d(TAG, "初始化自动主题切换...")
+        settingsUtils.initializeAutoThemeSwitch()
+        
         Log.d(TAG, "✅ MainApplication 初始化完成")
         Log.d(TAG, "====================================")
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+        Log.d(TAG, "MainApplication 终止，清理资源...")
+        
+        // 清理定时器资源
+        settingsUtils.cleanup()
+        
+        // 清理ReactRootView缓存
+        clearAllReactRootViewCache()
     }
 
     /**

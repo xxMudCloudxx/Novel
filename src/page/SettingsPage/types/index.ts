@@ -60,9 +60,12 @@ export interface SettingsActions {
   // 主题设置
   getCurrentDisplayTheme: () => ColorScheme;
   setFollowSystemTheme: (follow: boolean) => void;
+  loadFollowSystemTheme: () => Promise<void>;
   setColorScheme: (scheme: ColorScheme) => void;
   setAutoSwitchNightMode: (enabled: boolean) => void;
   setNightModeTime: (start: string, end: string) => void;
+  loadNightModeTime: () => Promise<void>;
+  loadAutoSwitchNightMode: () => Promise<void>;
   toggleColorScheme: () => void;
 
   // 字体设置

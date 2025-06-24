@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ScrollView, Text, TouchableOpacity, SafeAreaView } from 'react-native';
-import { SettingRow } from './components/SettingRow';
+import { SettingRow } from './components';
 import { useSettingsStore } from './store/settingsStore';
 import { createSettingsPageStyles } from './styles/SettingsPageStyles';
 import { SettingsSection } from './types';
@@ -40,7 +40,6 @@ const SettingsPage: React.FC = () => {
     setBenefitNotification,
     setFollowSystemTheme,
     toggleColorScheme,
-    setAutoSwitchNightMode,
     setUseMobileDataWhenWiFiPoor,
     setEnableFloatingWindow,
     setYouthMode,
@@ -51,19 +50,26 @@ const SettingsPage: React.FC = () => {
     getCurrentDisplayTheme,
   } = useSettingsStore();
 
-  // 初始化主题状态
+  // 初始化主题状态和设置
   React.useEffect(() => {
-    const initializeTheme = async () => {
+    const initializeSettings = async () => {
       try {
-        console.log('[SettingsPage] 🎯 开始初始化主题状态');
+        console.log('[SettingsPage] 🎯 开始初始化设置状态');
         await initializeFromNative();
-        console.log('[SettingsPage] ✅ 主题状态初始化完成');
+        // 加载所有相关设置
+        const { loadFollowSystemTheme, loadAutoSwitchNightMode, loadNightModeTime } = useSettingsStore.getState();
+        await Promise.all([
+            loadFollowSystemTheme(),
+            loadAutoSwitchNightMode(),
+            loadNightModeTime(),
+        ]);
+        console.log('[SettingsPage] ✅ 设置状态初始化完成');
       } catch (error) {
-        console.error('[SettingsPage] ❌ 主题状态初始化失败:', error);
+        console.error('[SettingsPage] ❌ 设置状态初始化失败:', error);
       }
     };
 
-    initializeTheme();
+    initializeSettings();
   }, [initializeFromNative]);
 
   /**
@@ -71,7 +77,7 @@ const SettingsPage: React.FC = () => {
    */
   const handleBackPress = () => {
     if (NavigationUtil?.navigateBack) {
-      NavigationUtil.navigateBack();
+      NavigationUtil.navigateBack('SettingsPageComponent');
     } else {
       console.log('NavigationUtil.navigateBack not available');
     }
@@ -147,9 +153,15 @@ const SettingsPage: React.FC = () => {
         {
           id: 'nightModeSwitch',
           title: '定时切换日夜间模式',
-          type: 'switch',
-          value: autoSwitchNightMode,
-          onValueChange: (value) => setAutoSwitchNightMode(value as boolean),
+          type: 'arrow',
+          value: autoSwitchNightMode ? '已开启' : '已关闭',
+          onPress: () => {
+            if (NavigationUtil?.navigateToTimedSwitch) {
+              NavigationUtil.navigateToTimedSwitch();
+            } else {
+              console.log('NavigationUtil.navigateToTimedSwitch not available');
+            }
+          },
           disabled: followSystemTheme, // 跟随系统时禁用定时切换
         },
       ],

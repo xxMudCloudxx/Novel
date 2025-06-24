@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.novel.MainApplication
 
 /**
  * React Native导航工具模块
@@ -89,10 +90,23 @@ class NavigationUtilModule(
 
     /**
      * 返回上一页
+     * @param componentName (可选) 需要在返回前销毁缓存的RN组件名
      */
     @ReactMethod
-    fun navigateBack() {
-        Log.d(TAG, "返回上一页")
+    fun navigateBack(componentName: String?) {
+        Log.d(TAG, "返回上一页, 准备销毁的组件: $componentName")
+        
+        // 如果提供了组件名，则清理其缓存
+        if (!componentName.isNullOrEmpty()) {
+            try {
+                (reactContext.applicationContext as? MainApplication)?.clearReactRootViewCache(componentName)
+                Log.d(TAG, "已清理 $componentName 的缓存")
+            } catch (e: Exception) {
+                Log.e(TAG, "清理 $componentName 的缓存失败", e)
+            }
+        }
+        
+        // 确保在主线程执行导航操作
         Handler(Looper.getMainLooper()).post {
             NavViewModelHolder.navController.value?.popBackStack()
         }
@@ -358,6 +372,99 @@ class NavigationUtilModule(
             Log.d(TAG, "✅ 主题变更事件已发送到RN: $theme")
         } catch (e: Exception) {
             Log.e(TAG, "❌ 发送主题变更事件失败: $theme", e)
+        }
+    }
+
+    /**
+     * 设置夜间模式时间段
+     * 
+     * @param startTime 开始时间，格式："HH:mm"
+     * @param endTime 结束时间，格式："HH:mm"
+     */
+    @ReactMethod
+    fun setNightModeTime(startTime: String, endTime: String, callback: Callback) {
+        Log.d(TAG, "设置夜间模式时间段: $startTime - $endTime")
+        try {
+            settingsUtils.setNightModeTime(startTime, endTime)
+            callback.invoke(null, "夜间模式时间已设置为: $startTime - $endTime")
+        } catch (e: Exception) {
+            Log.e(TAG, "设置夜间模式时间失败", e)
+            callback.invoke(e.message, null)
+        }
+    }
+
+    /**
+     * 获取夜间模式开始时间
+     */
+    @ReactMethod
+    fun getNightModeStartTime(callback: Callback) {
+        try {
+            val startTime = settingsUtils.getNightModeStartTime()
+            callback.invoke(null, startTime)
+        } catch (e: Exception) {
+            Log.w(TAG, "获取夜间模式开始时间失败", e)
+            callback.invoke(e.message, null)
+        }
+    }
+
+    /**
+     * 获取夜间模式结束时间
+     */
+    @ReactMethod
+    fun getNightModeEndTime(callback: Callback) {
+        try {
+            val endTime = settingsUtils.getNightModeEndTime()
+            callback.invoke(null, endTime)
+        } catch (e: Exception) {
+            Log.w(TAG, "获取夜间模式结束时间失败", e)
+            callback.invoke(e.message, null)
+        }
+    }
+
+    /**
+     * 导航到定时切换页面
+     */
+    @ReactMethod
+    fun navigateToTimedSwitch() {
+        Log.d(TAG, "导航到定时切换页面")
+        Handler(Looper.getMainLooper()).post {
+            NavViewModelHolder.navController.value?.navigate("timed_switch")
+        }
+    }
+
+    /**
+     * 检查当前时间的主题状态并进行必要的切换
+     * 用于页面加载时主动触发主题检查
+     */
+    @ReactMethod
+    fun checkCurrentTimeTheme(callback: Callback) {
+        Log.d(TAG, "检查当前时间的主题状态")
+        try {
+            // 如果启用了自动切换且不跟随系统主题，则进行检查
+            if (settingsUtils.isAutoNightModeEnabled() && !settingsUtils.isFollowSystemTheme()) {
+                // 这会触发一次主题检查，如果需要切换会自动切换
+                settingsUtils.startTimeBasedThemeCheck()
+                
+                // 获取当前应该的主题状态
+                val currentMode = themeManager.getCurrentActualThemeMode()
+                Log.d(TAG, "当前时间主题检查完成，当前主题: $currentMode")
+                
+                // 发送主题变更事件到RN端，确保UI同步
+                sendThemeChangeEvent(currentMode)
+                
+                callback.invoke(null, "主题检查完成，当前主题: $currentMode")
+            } else {
+                val reason = when {
+                    !settingsUtils.isAutoNightModeEnabled() -> "自动切换未启用"
+                    settingsUtils.isFollowSystemTheme() -> "正在跟随系统主题"
+                    else -> "未知原因"
+                }
+                Log.d(TAG, "跳过主题检查: $reason")
+                callback.invoke(null, "跳过主题检查: $reason")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "检查当前时间主题失败", e)
+            callback.invoke(e.message, null)
         }
     }
 }

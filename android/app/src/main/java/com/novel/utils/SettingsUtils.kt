@@ -11,6 +11,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.os.Handler
+import android.os.Looper
+import java.util.*
+import java.text.SimpleDateFormat
 
 /**
  * 设置工具类
@@ -18,6 +22,7 @@ import javax.inject.Singleton
  * 功能模块：
  * - 缓存管理（计算、清理、格式化显示）
  * - 主题切换（浅色/深色/跟随系统）
+ * - 定时切换夜间模式（根据设定时间自动切换）
  * - 配置持久化（SharedPreferences封装）
  * - 全局主题同步管理
  * 
@@ -26,6 +31,7 @@ import javax.inject.Singleton
  * - 协程异步IO操作
  * - 多级缓存目录处理
  * - 主题状态统一管理
+ * - 定时器自动管理主题切换
  */
 @Singleton
 class SettingsUtils @Inject constructor(
@@ -38,10 +44,27 @@ class SettingsUtils @Inject constructor(
         private const val PREF_NIGHT_MODE = "night_mode"
         private const val PREF_AUTO_NIGHT_MODE = "auto_night_mode"
         private const val PREF_FOLLOW_SYSTEM = "follow_system_theme"
+        private const val PREF_NIGHT_START_TIME = "night_start_time"
+        private const val PREF_NIGHT_END_TIME = "night_end_time"
+        
+        // 动态检查时间间隔
+        private const val CHECK_INTERVAL_MINUTE = 60 * 1000L      // 1分钟
+        private const val CHECK_INTERVAL_QUARTER = 15 * 60 * 1000L  // 15分钟  
+        private const val CHECK_INTERVAL_HOUR = 60 * 60 * 1000L   // 1小时
+        
+        // 时间临近阈值（分钟）
+        private const val THRESHOLD_URGENT = 5    // 5分钟内用1分钟间隔
+        private const val THRESHOLD_NEAR = 30     // 30分钟内用15分钟间隔
+        private const val THRESHOLD_FAR = 120     // 2小时内用1小时间隔
     }
     
     // 获取全局主题管理器
     private val themeManager by lazy { ThemeManager.getInstance(context) }
+    
+    // 定时器相关
+    private val handler = Handler(Looper.getMainLooper())
+    private var timeCheckRunnable: Runnable? = null
+    private var isTimeCheckingStarted = false
 
     /**
      * 清除所有缓存
@@ -186,7 +209,14 @@ class SettingsUtils @Inject constructor(
      * 设置自动切换夜间模式
      */
     fun setAutoNightMode(enabled: Boolean) {
+        Log.d(TAG, "设置自动切换夜间模式: $enabled")
         novelUserDefaults.setString(PREF_AUTO_NIGHT_MODE, enabled.toString())
+        
+        if (enabled) {
+            startTimeBasedThemeCheck()
+        } else {
+            stopTimeBasedThemeCheck()
+        }
     }
 
     /**
@@ -194,6 +224,232 @@ class SettingsUtils @Inject constructor(
      */
     fun isAutoNightModeEnabled(): Boolean {
         return novelUserDefaults.getString(PREF_AUTO_NIGHT_MODE)?.toBoolean() ?: false
+    }
+
+    /**
+     * 设置夜间模式时间段
+     * @param startTime 开始时间 格式：HH:mm (如 "22:00")
+     * @param endTime 结束时间 格式：HH:mm (如 "06:00")
+     */
+    fun setNightModeTime(startTime: String, endTime: String) {
+        Log.d(TAG, "设置夜间模式时间: $startTime - $endTime")
+        novelUserDefaults.setString(PREF_NIGHT_START_TIME, startTime)
+        novelUserDefaults.setString(PREF_NIGHT_END_TIME, endTime)
+        
+        // 如果定时切换已启用，重新启动检查
+        if (isAutoNightModeEnabled()) {
+            startTimeBasedThemeCheck()
+        }
+    }
+
+    /**
+     * 获取夜间模式开始时间
+     */
+    fun getNightModeStartTime(): String {
+        return novelUserDefaults.getString(PREF_NIGHT_START_TIME) ?: "22:00"
+    }
+
+    /**
+     * 获取夜间模式结束时间
+     */
+    fun getNightModeEndTime(): String {
+        return novelUserDefaults.getString(PREF_NIGHT_END_TIME) ?: "06:00"
+    }
+
+    /**
+     * 启动基于时间的主题检查
+     */
+    fun startTimeBasedThemeCheck() {
+        Log.d(TAG, "启动基于时间的主题检查")
+        
+        // 如果已经在跟随系统主题，不启动定时切换
+        if (isFollowSystemTheme()) {
+            Log.d(TAG, "当前跟随系统主题，跳过定时切换")
+            return
+        }
+        
+        stopTimeBasedThemeCheck() // 先停止之前的检查
+        
+        // 立即执行一次检查
+        try {
+            checkAndSwitchThemeBasedOnTime()
+        } catch (e: Exception) {
+            Log.e(TAG, "立即检查主题失败", e)
+        }
+        
+        timeCheckRunnable = object : Runnable {
+            override fun run() {
+                try {
+                    checkAndSwitchThemeBasedOnTime()
+                } catch (e: Exception) {
+                    Log.e(TAG, "检查时间切换主题失败", e)
+                }
+                
+                // 继续下一次检查，使用智能间隔
+                val nextInterval = calculateNextCheckInterval()
+                handler.postDelayed(this, nextInterval)
+                Log.v(TAG, "已安排下次检查，间隔: ${nextInterval}ms")
+            }
+        }
+        
+        // 安排第一次定时检查（在立即检查之后）
+        val firstInterval = calculateNextCheckInterval()
+        timeCheckRunnable?.let { handler.postDelayed(it, firstInterval) }
+        isTimeCheckingStarted = true
+        
+        Log.d(TAG, "定时主题检查已启动，首次间隔: ${firstInterval}ms")
+    }
+
+    /**
+     * 停止基于时间的主题检查
+     */
+    fun stopTimeBasedThemeCheck() {
+        Log.d(TAG, "停止基于时间的主题检查")
+        timeCheckRunnable?.let { handler.removeCallbacks(it) }
+        timeCheckRunnable = null
+        isTimeCheckingStarted = false
+    }
+
+    /**
+     * 检查当前时间并根据设定切换主题
+     */
+    private fun checkAndSwitchThemeBasedOnTime() {
+        if (!isAutoNightModeEnabled() || isFollowSystemTheme()) {
+            Log.v(TAG, "自动切换未启用或正在跟随系统主题，跳过时间检查")
+            return
+        }
+        
+        val currentTime = Calendar.getInstance()
+        val currentHour = currentTime.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = currentTime.get(Calendar.MINUTE)
+        val currentTimeInMinutes = currentHour * 60 + currentMinute
+        
+        val startTime = getNightModeStartTime()
+        val endTime = getNightModeEndTime()
+        
+        val startTimeInMinutes = parseTimeToMinutes(startTime)
+        val endTimeInMinutes = parseTimeToMinutes(endTime)
+        
+        val shouldBeNightMode = if (startTimeInMinutes <= endTimeInMinutes) {
+            // 同一天内的时间段，如 08:00 - 18:00
+            currentTimeInMinutes in startTimeInMinutes..endTimeInMinutes
+        } else {
+            // 跨天的时间段，如 22:00 - 06:00
+            currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes <= endTimeInMinutes
+        }
+        
+        val currentMode = getCurrentNightMode()
+        val expectedMode = if (shouldBeNightMode) "dark" else "light"
+        
+        Log.v(TAG, "时间检查: 当前时间=${String.format("%02d:%02d", currentHour, currentMinute)}, " +
+                "夜间时段=${startTime}-${endTime}, 应为夜间模式=${shouldBeNightMode}, " +
+                "当前模式=${currentMode}, 期望模式=${expectedMode}")
+        
+        if (currentMode != expectedMode) {
+            Log.d(TAG, "时间切换主题: $currentMode -> $expectedMode")
+            setNightMode(expectedMode)
+            
+            // 立即通知RN端主题已切换
+            val actualTheme = themeManager.getCurrentActualThemeMode()
+            themeManager.notifyThemeChangedToRN(actualTheme)
+            Log.d(TAG, "✅ 主题切换完成并已通知RN端: $actualTheme")
+        }
+    }
+
+    /**
+     * 计算到下次切换时间的最短距离（分钟）
+     */
+    private fun calculateMinutesToNextSwitch(): Int {
+        val currentTime = Calendar.getInstance()
+        val currentTimeInMinutes = currentTime.get(Calendar.HOUR_OF_DAY) * 60 + currentTime.get(Calendar.MINUTE)
+        
+        val startTime = getNightModeStartTime()
+        val endTime = getNightModeEndTime()
+        
+        val startTimeInMinutes = parseTimeToMinutes(startTime)
+        val endTimeInMinutes = parseTimeToMinutes(endTime)
+        
+        // 计算到开始时间和结束时间的距离
+        val minutesToStart = if (startTimeInMinutes > currentTimeInMinutes) {
+            startTimeInMinutes - currentTimeInMinutes
+        } else {
+            (24 * 60) - currentTimeInMinutes + startTimeInMinutes // 跨天计算
+        }
+        
+        val minutesToEnd = if (endTimeInMinutes > currentTimeInMinutes) {
+            endTimeInMinutes - currentTimeInMinutes
+        } else {
+            (24 * 60) - currentTimeInMinutes + endTimeInMinutes // 跨天计算
+        }
+        
+        // 返回最短距离
+        return Math.min(minutesToStart, minutesToEnd)
+    }
+
+    /**
+     * 根据距离下次切换的时间，智能计算检查间隔
+     */
+    private fun calculateNextCheckInterval(): Long {
+        val minutesToNext = calculateMinutesToNextSwitch()
+        
+        return when {
+            minutesToNext <= THRESHOLD_URGENT -> {
+                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用1分钟检查间隔")
+                CHECK_INTERVAL_MINUTE
+            }
+            minutesToNext <= THRESHOLD_NEAR -> {
+                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用15分钟检查间隔")
+                CHECK_INTERVAL_QUARTER
+            }
+            minutesToNext <= THRESHOLD_FAR -> {
+                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用1小时检查间隔")
+                CHECK_INTERVAL_HOUR
+            }
+            else -> {
+                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用1小时检查间隔")
+                CHECK_INTERVAL_HOUR
+            }
+        }
+    }
+
+    /**
+     * 将时间字符串转换为分钟数
+     * @param timeStr 时间字符串，格式："HH:mm"
+     * @return 从00:00开始的分钟数
+     */
+    private fun parseTimeToMinutes(timeStr: String): Int {
+        return try {
+            val parts = timeStr.split(":")
+            if (parts.size == 2) {
+                val hour = parts[0].toInt()
+                val minute = parts[1].toInt()
+                hour * 60 + minute
+            } else {
+                Log.w(TAG, "时间格式错误: $timeStr，使用默认值")
+                22 * 60 // 默认22:00
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析时间失败: $timeStr", e)
+            22 * 60 // 默认22:00
+        }
+    }
+
+    /**
+     * 初始化定时切换（在应用启动时调用）
+     */
+    fun initializeAutoThemeSwitch() {
+        Log.d(TAG, "初始化自动主题切换")
+        if (isAutoNightModeEnabled() && !isFollowSystemTheme()) {
+            startTimeBasedThemeCheck()
+        }
+    }
+
+    /**
+     * 清理资源（在应用退出时调用）
+     */
+    fun cleanup() {
+        Log.d(TAG, "清理定时器资源")
+        stopTimeBasedThemeCheck()
     }
 
     private fun getNightModeDisplayName(mode: String): String {

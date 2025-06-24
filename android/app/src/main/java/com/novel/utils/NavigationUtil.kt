@@ -122,7 +122,16 @@ fun NavigationSetup() {
             // 设置页面 - 使用ReactNativePage加载SettingsPageComponent
             ReactNativePage(
                 componentName = "SettingsPageComponent",
-                initialProps = mapOf("source" to "android_settings")
+                initialProps = mapOf("source" to "android_settings"),
+                destroyOnBack = true
+            )
+        }
+        composable("timed_switch") {
+            // 定时切换页面 - 使用ReactNativePage加载TimedSwitchPageComponent  
+            ReactNativePage(
+                componentName = "TimedSwitchPageComponent",
+                initialProps = mapOf("source" to "android_timed_switch"),
+                destroyOnBack = true
             )
         }
     }
