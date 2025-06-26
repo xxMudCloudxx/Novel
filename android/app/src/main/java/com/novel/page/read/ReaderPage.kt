@@ -36,6 +36,7 @@ import com.novel.page.read.components.*
 import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.repository.ProgressiveCalculationState
 import com.novel.page.read.viewmodel.FlipDirection
+import com.novel.page.read.viewmodel.ReaderIntent
 import com.novel.page.read.viewmodel.ReaderViewModel
 import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.ui.theme.NovelColors
@@ -45,6 +46,7 @@ import com.novel.utils.ssp
 import com.novel.utils.NavViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.toArgb
 
 /**
  * 状态信息，通过 CompositionLocal 提供给子组件
@@ -105,8 +107,46 @@ fun ReaderPage(
     // 阅读位置恢复状态
     var showProgressRestoredHint by remember { mutableStateOf(false) }
 
+    // 在组件初始化时预先加载设置，确保背景色能立即应用
+    LaunchedEffect(Unit) {
+        Log.d("ReaderPage", "ReaderPage开始初始化，预加载设置")
+        viewModel.loadInitialSettings()
+    }
+
     LaunchedEffect(bookId, chapterId) {
-        viewModel.initReader(bookId, chapterId)
+        Log.d("ReaderPage", "ReaderPage参数变化: bookId=$bookId, chapterId=$chapterId")
+        if (bookId.isNotBlank() && chapterId?.isNotBlank() == true) {
+            Log.d("ReaderPage", "开始加载书籍和章节内容")
+            viewModel.onIntent(ReaderIntent.InitReader(bookId, chapterId))
+        } else {
+            Log.w("ReaderPage", "书籍ID或章节ID为空，跳过加载")
+        }
+    }
+
+    LaunchedEffect(uiState.readerSettings) {
+        Log.d("ReaderPage", "设置状态变化监听触发")
+        Log.d("ReaderPage", "当前背景颜色: ${String.format("#%08X", uiState.readerSettings.backgroundColor.toArgb())}")
+        Log.d("ReaderPage", "当前文字颜色: ${String.format("#%08X", uiState.readerSettings.textColor.toArgb())}")
+        Log.d("ReaderPage", "当前字体大小: ${uiState.readerSettings.fontSize}sp")
+        Log.d("ReaderPage", "当前翻页效果: ${uiState.readerSettings.pageFlipEffect}")
+        
+        // 强制触发更新容器尺寸，确保页数正确刷新
+        if (uiState.containerSize != IntSize.Zero) {
+            viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
+            Log.d("ReaderPage", "强制触发容器尺寸更新以刷新页数: ${uiState.containerSize}")
+        }
+    }
+
+    // 初始化阅读器并启动页数计算
+    LaunchedEffect(bookId, chapterId) {
+        viewModel.onIntent(ReaderIntent.InitReader(bookId, chapterId))
+        
+        // 确保在初始化完成后立即启动页数计算
+        delay(100) // 等待初始化完成
+        if (uiState.isSuccess && uiState.containerSize != IntSize.Zero) {
+            // 强制触发页数缓存更新，确保首次打开时页数能正确显示
+            viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
+        }
         
         // 如果是恢复阅读进度（没有指定章节），显示恢复提示
         if (chapterId == null) {
@@ -185,7 +225,7 @@ fun ReaderPage(
                     .background(uiState.readerSettings.backgroundColor)
                     .onSizeChanged { size ->
                         if (size != IntSize.Zero) {
-                            viewModel.updateContainerSize(size, density)
+                            viewModel.onIntent(ReaderIntent.UpdateContainerSize(size, density))
                         }
                     }
             ) {
@@ -197,7 +237,9 @@ fun ReaderPage(
                     uiState.hasError -> {
                         ErrorContent(
                             error = uiState.error,
-                            onRetry = { viewModel.retry() }
+                            onRetry = {
+                                viewModel.onIntent(ReaderIntent.Retry)
+                            }
                         )
                     }
 
@@ -215,7 +257,8 @@ fun ReaderPage(
                                             showSettings = false
                                             showChapterList = false
                                         } else {
-                                            viewModel.onPageChange(direction)
+//                                            viewModel.onPageChange(direction)
+                                            viewModel.onIntent(ReaderIntent.PageFlip(direction))
                                         }
                                     },
                                     onChapterChange = { direction ->
@@ -266,7 +309,12 @@ fun ReaderPage(
                                     .onSizeChanged { size ->
                                         // 确保容器尺寸信息及时更新到ViewModel
                                         if (size.width > 0 && size.height > 0) {
-                                            viewModel.updateContainerSize(size, density)
+                                            viewModel.onIntent(
+                                                ReaderIntent.UpdateContainerSize(
+                                                    size,
+                                                    density
+                                                )
+                                            )
                                         }
                                     }
                             )
@@ -291,7 +339,8 @@ fun ReaderPage(
                                         // 保存当前进度
                                         viewModel.saveCurrentReadingProgress()
                                         // 切换章节
-                                        viewModel.switchToChapter(chapter.id)
+//                                        viewModel.switchToChapter(chapter.id)
+                                        viewModel.onIntent(ReaderIntent.SwitchToChapter(chapter.id))
                                         showChapterList = false
                                     },
                                     onDismiss = { showChapterList = false },
@@ -315,7 +364,9 @@ fun ReaderPage(
                                 ReaderSettingsPanel(
                                     settings = uiState.readerSettings,
                                     onSettingsChange = { settings ->
-                                        viewModel.updateSettings(settings)
+                                        viewModel.onIntent(
+                                            ReaderIntent.UpdateSettings(settings)
+                                        )
                                     },
                                     modifier = Modifier.clickable(enabled = false) { }
                                 )
@@ -360,9 +411,14 @@ fun ReaderPage(
                                 uiState = uiState,
                                 hideProgress = showSettings || showChapterList,  // 有面板时隐藏进度条
                                 onBack = performBack,
-                                onPreviousChapter = { viewModel.previousChapter() },
-                                onNextChapter = { viewModel.nextChapter() },
-                                onSeekToProgress = { progress -> viewModel.seekToProgress(progress) },
+                                onPreviousChapter = {
+                                    viewModel.onIntent(ReaderIntent.PreviousChapter)
+                                                    },
+
+                                onNextChapter = {
+                                    viewModel.onIntent(ReaderIntent.NextChapter)
+                                                },
+                                onSeekToProgress = { progress -> viewModel.onIntent(ReaderIntent.SeekToProgress(progress)) },
                                 onShowChapterList = {
                                     showChapterList = !showChapterList
                                     showSettings = false

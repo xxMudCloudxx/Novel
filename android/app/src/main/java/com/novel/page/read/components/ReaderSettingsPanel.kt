@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.novel.utils.wdp
 import kotlin.math.roundToInt
+import android.util.Log
+import androidx.compose.ui.graphics.toArgb
 
 /**
  * 阅读器设置数据类
@@ -53,13 +55,22 @@ data class ReaderSettings(
          * @return 默认的ReaderSettings实例
          */
         fun getDefault(): ReaderSettings {
-            return ReaderSettings(
+            val defaultSettings = ReaderSettings(
                 brightness = 0.5f,                    // 中等亮度，平衡护眼与可读性
                 fontSize = 16,                        // 标准字体大小，适合大多数设备
                 backgroundColor = Color(0xFFF5F5DC),  // 温暖米黄色，护眼舒适
                 textColor = Color(0xFF2E2E2E),        // 深灰色文字，清晰易读
                 pageFlipEffect = PageFlipEffect.PAGECURL  // 仿真翻页，增强沉浸感
             )
+            
+            Log.d("ReaderSettings", "创建默认设置:")
+            Log.d("ReaderSettings", "  - 字体大小: ${defaultSettings.fontSize}sp")
+            Log.d("ReaderSettings", "  - 亮度: ${(defaultSettings.brightness * 100).toInt()}%")
+            Log.d("ReaderSettings", "  - 背景颜色: ${String.format("#%08X", defaultSettings.backgroundColor.toArgb())}")
+            Log.d("ReaderSettings", "  - 文字颜色: ${String.format("#%08X", defaultSettings.textColor.toArgb())}")
+            Log.d("ReaderSettings", "  - 翻页效果: ${defaultSettings.pageFlipEffect}")
+            
+            return defaultSettings
         }
     }
 }

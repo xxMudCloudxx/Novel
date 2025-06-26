@@ -43,8 +43,6 @@ object HtmlTextUtil {
             return input
         }
         
-        Log.d(TAG, "开始清理HTML文本，原始长度: ${input.length}")
-        
         val result = input
             // 替换HTML实体为普通字符
             .replace("&nbsp;", " ")
@@ -57,8 +55,6 @@ object HtmlTextUtil {
             .replace("<br/><br/>", "\n\n\n")
             .replace("<p>", "")
             .replace("</p>", "")
-        
-        Log.d(TAG, "HTML清理完成，处理后长度: ${result.length}")
         return result
     }
 

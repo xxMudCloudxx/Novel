@@ -23,6 +23,7 @@ import com.novel.utils.SwipeBackContainer
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import androidx.compose.runtime.remember
 
 /**
  * PageCurl仿真翻页容器
@@ -139,6 +140,15 @@ fun PageCurlFlipContainer(
             }
     }
 
+    // 添加背景颜色和翻页设置的详细日志
+    LaunchedEffect(readerSettings) {
+        Log.d("PageCurlFlipContainer", "PageCurlFlipContainer设置更新")
+        Log.d("PageCurlFlipContainer", "背景颜色: ${String.format("#%08X", readerSettings.backgroundColor.value.toInt())}")
+        Log.d("PageCurlFlipContainer", "文字颜色: ${String.format("#%08X", readerSettings.textColor.value.toInt())}")
+        Log.d("PageCurlFlipContainer", "字体大小: ${readerSettings.fontSize}sp")
+        Log.d("PageCurlFlipContainer", "翻页效果: ${readerSettings.pageFlipEffect}")
+        Log.d("PageCurlFlipContainer", "背景亮度: ${readerSettings.backgroundColor.luminance()}")
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 主要内容区域 - 导航信息现在包含在PageContentDisplay中

@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.novel.page.read.components.ReaderSettings
+import com.novel.page.read.utils.ReaderLogTags
 import com.novel.utils.HtmlTextUtil
 import com.novel.utils.wdp
 
@@ -28,7 +29,7 @@ import com.novel.utils.wdp
 class PageSplitter {
 
     companion object {
-        private const val TAG = "PageSplitter"
+        private const val TAG = ReaderLogTags.PAGE_SPLITTER
 
         /**
          * 将章节内容分页

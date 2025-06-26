@@ -110,9 +110,6 @@ fun NovelImageView(
         imageUrl.takeIf { it?.isNotEmpty() ?: false }
     }
 
-    // 添加日志：URL预处理结果
-    Log.d("NovelImageView", "预处理图片URL: 原始='$imageUrl', 处理后='${processedImageUrl ?: "null"}")
-
     // 预计算图片修饰符，避免重复创建
     val imgModifier = remember(widthDp, heightDp, modifier) {
         modifier.let {
@@ -123,9 +120,6 @@ fun NovelImageView(
             m
         }
     }
-
-    // 添加日志：修饰符信息
-    Log.d("NovelImageView", "图片修饰符: 宽度=${if (widthDp > 0) "${widthDp}dp" else "fill"}, 高度=${if (heightDp > 0) "${heightDp}dp" else "wrap"}")
 
     // 使用 key 确保 imageUrl 变化时重新加载
     key(processedImageUrl) {
@@ -177,9 +171,6 @@ fun NovelImageView(
                         .diskCachePolicy(cachePolicy.second)
                         .build()
                 }
-
-                // 添加日志：图片请求配置
-                Log.i("NovelImageView", "创建图片请求: URL=$processedImageUrl, 缓存策略=内存:${cachePolicy.first}, 磁盘:${cachePolicy.second}")
 
                 // 正常加载图片
                 SubcomposeAsyncImage(

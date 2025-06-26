@@ -72,6 +72,26 @@ fun rememberPageCurlConfig(
     onCustomTap: Density.(IntSize, Offset) -> Boolean = { _, _ -> false },
 ): PageCurlConfig =
     rememberSaveable(
+        backPageColor,
+        backPageContentAlpha,
+        shadowColor,
+        shadowAlpha,
+        shadowRadius,
+        shadowOffset,
+        thicknessDp,
+        highlightStrength,
+        perspectiveTiltDeg,
+        dynamicShadowEnabled,
+        creaseShadowStrength,
+        rimLightWidth,
+        selfShadowStrength,
+        dragForwardEnabled,
+        dragBackwardEnabled,
+        tapForwardEnabled,
+        tapBackwardEnabled,
+        tapCustomEnabled,
+        dragInteraction,
+        tapInteraction,
         saver = listSaver(
             save = {
                 fun Rect.forSave(): List<Any> =
