@@ -12,14 +12,7 @@ import dagger.hilt.android.scopes.ViewModelScoped
 @InstallIn(ViewModelComponent::class)
 object ReaderModule {
 
-    @Provides
-    @ViewModelScoped
-    fun provideChapterService(
-        cachedBookRepository: com.novel.utils.network.repository.CachedBookRepository,
-        bookCacheManager: com.novel.page.read.repository.BookCacheManager
-    ): ChapterService {
-        return ChapterService(cachedBookRepository, bookCacheManager)
-    }
+
 
     @Provides
     @ViewModelScoped
@@ -134,18 +127,7 @@ object ReaderModule {
         return ObservePaginationProgressUseCase(paginationService)
     }
 
-    @Provides
-    @ViewModelScoped
-    fun provideSettingsService(userDefaults: com.novel.utils.Store.UserDefaults.NovelUserDefaults): com.novel.page.read.service.SettingsService {
-        return com.novel.page.read.service.SettingsService(userDefaults)
-    }
 
-    @Provides
-    @ViewModelScoped
-    fun providePaginationService(
-        bookCacheManager: com.novel.page.read.repository.BookCacheManager,
-        cachedBookRepository: com.novel.utils.network.repository.CachedBookRepository
-    ): PaginationService {
-        return PaginationService(bookCacheManager, cachedBookRepository)
-    }
+
+
 }
