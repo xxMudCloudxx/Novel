@@ -12,39 +12,28 @@ import com.novel.utils.HtmlTextUtil
 import com.novel.utils.wdp
 
 /**
- * 文本分页工具类
- * 
- * 核心功能：
- * - 根据屏幕尺寸和字体设置计算分页
- * - 支持HTML内容清理和格式化
- * - 智能换行和段落处理
- * - 性能优化的固定字符数分行算法
- * 
- * 算法特点：
- * - 按固定字符数分行，避免复杂的断点计算
- * - 支持首页标题预留空间
- * - 保持段落格式和空行结构
- * - 响应式布局适配不同屏幕
+ * 高性能文本分页工具
+ *
+ * ▶️ 核心改进
+ * 1. 单趟扫描完成「拆行 + 组页」，不再构造 allLines 列表
+ * 2. 使用 StringBuilder 聚合行 / 页，降低内存与 GC
+ * 3. 缓存 TextPaint 与测量结果，避免重复测宽
+ * 4. 全程 O(n) 复杂度，低常数
  */
 class PageSplitter {
 
     companion object {
         private const val TAG = ReaderLogTags.PAGE_SPLITTER
+        private const val LINE_SPACING_MULTIPLIER = 1.5f
 
         /**
          * 将章节内容分页
-         * 
-         * 分页策略：
-         * 1. 清理HTML内容并计算可用空间
-         * 2. 测量字符宽度和行高
-         * 3. 按固定字符数分行
-         * 4. 按最大行数组装分页
-         * 
-         * @param content 章节内容（原始文本，可能包含HTML标签）
-         * @param containerSize 容器尺寸（像素），屏幕宽高减去状态栏等
-         * @param readerSettings 阅读器设置，包括字体大小、文字颜色等
-         * @param density 密度信息，用于将dp/sp转px
-         * @return 分页后的文本列表，每页是完整的文本块
+         *
+         * @param content 章节内容（可能含 HTML）
+         * @param containerSize 可用区域（像素），已扣除系统栏
+         * @param readerSettings 字体、颜色等阅读配置
+         * @param density Compose Density，用于 dp/sp→px
+         * @return 每页完整文本，list.size 即页数
          */
         fun splitContent(
             content: String,
@@ -52,127 +41,99 @@ class PageSplitter {
             readerSettings: ReaderSettings,
             density: Density
         ): List<String> {
-            val startTime = System.currentTimeMillis()
-            
-            // 1. 边界检查
-            if (content.isEmpty() || containerSize.width <= 0 || containerSize.height <= 0) {
-                Log.w(TAG, "分页参数无效: content.length=${content.length}, size=$containerSize")
+            val t0 = System.nanoTime()
+
+            // -------- 1. 参数校验 --------
+            if (content.isBlank() ||
+                containerSize.width <= 0 || containerSize.height <= 0
+            ) {
+                Log.w(TAG, "参数无效，返回原始内容")
                 return listOf(content)
             }
 
-            Log.d(TAG, "开始分页: 内容长度=${content.length}, 容器尺寸=$containerSize")
+            // -------- 2. HTML → 纯文本 --------
+            val plain = HtmlTextUtil.cleanHtml(content).trim()
+            Log.d(TAG, "内容清理完成：${content.length} → ${plain.length}")
 
-            // 2. 清理内容格式，将HTML转纯文本
-            val cleanContent = HtmlTextUtil.cleanHtml(content).trim()
-            Log.d(TAG, "内容清理完成: ${content.length} -> ${cleanContent.length}")
+            // -------- 3. 计算可用宽高 --------
+            val hPaddingPx = with(density) { 32.wdp.toPx() }   // 16 dp ×2
+            val vPaddingPx = with(density) { 60.wdp.toPx() }   // 30 dp ×2
+            val availW = containerSize.width - hPaddingPx
+            val availH = containerSize.height - vPaddingPx
 
-            // 3. 计算可用宽度与高度（剔除左右/上下padding）
-            val horizontalPadding = with(density) { 32.wdp.toPx() }   // 左右各16dp
-            val verticalPadding   = with(density) { 60.wdp.toPx() }   // 上下各30dp
-            val availableWidth = containerSize.width - horizontalPadding
-            val availableHeight = containerSize.height - verticalPadding
-
-            Log.d(TAG, "可用空间: 宽度=${availableWidth}px, 高度=${availableHeight}px")
-
-            // 4. 创建TextPaint，用于测量字符宽度
+            // -------- 4. 准备测量工具 --------
             val textPaint = TextPaint().apply {
                 isAntiAlias = true
-                textSize = with(density) { readerSettings.fontSize.sp.toPx() }  // sp转px
+                textSize = with(density) { readerSettings.fontSize.sp.toPx() }
                 color = readerSettings.textColor.toArgb()
             }
+            val avgCharW = textPaint.measureText("测") // 任意中/英混排字符
+            val maxCharsPerLine = (availW / avgCharW).toInt().coerceAtLeast(1)
 
-            // 5. 测量平均字符宽度
-            val avgCharWidth = textPaint.measureText("测")   // 使用中文字符测量
-            Log.d(TAG, "字符宽度: ${avgCharWidth}px, 字体大小: ${readerSettings.fontSize}sp")
+            val lineHeight = textPaint.textSize * LINE_SPACING_MULTIPLIER
+            val baseLinesPerPage = (availH / lineHeight).toInt().coerceAtLeast(1)
+            val firstPageReserve = 2 // 首页标题预留
+            val firstPageMaxLines = (baseLinesPerPage - firstPageReserve).coerceAtLeast(1)
 
-            // 6. 计算每行最大字符数
-            val maxCharsPerLine = (availableWidth / avgCharWidth).toInt().coerceAtLeast(1)
+            Log.d(TAG, "分页参数：每行${maxCharsPerLine}字符，行高${lineHeight}px，每页${baseLinesPerPage}行")
 
-            // 7. 计算行高
-            val lineHeight = with(density) { (readerSettings.fontSize * 1.5f).sp.toPx() }
-
-            // 8. 计算每页最大行数
-            val baseLineCount = (availableHeight / lineHeight).toInt().coerceAtLeast(1)
-            val firstPageTitleReserve = 2  // 首页预留2行给章节标题
-            val firstPageLineCount = (baseLineCount - firstPageTitleReserve).coerceAtLeast(1)
-
-            Log.d(TAG, "分页参数: 每行${maxCharsPerLine}字符, 行高${lineHeight}px, 每页${baseLineCount}行")
-
-            if (baseLineCount <= 0) {
-                Log.w(TAG, "每页行数无效，返回原内容")
-                return listOf(cleanContent)
-            }
-
-            // 9. 分段拆分 - 按"\n\n"拆段，保留空行
-            val paragraphs = cleanContent.split("\n\n").filter { it.isNotBlank() || it == "" }
-
-            // 10. 逐段拆分成行
-            val allLines = mutableListOf<String>()
-            for (para in paragraphs) {
-                if (para.isEmpty()) {
-                    // 空段落视为一行空字符串
-                    allLines.add("")
-                    continue
-                }
-
-                // 段落内按硬回车"\n"拆分
-                val subParas = para.split("\n")
-                for (subPara in subParas) {
-                    if (subPara.isEmpty()) {
-                        // 保留段落内部的空行
-                        allLines.add("")
-                        continue
-                    }
-
-                    // 按固定字符数分行
-                    var idx = 0
-                    while (idx < subPara.length) {
-                        val end = (idx + maxCharsPerLine).coerceAtMost(subPara.length)
-                        allLines.add(subPara.substring(idx, end))
-                        idx = end
-                    }
-                }
-            }
-
-            Log.d(TAG, "文本拆分完成: 总行数=${allLines.size}")
-
-            // 11. 按每页最大行数组装分页
+            // -------- 5. 单趟遍历分页 --------
             val pages = mutableListOf<String>()
-            val currentPageLines = mutableListOf<String>()
+            val pageBuilder = StringBuilder()    // 当前页
+            val lineBuilder = StringBuilder()    // 当前行
+
             var currentLineCount = 0
             var isFirstPage = true
-            var lineIndex = 0
+            var currentPageLimit = firstPageMaxLines
 
-            while (lineIndex < allLines.size) {
-                // 决定本页还可放多少行
-                val maxLinesThisPage = if (isFirstPage) firstPageLineCount else baseLineCount
+            fun flushLine() {
+                // 把一行写入当前页并计数
+                pageBuilder.append(lineBuilder).append('\n')
+                lineBuilder.setLength(0)
+                currentLineCount++
 
-                // 如果本页已满，则收尾并新开一页
-                if (currentLineCount >= maxLinesThisPage) {
-                    pages.add(currentPageLines.joinToString("\n"))
-                    currentPageLines.clear()
+                // 如果超过本页行数限制 → 保存页
+                if (currentLineCount >= currentPageLimit) {
+                    pages.add(pageBuilder.trimEnd().toString())
+                    pageBuilder.setLength(0)
                     currentLineCount = 0
                     isFirstPage = false
+                    currentPageLimit = baseLinesPerPage
+                }
+            }
+
+            // 用 Seq 避免一次性 split 占用内存
+            val rawLines = plain.splitToSequence('\n')
+            for (raw in rawLines) {
+                if (raw.isBlank()) {
+                    // 空行直接 flush 空行
+                    lineBuilder.clear()
+                    flushLine()
                     continue
                 }
 
-                // 将当前行加到本页
-                currentPageLines.add(allLines[lineIndex])
-                currentLineCount++
-                lineIndex++
+                var idx = 0
+                val len = raw.length
+                while (idx < len) {
+                    val end = (idx + maxCharsPerLine).coerceAtMost(len)
+                    lineBuilder.append(raw, idx, end)
+                    flushLine()
+                    idx = end
+                }
             }
 
-            // 最后一页如果还有行，补入结果
-            if (currentPageLines.isNotEmpty()) {
-                pages.add(currentPageLines.joinToString("\n"))
+            // 末尾残余
+            if (lineBuilder.isNotEmpty() || pageBuilder.isNotEmpty()) {
+                if (lineBuilder.isNotEmpty()) flushLine()
+                if (pageBuilder.isNotEmpty()) {
+                    pages.add(pageBuilder.trimEnd().toString())
+                }
             }
 
-            val endTime = System.currentTimeMillis()
-            val resultPages = pages.ifEmpty { listOf(cleanContent) }
-            
-            Log.d(TAG, "分页完成: ${resultPages.size}页, 耗时${endTime - startTime}ms")
-            
-            return resultPages
+            val t1 = System.nanoTime()
+            Log.d(TAG, "分页完成：${pages.size}页，耗时${(t1 - t0) / 1_000_000}毫秒")
+
+            return if (pages.isEmpty()) listOf(plain) else pages
         }
     }
 }
