@@ -53,14 +53,9 @@ object HomePerformanceOptimizer {
         val safeMinHeight = minHeight.coerceAtLeast(100)
         val safeMaxHeight = maxHeight.coerceAtMost(500).coerceAtLeast(safeMinHeight)
         
-        Log.d(TAG, "获取图片高度: bookId=$bookId, 范围=${safeMinHeight}-${safeMaxHeight}")
-        
         return imageHeightCache.getOrPut(bookId) {
             val height = (safeMinHeight..safeMaxHeight).random()
-            Log.d(TAG, "生成新高度: bookId=$bookId, height=$height")
             height
-        }.also {
-            Log.d(TAG, "返回缓存高度: bookId=$bookId, height=$it")
         }
     }
     
