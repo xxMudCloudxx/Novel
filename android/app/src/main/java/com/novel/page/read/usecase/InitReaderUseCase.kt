@@ -120,8 +120,7 @@ class InitReaderUseCase @Inject constructor(
             preloadChaptersUseCase.execute(scope, chapterList, initialChapter.id)
 
             // 7. 启动后台全书分页计算（非纵向滚动模式）
-            if (settings.pageFlipEffect != PageFlipEffect.VERTICAL && 
-                initialState.containerSize.width > 0 && initialState.containerSize.height > 0) {
+            if (initialState.containerSize.width > 0 && initialState.containerSize.height > 0) {
                 scope.launch {
                     paginationService.fetchAllBookContentAndPaginateInBackground(
                         bookId = bookId,

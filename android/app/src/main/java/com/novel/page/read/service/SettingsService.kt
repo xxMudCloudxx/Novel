@@ -87,13 +87,14 @@ class SettingsService @Inject constructor(
             userDefaults.get<String>(NovelUserDefaultsKey.BACKGROUND_COLOR)?.let { colorString ->
                 Log.d(TAG, "尝试加载背景颜色: $colorString")
                 try {
-                    if (colorString.isNotBlank() && colorString.startsWith("#") && colorString.length >= 7) {
-                        val colorLong = if (colorString.length == 7) {
-                            "FF${colorString.substring(1)}".toLong(16)
+                    if (colorString.isNotBlank() && colorString.startsWith("#") && (colorString.length == 7 || colorString.length == 9)) {
+                        val colorHex = if (colorString.length == 7) {
+                            "FF${colorString.substring(1)}"
                         } else {
-                            colorString.substring(1).toLong(16)
+                            colorString.substring(1)
                         }
-                        val backgroundColor = Color(colorLong.toULong())
+                        val colorInt = colorHex.toLong(16).toInt()
+                        val backgroundColor = Color(colorInt)
                         newSettings = newSettings.copy(backgroundColor = backgroundColor)
                         Log.d(TAG, "背景颜色设置加载成功: $colorString -> ${colorToHex(backgroundColor)}")
                     } else {
@@ -110,13 +111,14 @@ class SettingsService @Inject constructor(
             userDefaults.get<String>(NovelUserDefaultsKey.TEXT_COLOR)?.let { colorString ->
                 Log.d(TAG, "尝试加载文字颜色: $colorString")
                 try {
-                    if (colorString.isNotBlank() && colorString.startsWith("#") && colorString.length >= 7) {
-                        val colorLong = if (colorString.length == 7) {
-                            "FF${colorString.substring(1)}".toLong(16)
+                    if (colorString.isNotBlank() && colorString.startsWith("#") && (colorString.length == 7 || colorString.length == 9)) {
+                        val colorHex = if (colorString.length == 7) {
+                            "FF${colorString.substring(1)}"
                         } else {
-                            colorString.substring(1).toLong(16)
+                            colorString.substring(1)
                         }
-                        val textColor = Color(colorLong.toULong())
+                        val colorInt = colorHex.toLong(16).toInt()
+                        val textColor = Color(colorInt)
                         newSettings = newSettings.copy(textColor = textColor)
                         Log.d(TAG, "文字颜色设置加载成功: $colorString -> ${colorToHex(textColor)}")
                     } else {

@@ -55,6 +55,7 @@ object HtmlTextUtil {
             .replace("<br/><br/>", "\n\n\n")
             .replace("<p>", "")
             .replace("</p>", "")
+            .replace("&>", "”")
         return result
     }
 
