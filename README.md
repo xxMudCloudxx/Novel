@@ -231,6 +231,15 @@ Novel App 是一个高性能的小说阅读应用，采用 **MVI + Repository + 
 - [ ] 搜索功能优化
 - [ ] 阅读进度云同步
 
+### ✅ 最新完成 (v1.8.1) - Service 层架构重构
+- [x] **统一异步处理** - **新增** `SafeService` 基类和 `DispatcherProvider`，封装协程调度和异常处理，简化 Service 实现。
+- [x] **健壮的缓存管理** - **新增** `SessionCache` 接口和 `LruSessionCache` 实现，替换手动 LRU 缓存，提高稳定性和可测试性。
+- [x] **配置中心化** - **新增** `ReaderServiceConfig`，集中管理所有 Service 的魔法值和配置项。
+- [x] **标准化日志** - **新增** `ServiceLogger` 接口，统一日志格式，便于调试和性能监控。
+- [x] **服务职责分离** - **重构** `SettingsService`，将其逻辑拆分为 `SettingsParser` 和 `SettingsSaver`，遵循单一职责原则。
+- [x] **依赖注入集成** - **新增** `ServiceModule.kt` Hilt 模块，统一提供 Service 层基础设施的实例。
+- [x] **核心服务重构** - **重构** `ChapterService`, `SettingsService`, `PaginationService` 以使用新的架构，提升代码质量。
+
 ### ✅ 最新完成 (v1.8.0) - **设置页面完整实现**
 - [x] **混合架构设置页** - **新增** Android Compose顶部导航 + RN内容区域，完美融合双端优势
 - [x] **智能缓存管理** - **核心功能** 缓存大小计算、格式化显示、一键清空功能
