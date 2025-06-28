@@ -116,8 +116,13 @@ class InitReaderUseCase @Inject constructor(
                 }
             }
             
-            // 6. 启动预加载任务
-            preloadChaptersUseCase.execute(scope, chapterList, initialChapter.id)
+            // 6. 启动预加载任务（传递状态信息以支持分页处理）
+            val finalStateForPreload = stateForSplitting.copy(
+                currentPageData = initialPageData,
+                currentPageIndex = safePageIndex,
+                readerSettings = settings
+            )
+            preloadChaptersUseCase.execute(scope, chapterList, initialChapter.id, finalStateForPreload)
 
             // 7. 启动后台全书分页计算（非纵向滚动模式）
             if (initialState.containerSize.width > 0 && initialState.containerSize.height > 0) {

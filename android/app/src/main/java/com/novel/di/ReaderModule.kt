@@ -101,7 +101,7 @@ object ReaderModule {
     fun provideUpdateSettingsUseCase(
         settingsService: SettingsService,
         paginateChapterUseCase: PaginateChapterUseCase,
-        splitContentUseCase: SplitContentUseCase
+        splitContentUseCase: SplitContentUseCase,
     ): UpdateSettingsUseCase {
         return UpdateSettingsUseCase(settingsService, paginateChapterUseCase, splitContentUseCase)
     }

@@ -50,7 +50,11 @@ class FlipPageUseCase @Inject constructor(
         data object NoOp : FlipResult()
         
         /** 需要重建虚拟页面 */
-        data object NeedsVirtualPageRebuild : FlipResult()
+        data class NeedsVirtualPageRebuild(
+            val newVirtualPageIndex: Int,
+            val newVirtualPage: VirtualPage,
+            val needsPreloadCheck: Boolean
+        ) : FlipResult()
     }
 
     /**
@@ -149,7 +153,11 @@ class FlipPageUseCase @Inject constructor(
                 val hasNewAdjacentChapters = preloadChaptersUseCase.checkIfNewAdjacentChaptersLoaded(state, currentChapterIndex)
                 if (hasNewAdjacentChapters) {
                     Log.d(TAG, "检测到新的相邻章节已加载，需要重建虚拟页面")
-                    return FlipResult.NeedsVirtualPageRebuild
+                    return FlipResult.NeedsVirtualPageRebuild(
+                        newVirtualPageIndex = newVirtualIndex,
+                        newVirtualPage = newVirtualPage,
+                        needsPreloadCheck = needsPreloadCheck
+                    )
                 }
             }
         }

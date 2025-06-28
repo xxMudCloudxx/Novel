@@ -141,14 +141,55 @@ class ChapterService @Inject constructor(
      * 异步预加载指定章节，用于提升阅读体验
      * 预加载的内容会存储在会话缓存中
      * 
+     * 优化：如果有容器尺寸和阅读设置信息，同时进行分页处理
+     * 
      * @param chapterId 章节ID
+     * @param containerSize 容器尺寸（可选，用于分页）
+     * @param readerSettings 阅读设置（可选，用于分页）
+     * @param density 屏幕密度（可选，用于分页）
      */
-    suspend fun preloadChapter(chapterId: String) {
+    suspend fun preloadChapter(
+        chapterId: String,
+        containerSize: androidx.compose.ui.unit.IntSize? = null,
+        readerSettings: com.novel.page.read.components.ReaderSettings? = null,
+        density: androidx.compose.ui.unit.Density? = null
+    ) {
         safeIo {
             withPerformanceMonitoring("preloadChapter") {
                 // 检查是否已在会话缓存中
-                if (sessionCache.containsKey(chapterId)) {
+                val cachedChapter = sessionCache.get(chapterId)
+                if (cachedChapter != null) {
                     logger.logDebug("章节已在会话缓存中，跳过预加载: chapterId=$chapterId", TAG)
+                    
+                    // 如果章节已缓存但没有分页数据，且有必要的参数，则进行分页
+                    if (cachedChapter.pageData == null && 
+                        containerSize != null && readerSettings != null && density != null) {
+                        
+                        logger.logDebug("为已缓存章节添加分页数据: ${cachedChapter.chapter.chapterName}", TAG)
+                        
+                        // 进行分页处理
+                        val pages = com.novel.page.read.utils.PageSplitter.splitContent(
+                            content = cachedChapter.content,
+                            containerSize = containerSize,
+                            readerSettings = readerSettings,
+                            density = density
+                        )
+                        
+                        val pageData = com.novel.page.read.viewmodel.PageData(
+                            chapterId = cachedChapter.chapter.id,
+                            chapterName = cachedChapter.chapter.chapterName,
+                            content = cachedChapter.content,
+                            pages = pages,
+                            isFirstChapter = false, // 这里简化处理
+                            isLastChapter = false   // 这里简化处理
+                        )
+                        
+                        val updatedChapter = cachedChapter.copy(pageData = pageData)
+                        sessionCache.put(chapterId, updatedChapter)
+                        
+                        logger.logDebug("章节分页完成: ${cachedChapter.chapter.chapterName}, 页数=${pages.size}", TAG)
+                    }
+                    
                     return@withPerformanceMonitoring
                 }
                 
@@ -168,10 +209,36 @@ class ChapterService @Inject constructor(
                         isVip = if (contentData.chapterInfo.isVip == 1) "1" else "0"
                     )
                     
-                    val chapterCache = ChapterCache(
+                    var chapterCache = ChapterCache(
                         chapter = chapter,
                         content = contentData.bookContent
                     )
+                    
+                    // 如果有分页参数，同时进行分页处理
+                    if (containerSize != null && readerSettings != null && density != null && 
+                        containerSize.width > 0 && containerSize.height > 0) {
+                        
+                        logger.logDebug("预加载时同时进行分页处理: ${chapter.chapterName}", TAG)
+                        
+                        val pages = com.novel.page.read.utils.PageSplitter.splitContent(
+                            content = contentData.bookContent,
+                            containerSize = containerSize,
+                            readerSettings = readerSettings,
+                            density = density
+                        )
+                        
+                        val pageData = com.novel.page.read.viewmodel.PageData(
+                            chapterId = chapter.id,
+                            chapterName = chapter.chapterName,
+                            content = contentData.bookContent,
+                            pages = pages,
+                            isFirstChapter = false, // 这里简化处理
+                            isLastChapter = false   // 这里简化处理
+                        )
+                        
+                        chapterCache = chapterCache.copy(pageData = pageData)
+                        logger.logDebug("预加载分页完成: ${chapter.chapterName}, 页数=${pages.size}", TAG)
+                    }
                     
                     addToSessionCache(chapterId, chapterCache)
                     logger.logInfo("章节预加载完成: ${chapter.chapterName}", TAG)

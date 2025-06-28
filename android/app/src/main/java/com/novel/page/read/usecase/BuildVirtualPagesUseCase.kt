@@ -65,45 +65,45 @@ class BuildVirtualPagesUseCase @Inject constructor(
                 Log.d(TAG, "添加书籍详情页")
             }
 
-            // 3. 获取相邻章节数据
-            val adjacentChapterData = getAdjacentChapterData(state)
-            Log.d(TAG, "获取相邻章节数据: 前章=${adjacentChapterData.first != null}, 后章=${adjacentChapterData.second != null}")
+            // 3. 获取扩展的相邻章节数据（前后各2-3章）
+            val extendedChapterData = getExtendedAdjacentChapterData(state)
+            Log.d(TAG, "获取扩展相邻章节数据: ${extendedChapterData.size}个章节")
 
-            // 4. 按顺序添加章节页面
+            // 4. 按顺序添加章节页面（支持多章节范围）
             val chapterList = state.chapterList
             val currentChapterIndex = state.currentChapterIndex
+            val maxRange = 3 // 最大构建范围：前后各3章
 
-            // 添加前一章节页面
-            val prevIndex = currentChapterIndex - 1
-            if (prevIndex >= 0 && adjacentChapterData.first != null) {
-                val prevChapter = chapterList[prevIndex]
-                val prevPageData = adjacentChapterData.first!!
-                
-                prevPageData.pages.forEachIndexed { pageIndex, _ ->
-                    virtualPages.add(VirtualPage.ContentPage(prevChapter.id, pageIndex))
+            // 计算实际构建范围
+            val startIndex = (currentChapterIndex - maxRange).coerceAtLeast(0)
+            val endIndex = (currentChapterIndex + maxRange).coerceAtMost(chapterList.size - 1)
+            
+            Log.d(TAG, "虚拟页面构建范围: [$startIndex, $endIndex], 当前章节索引=$currentChapterIndex")
+
+            // 按顺序构建虚拟页面
+            for (chapterIndex in startIndex..endIndex) {
+                val chapter = chapterList[chapterIndex]
+                val pageData = when (chapterIndex) {
+                    currentChapterIndex -> currentPageData // 当前章节使用state中的数据
+                    else -> extendedChapterData[chapter.id] // 其他章节从扩展数据中获取
                 }
-                loadedChapterData[prevChapter.id] = prevPageData
-                Log.d(TAG, "添加前序章节页面: ${prevChapter.chapterName}, 页数=${prevPageData.pages.size}")
-            }
 
-            // 添加当前章节页面
-            currentPageData.pages.forEachIndexed { pageIndex, _ ->
-                virtualPages.add(VirtualPage.ContentPage(currentChapter.id, pageIndex))
-            }
-            loadedChapterData[currentChapter.id] = currentPageData
-            Log.d(TAG, "添加当前章节页面: ${currentChapter.chapterName}, 页数=${currentPageData.pages.size}")
-
-            // 添加后一章节页面
-            val nextIndex = currentChapterIndex + 1
-            if (nextIndex < chapterList.size && adjacentChapterData.second != null) {
-                val nextChapter = chapterList[nextIndex]
-                val nextPageData = adjacentChapterData.second!!
-                
-                nextPageData.pages.forEachIndexed { pageIndex, _ ->
-                    virtualPages.add(VirtualPage.ContentPage(nextChapter.id, pageIndex))
+                if (pageData != null) {
+                    // 添加该章节的所有页面到虚拟页面列表
+                    pageData.pages.forEachIndexed { pageIndex, _ ->
+                        virtualPages.add(VirtualPage.ContentPage(chapter.id, pageIndex))
+                    }
+                    loadedChapterData[chapter.id] = pageData
+                    
+                    val chapterType = when (chapterIndex) {
+                        currentChapterIndex -> "当前"
+                        in startIndex until currentChapterIndex -> "前序"
+                        else -> "后续"
+                    }
+                    Log.d(TAG, "添加${chapterType}章节页面: ${chapter.chapterName}, 页数=${pageData.pages.size}")
+                } else {
+                    Log.d(TAG, "跳过未加载的章节: ${chapter.chapterName}")
                 }
-                loadedChapterData[nextChapter.id] = nextPageData
-                Log.d(TAG, "添加后续章节页面: ${nextChapter.chapterName}, 页数=${nextPageData.pages.size}")
             }
 
             // 5. 计算新的虚拟页面索引
@@ -125,40 +125,42 @@ class BuildVirtualPagesUseCase @Inject constructor(
     }
 
     /**
-     * 获取相邻章节数据
-     * 从当前页面数据或缓存中获取前后章节的分页数据
+     * 获取扩展的相邻章节数据
+     * 支持前后各多章的数据获取（最多前后各3章）
      */
-    private fun getAdjacentChapterData(state: ReaderUiState): Pair<PageData?, PageData?> {
-        val currentPageData = state.currentPageData ?: return Pair(null, null)
+    private fun getExtendedAdjacentChapterData(state: ReaderUiState): Map<String, PageData> {
+        val loadedChapterData = mutableMapOf<String, PageData>()
         val chapterList = state.chapterList
         val currentChapterIndex = state.currentChapterIndex
+        val maxRange = 3 // 最大预加载范围：前后各3章
 
-        // 优先从当前页面数据中获取
-        var previousChapterData = currentPageData.previousChapterData
-        var nextChapterData = currentPageData.nextChapterData
-
-        // 如果没有，尝试从缓存中获取
-        if (previousChapterData == null) {
-            val prevIndex = currentChapterIndex - 1
+        // 获取前面的章节数据
+        for (offset in 1..maxRange) {
+            val prevIndex = currentChapterIndex - offset
             if (prevIndex >= 0) {
                 val prevChapter = chapterList[prevIndex]
                 val cachedChapter = chapterService.getCachedChapter(prevChapter.id)
-                previousChapterData = cachedChapter?.pageData
-                Log.d(TAG, "从缓存获取前序章节数据: ${previousChapterData != null}")
+                cachedChapter?.pageData?.let { pageData ->
+                    loadedChapterData[prevChapter.id] = pageData
+                    Log.d(TAG, "获取前序章节数据: ${prevChapter.chapterName}, 页数=${pageData.pages.size}")
+                }
             }
         }
 
-        if (nextChapterData == null) {
-            val nextIndex = currentChapterIndex + 1
+        // 获取后面的章节数据
+        for (offset in 1..maxRange) {
+            val nextIndex = currentChapterIndex + offset
             if (nextIndex < chapterList.size) {
                 val nextChapter = chapterList[nextIndex]
                 val cachedChapter = chapterService.getCachedChapter(nextChapter.id)
-                nextChapterData = cachedChapter?.pageData
-                Log.d(TAG, "从缓存获取后续章节数据: ${nextChapterData != null}")
+                cachedChapter?.pageData?.let { pageData ->
+                    loadedChapterData[nextChapter.id] = pageData
+                    Log.d(TAG, "获取后续章节数据: ${nextChapter.chapterName}, 页数=${pageData.pages.size}")
+                }
             }
         }
 
-        return Pair(previousChapterData, nextChapterData)
+        return loadedChapterData
     }
 
     /**

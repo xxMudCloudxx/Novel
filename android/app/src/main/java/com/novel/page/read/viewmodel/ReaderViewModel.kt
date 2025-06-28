@@ -384,6 +384,29 @@ class ReaderViewModel @Inject constructor(
                 chapterList
             )
         }
+        
+        // 预加载完成后，检查是否有新的相邻章节需要重建虚拟页面
+        // 延迟执行，给预加载一些时间
+        kotlinx.coroutines.delay(500)
+        checkAndRebuildVirtualPagesIfNeeded(currentChapterIndex)
+    }
+
+    /**
+     * 检查并重建虚拟页面（如果需要）
+     * 当有新的章节被预加载后，主动检查是否需要重建虚拟页面
+     */
+    private suspend fun checkAndRebuildVirtualPagesIfNeeded(currentChapterIndex: Int) {
+        val hasNewAdjacentChapters = preloadChaptersUseCase.checkIfNewAdjacentChaptersLoaded(
+            _uiState.value, 
+            currentChapterIndex
+        )
+        
+        if (hasNewAdjacentChapters) {
+            Log.d(TAG, "检测到新的相邻章节已预加载，主动重建虚拟页面")
+            buildVirtualPages(preserveCurrentIndex = true)
+        } else {
+            Log.d(TAG, "虚拟页面检查：无需重建")
+        }
     }
 
     /**
@@ -421,20 +444,22 @@ class ReaderViewModel @Inject constructor(
             when (result) {
                 is SwitchChapterUseCase.SwitchResult.Success -> {
                     Log.d(TAG, "章节切换成功")
-        _uiState.value = _uiState.value.copy(
+                    _uiState.value = _uiState.value.copy(
                         currentChapter = chapterList[result.newChapterIndex],
                         currentChapterIndex = result.newChapterIndex,
                         currentPageData = result.pageData,
                         currentPageIndex = result.initialPageIndex,
                         bookContent = result.pageData.content,
                         isSwitchingChapter = false
-                    )
+                    ).let { updated ->
+                        updateReadingProgressForState(updated)
+                    }
                     // 重建虚拟页面
                     buildVirtualPages(preserveCurrentIndex = false)
                 }
                 is SwitchChapterUseCase.SwitchResult.Failure -> {
                     Log.e(TAG, "章节切换失败", result.error)
-                _uiState.value = _uiState.value.copy(
+                    _uiState.value = _uiState.value.copy(
                         hasError = true,
                         error = result.error.message ?: "章节切换失败",
                         isSwitchingChapter = false
@@ -548,7 +573,7 @@ class ReaderViewModel @Inject constructor(
                 // 如果需要预加载检查，执行预加载检查
                 if (result.needsPreloadCheck && result.newVirtualPage is com.novel.page.read.viewmodel.VirtualPage.ContentPage) {
                     flipPageUseCase.executePreloadCheck(_uiState.value, result.newVirtualPage, viewModelScope)
-            }
+                }
             }
             
             is FlipPageUseCase.FlipResult.ChapterChanged -> {
@@ -562,7 +587,9 @@ class ReaderViewModel @Inject constructor(
                             currentPageData = switchResult.pageData,
                             currentPageIndex = switchResult.initialPageIndex,
                             bookContent = switchResult.pageData.content
-                        )
+                        ).let { updated ->
+                            updateReadingProgressForState(updated)
+                        }
                         // 重建虚拟页面
                         buildVirtualPages(preserveCurrentIndex = false)
                     }
@@ -580,8 +607,24 @@ class ReaderViewModel @Inject constructor(
             }
             
             is FlipPageUseCase.FlipResult.NeedsVirtualPageRebuild -> {
-                Log.d(TAG, "检测到新的相邻章节已加载，重建虚拟页面")
+                Log.d(TAG, "检测到新的相邻章节已加载，处理翻页并重建虚拟页面")
+
+                // 首先，像处理普通翻页一样更新状态
+                val isSlideMode = _uiState.value.readerSettings.pageFlipEffect == com.novel.page.read.components.PageFlipEffect.SLIDE
+                if (isSlideMode) {
+                    updateSlideFlipState(result.newVirtualPage, result.newVirtualPageIndex)
+                } else {
+                    _uiState.value = _uiState.value.copy(virtualPageIndex = result.newVirtualPageIndex)
+                    updatePageFlipState(result.newVirtualPage)
+                }
+                
+                // 其次，在状态更新后重建虚拟页面
                 buildVirtualPages(preserveCurrentIndex = true)
+                
+                // 最后，如果需要，执行预加载检查
+                if (result.needsPreloadCheck && result.newVirtualPage is com.novel.page.read.viewmodel.VirtualPage.ContentPage) {
+                    flipPageUseCase.executePreloadCheck(_uiState.value, result.newVirtualPage, viewModelScope)
+                }
             }
             
             is FlipPageUseCase.FlipResult.Failure -> {
@@ -617,7 +660,7 @@ class ReaderViewModel @Inject constructor(
                         
                         if (newChapter != null) {
                             Log.d(TAG, "平移模式章节切换: ${state.currentChapter?.chapterName} -> ${newChapter.chapterName}")
-                            _uiState.value = _uiState.value.copy(
+                            var updatedState = _uiState.value.copy(
                                 currentChapter = newChapter,
                                 currentChapterIndex = newChapterIndex,
                                 currentPageIndex = newVirtualPage.pageIndex,
@@ -625,28 +668,70 @@ class ReaderViewModel @Inject constructor(
                                 virtualPageIndex = newVirtualIndex, // 只在这里更新 virtualPageIndex
                                 bookContent = newChapterData.content
                             )
+                            
+                            // 更新阅读进度
+                            updatedState = updateReadingProgressForState(updatedState)
+                            _uiState.value = updatedState
 
                             // 触发动态预加载
                             viewModelScope.launch {
                                 preloadChaptersUseCase.performDynamicPreload(viewModelScope, _uiState.value, newVirtualPage.chapterId, triggerExpansion = false)
                             }
                         }
+                    } else {
+                        // 未预加载到章节数据，主动触发章节加载
+                        val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
+                        val newChapter = state.chapterList.getOrNull(newChapterIndex)
+                        if (newChapter == null) {
+                            Log.e(TAG, "目标章节未在章节列表中: ${newVirtualPage.chapterId}")
+                        } else {
+                            Log.d(TAG, "章节数据未预加载，主动加载章节: ${newChapter.chapterName}")
+                            viewModelScope.launch {
+                                val switchResult = switchChapterUseCase.execute(_uiState.value, newVirtualPage.chapterId, this, null)
+                                when (switchResult) {
+                                    is SwitchChapterUseCase.SwitchResult.Success -> {
+                                        var loadedState = _uiState.value.copy(
+                                            currentChapter = newChapter,
+                                            currentChapterIndex = newChapterIndex,
+                                            currentPageData = switchResult.pageData,
+                                            currentPageIndex = switchResult.initialPageIndex,
+                                            virtualPageIndex = newVirtualIndex,
+                                            bookContent = switchResult.pageData.content
+                                        )
+                                        loadedState = updateReadingProgressForState(loadedState)
+                                        _uiState.value = loadedState
+                                        // 重新构建虚拟页面，确保后续滑动正确
+                                        buildVirtualPages(preserveCurrentIndex = true)
+                                    }
+                                    is SwitchChapterUseCase.SwitchResult.Failure -> Log.e(TAG, "主动切换章节失败", switchResult.error)
+                                    else -> {}
+                                }
+                            }
+                        }
                     }
                 } else {
                     // 同章节内翻页
                     Log.d(TAG, "平移模式同章节翻页: 页面${state.currentPageIndex} -> ${newVirtualPage.pageIndex}")
-                    _uiState.value = _uiState.value.copy(
+                    var updatedState = _uiState.value.copy(
                         currentPageIndex = newVirtualPage.pageIndex,
                         virtualPageIndex = newVirtualIndex
                     )
+                    
+                    // 更新阅读进度
+                    updatedState = updateReadingProgressForState(updatedState)
+                    _uiState.value = updatedState
                 }
             }
             is com.novel.page.read.viewmodel.VirtualPage.BookDetailPage -> {
                 Log.d(TAG, "平移模式切换到书籍详情页")
-                _uiState.value = _uiState.value.copy(
+                var updatedState = _uiState.value.copy(
                     currentPageIndex = -1,
                     virtualPageIndex = newVirtualIndex
                 )
+                
+                // 更新阅读进度
+                updatedState = updateReadingProgressForState(updatedState)
+                _uiState.value = updatedState
             }
             is com.novel.page.read.viewmodel.VirtualPage.ChapterSection -> {
                 Log.d(TAG, "平移模式切换到章节区域")
@@ -674,13 +759,17 @@ class ReaderViewModel @Inject constructor(
                         
                         if (newChapter != null) {
                             Log.d(TAG, "翻页模式章节切换: ${state.currentChapter?.chapterName} -> ${newChapter.chapterName}")
-                            _uiState.value = _uiState.value.copy(
+                            var updatedState = _uiState.value.copy(
                                 currentChapter = newChapter,
                                 currentChapterIndex = newChapterIndex,
                                 currentPageIndex = newVirtualPage.pageIndex,
                                 currentPageData = newChapterData,
                                 bookContent = newChapterData.content
                             )
+                            
+                            // 更新阅读进度
+                            updatedState = updateReadingProgressForState(updatedState)
+                            _uiState.value = updatedState
 
                             // 保存进度并触发动态预加载
                             viewModelScope.launch {
@@ -692,7 +781,11 @@ class ReaderViewModel @Inject constructor(
                 } else {
                     // 同章节内翻页
                     Log.d(TAG, "翻页模式同章节翻页: 页面${state.currentPageIndex} -> ${newVirtualPage.pageIndex}")
-                    _uiState.value = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
+                    var updatedState = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
+                    
+                    // 更新阅读进度
+                    updatedState = updateReadingProgressForState(updatedState)
+                    _uiState.value = updatedState
                     
                     // 保存进度
                     viewModelScope.launch {
@@ -702,7 +795,11 @@ class ReaderViewModel @Inject constructor(
             }
             is com.novel.page.read.viewmodel.VirtualPage.BookDetailPage -> {
                 Log.d(TAG, "翻页模式切换到书籍详情页")
-                _uiState.value = _uiState.value.copy(currentPageIndex = -1)
+                var updatedState = _uiState.value.copy(currentPageIndex = -1)
+                
+                // 更新阅读进度
+                updatedState = updateReadingProgressForState(updatedState)
+                _uiState.value = updatedState
                 
                 // 保存进度
                 viewModelScope.launch {
@@ -731,7 +828,9 @@ class ReaderViewModel @Inject constructor(
                     currentPageIndex = result.initialPageIndex,
                     currentChapter = _uiState.value.chapterList[result.newChapterIndex],
                     bookContent = result.pageData.content
-                )
+                ).let { updated ->
+                    updateReadingProgressForState(updated)
+                }
                 // 重建虚拟页面
                 buildVirtualPages(preserveCurrentIndex = false)
             }

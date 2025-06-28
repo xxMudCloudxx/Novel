@@ -43,11 +43,17 @@ class PreloadChaptersUseCase @Inject constructor(
     /**
      * 执行基础预加载
      * 预加载当前章节前后各2章的内容
+     * 
+     * @param scope 协程作用域
+     * @param chapterList 章节列表
+     * @param currentChapterId 当前章节ID
+     * @param state 阅读器状态（可选，用于分页参数）
      */
     fun execute(
         scope: CoroutineScope,
         chapterList: List<Chapter>,
-        currentChapterId: String
+        currentChapterId: String,
+        state: ReaderUiState? = null
     ) {
         Log.d(TAG, "开始基础预加载: currentChapter=$currentChapterId")
         
@@ -67,14 +73,38 @@ class PreloadChaptersUseCase @Inject constructor(
                 if (nextIndex < chapterList.size) {
                     launch { 
                         Log.d(TAG, "预加载后续章节: ${chapterList[nextIndex].chapterName}")
-                        chapterService.preloadChapter(chapterList[nextIndex].id) 
+                        
+                        if (state != null) {
+                            // 如果有状态信息，使用带分页参数的预加载
+                            chapterService.preloadChapter(
+                                chapterId = chapterList[nextIndex].id,
+                                containerSize = state.containerSize,
+                                readerSettings = state.readerSettings,
+                                density = state.density
+                            )
+                        } else {
+                            // 否则使用基础预加载
+                            chapterService.preloadChapter(chapterList[nextIndex].id)
+                        }
                     }
                 }
                 val prevIndex = currentIndex - offset
                 if (prevIndex >= 0) {
                     launch { 
                         Log.d(TAG, "预加载前序章节: ${chapterList[prevIndex].chapterName}")
-                        chapterService.preloadChapter(chapterList[prevIndex].id) 
+                        
+                        if (state != null) {
+                            // 如果有状态信息，使用带分页参数的预加载
+                            chapterService.preloadChapter(
+                                chapterId = chapterList[prevIndex].id,
+                                containerSize = state.containerSize,
+                                readerSettings = state.readerSettings,
+                                density = state.density
+                            )
+                        } else {
+                            // 否则使用基础预加载
+                            chapterService.preloadChapter(chapterList[prevIndex].id)
+                        }
                     }
                 }
             }
@@ -134,57 +164,50 @@ class PreloadChaptersUseCase @Inject constructor(
                         try {
                             preloadingChapters.add(chapter.id)
                             Log.d(TAG, "预加载章节内容: ${chapter.chapterName}")
-                            chapterService.preloadChapter(chapter.id)
+                            
+                            // 传递分页参数，让预加载时同时进行分页处理
+                            chapterService.preloadChapter(
+                                chapterId = chapter.id,
+                                containerSize = state.containerSize,
+                                readerSettings = state.readerSettings,
+                                density = state.density
+                            )
                         } catch (e: Exception) {
                             Log.e(TAG, "章节内容预加载失败: ${chapter.chapterName}", e)
                         } finally {
                             preloadingChapters.remove(chapter.id)
                         }
+                    } else if (cachedChapter != null && cachedChapter.pageData == null && 
+                              state.containerSize.width > 0 && state.containerSize.height > 0 && state.density != null) {
+                        // 如果章节已缓存但没有分页数据，进行分页处理
+                        try {
+                            Log.d(TAG, "为已缓存章节进行分页: ${chapter.chapterName}")
+                            
+                            val pages = paginationService.splitContent(
+                                content = cachedChapter.content,
+                                containerSize = state.containerSize,
+                                readerSettings = state.readerSettings,
+                                density = state.density
+                            )
+
+                            val pageData = com.novel.page.read.viewmodel.PageData(
+                                chapterId = chapter.id,
+                                chapterName = chapter.chapterName,
+                                content = cachedChapter.content,
+                                pages = pages,
+                                isFirstChapter = index == 0,
+                                isLastChapter = index == chapterList.size - 1
+                            )
+
+                            // 更新缓存中的分页数据
+                            chapterService.setCachedChapterPageData(chapter.id, pageData)
+                            Log.d(TAG, "章节分页完成: ${chapter.chapterName}, 页数=${pages.size}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "章节分页失败: ${chapter.chapterName}", e)
+                        }
                     }
                 }
             }.forEach { it.join() }
-
-            // 对已缓存但未分页的章节进行分页处理
-            if (state.containerSize.width > 0 && state.containerSize.height > 0 && state.density != null) {
-                Log.d(TAG, "开始预加载章节分页处理")
-                
-                val paginationJobs = preloadIndices.mapNotNull { index ->
-                    val chapter = chapterList[index]
-                    val cachedChapter = chapterService.getCachedChapter(chapter.id)
-                    if (cachedChapter != null && cachedChapter.pageData == null) {
-                        launch {
-                            try {
-                                Log.d(TAG, "分页处理章节: ${chapter.chapterName}")
-                                val pages = paginationService.splitContent(
-                                    content = cachedChapter.content,
-                                    containerSize = state.containerSize,
-                                    readerSettings = state.readerSettings,
-                                    density = state.density
-                                )
-
-                                val pageData = PageData(
-                                    chapterId = chapter.id,
-                                    chapterName = chapter.chapterName,
-                                    content = cachedChapter.content,
-                                    pages = pages,
-                                    isFirstChapter = index == 0,
-                                    isLastChapter = index == chapterList.size - 1
-                                )
-
-                                // 更新缓存中的分页数据
-                                chapterService.setCachedChapterPageData(chapter.id, pageData)
-                                Log.d(TAG, "章节分页完成: ${chapter.chapterName}, 页数=${pages.size}")
-                            } catch (e: Exception) {
-                                Log.e(TAG, "章节分页失败: ${chapter.chapterName}", e)
-                            }
-                        }
-                    } else null
-                }
-
-                // 等待所有分页任务完成
-                paginationJobs.forEach { it.join() }
-                Log.d(TAG, "预加载分页处理完成")
-            }
 
             // 清理超出范围的缓存
             cleanupOutOfRangeCache(chapterList, newStartIndex, newEndIndex, currentIndex)
@@ -323,6 +346,8 @@ class PreloadChaptersUseCase @Inject constructor(
      * 1. 检查前后相邻章节是否已加载但不在当前虚拟页面中
      * 2. 如果发现新加载的相邻章节，返回true触发虚拟页面重建
      * 
+     * 优化：扩展检查范围到前后各3章，并改进预加载状态检查
+     * 
      * @param state 当前阅读器状态
      * @param currentIndex 当前章节索引
      * @return 如果有新的相邻章节被加载返回true，否则返回false
@@ -333,41 +358,49 @@ class PreloadChaptersUseCase @Inject constructor(
     ): Boolean {
         val chapterList = state.chapterList
         val currentVirtualPages = state.virtualPages
+        val checkRange = 3 // 检查前后各3章
 
-        Log.d(TAG, "检查新加载的相邻章节: 当前索引=$currentIndex")
+        Log.d(TAG, "检查新加载的相邻章节: 当前索引=$currentIndex, 检查范围=$checkRange")
 
-        // 检查前一章节
-        val prevIndex = currentIndex - 1
-        if (prevIndex >= 0) {
-            val prevChapter = chapterList[prevIndex]
-            val prevChapterInVirtual = currentVirtualPages.any {
-                it is VirtualPage.ContentPage && it.chapterId == prevChapter.id
-            }
-            val cachedChapter = chapterService.getCachedChapter(prevChapter.id)
-            val prevChapterLoaded = cachedChapter?.pageData != null
+        // 检查前面的章节
+        for (offset in 1..checkRange) {
+            val prevIndex = currentIndex - offset
+            if (prevIndex >= 0) {
+                val prevChapter = chapterList[prevIndex]
+                val prevChapterInVirtual = currentVirtualPages.any {
+                    it is VirtualPage.ContentPage && it.chapterId == prevChapter.id
+                }
+                val cachedChapter = chapterService.getCachedChapter(prevChapter.id)
+                // 改进：检查章节是否已加载（有内容），而不是必须有分页数据
+                val prevChapterLoaded = cachedChapter != null && cachedChapter.content.isNotEmpty()
 
-            if (prevChapterLoaded && !prevChapterInVirtual) {
-                Log.d(TAG, "发现新加载的前序章节: ${prevChapter.chapterName}")
-                return true // 新的前序章节已加载但不在虚拟页面中
-            }
-        }
-
-        // 检查后一章节
-        val nextIndex = currentIndex + 1
-        if (nextIndex < chapterList.size) {
-            val nextChapter = chapterList[nextIndex]
-            val nextChapterInVirtual = currentVirtualPages.any {
-                it is VirtualPage.ContentPage && it.chapterId == nextChapter.id
-            }
-            val cachedChapter = chapterService.getCachedChapter(nextChapter.id)
-            val nextChapterLoaded = cachedChapter?.pageData != null
-
-            if (nextChapterLoaded && !nextChapterInVirtual) {
-                Log.d(TAG, "发现新加载的后续章节: ${nextChapter.chapterName}")
-                return true // 新的后续章节已加载但不在虚拟页面中
+                if (prevChapterLoaded && !prevChapterInVirtual) {
+                    Log.d(TAG, "发现新加载的前序章节: ${prevChapter.chapterName} (偏移=$offset)")
+                    return true // 新的前序章节已加载但不在虚拟页面中
+                }
             }
         }
 
+        // 检查后面的章节
+        for (offset in 1..checkRange) {
+            val nextIndex = currentIndex + offset
+            if (nextIndex < chapterList.size) {
+                val nextChapter = chapterList[nextIndex]
+                val nextChapterInVirtual = currentVirtualPages.any {
+                    it is VirtualPage.ContentPage && it.chapterId == nextChapter.id
+                }
+                val cachedChapter = chapterService.getCachedChapter(nextChapter.id)
+                // 改进：检查章节是否已加载（有内容），而不是必须有分页数据
+                val nextChapterLoaded = cachedChapter != null && cachedChapter.content.isNotEmpty()
+
+                if (nextChapterLoaded && !nextChapterInVirtual) {
+                    Log.d(TAG, "发现新加载的后续章节: ${nextChapter.chapterName} (偏移=$offset)")
+                    return true // 新的后续章节已加载但不在虚拟页面中
+                }
+            }
+        }
+
+        Log.d(TAG, "没有发现新的相邻章节")
         return false
     }
 
