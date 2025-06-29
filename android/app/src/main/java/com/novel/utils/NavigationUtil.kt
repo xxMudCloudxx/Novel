@@ -25,7 +25,7 @@ import com.novel.page.search.FullRankingPage
 @Composable
 fun NavigationSetup() {
     Log.d("NavigationSetup", "NavigationSetup 重新组合")
-    
+
     // 创建NavController
     val navController = rememberNavController()
 
@@ -33,7 +33,7 @@ fun NavigationSetup() {
     DisposableEffect(navController) {
         Log.d("NavigationSetup", "DisposableEffect: 设置 NavController")
         NavViewModel.navController.value = navController
-        
+
         onDispose {
             Log.d("NavigationSetup", "DisposableEffect: 清理 NavController")
             // 确保在组件销毁时清理引用
@@ -61,7 +61,7 @@ fun NavigationSetup() {
                     NavViewModel.navigateBack()
                 },
                 onNavigateToBookDetail = { bookId ->
-                    NavViewModel.navigateToBookDetail(bookId.toString(), fromRank = false)
+                    NavViewModel.navigateToReader(bookId.toString(), null)
                 }
             )
         }
@@ -89,7 +89,7 @@ fun NavigationSetup() {
                     NavViewModel.navigateBack()
                 },
                 onNavigateToBookDetail = { bookId ->
-                    NavViewModel.navigateToBookDetail(bookId.toString(), fromRank = true)
+                    NavViewModel.navigateToReader(bookId = bookId.toString(), null)
                 }
             )
         }
@@ -153,17 +153,20 @@ fun NavigationSetup() {
 
 object NavViewModel : ViewModel() {
     val navController = MutableLiveData<NavHostController>()
-    
+
     // 当前书籍信息（用于返回动画）
     private var currentBookInfo: Pair<String, Boolean>? = null
-    
+
     /** 供 BookDetailPage 与 ReaderPage 共享的临时动画控制器 */
     private var flipBookController: FlipBookAnimationController? = null
 
     fun setFlipBookController(controller: FlipBookAnimationController?) {
         flipBookController = controller
     }
-    
+
+    /** 获取当前 FlipBookAnimationController（可能为 null） */
+    fun currentFlipBookController(): FlipBookAnimationController? = flipBookController
+
     /**
      * 导航到搜索页面
      * @param query 搜索关键词（可选）
@@ -171,18 +174,18 @@ object NavViewModel : ViewModel() {
     fun navigateToSearch(query: String = "") {
         Log.d("NavViewModel", "===== 导航到搜索页面 =====")
         Log.d("NavViewModel", "query: $query")
-        
+
         val route = if (query.isNotBlank()) {
             "search?query=$query"
         } else {
             "search"
         }
-        
+
         navController.value?.navigate(route)
         Log.d("NavViewModel", "✅ 导航到搜索页面命令已发送")
         Log.d("NavViewModel", "==============================")
     }
-    
+
     /**
      * 导航到搜索结果页面
      * @param query 搜索关键词
@@ -190,39 +193,43 @@ object NavViewModel : ViewModel() {
     fun navigateToSearchResult(query: String) {
         Log.d("NavViewModel", "===== 导航到搜索结果页面 =====")
         Log.d("NavViewModel", "query: $query")
-        
+
         val route = "search_result?query=$query"
         navController.value?.navigate(route)
-        
+
         Log.d("NavViewModel", "✅ 导航到搜索结果页面命令已发送")
         Log.d("NavViewModel", "==============================")
     }
-    
+
     /**
      * 导航到完整榜单页面
      * @param rankingType 榜单类型
      * @param rankingItems 榜单数据
      */
-    fun navigateToFullRanking(rankingType: String, rankingItems: List<com.novel.page.search.component.SearchRankingItem>) {
+    fun navigateToFullRanking(
+        rankingType: String,
+        rankingItems: List<com.novel.page.search.component.SearchRankingItem>
+    ) {
         Log.d("NavViewModel", "===== 导航到完整榜单页面 =====")
         Log.d("NavViewModel", "rankingType: $rankingType")
         Log.d("NavViewModel", "rankingItems count: ${rankingItems.size}")
-        
+
         val encodedData = encodeRankingData(rankingItems)
         val route = "full_ranking/$rankingType/$encodedData"
         navController.value?.navigate(route)
-        
+
         Log.d("NavViewModel", "✅ 导航到完整榜单页面命令已发送")
         Log.d("NavViewModel", "==============================")
     }
-    
+
     /**
      * 编码榜单数据为URL安全的字符串
      */
     private fun encodeRankingData(items: List<com.novel.page.search.component.SearchRankingItem>): String {
         return try {
             val json = android.util.Base64.encodeToString(
-                items.joinToString("|") { "${it.id},${it.title},${it.author},${it.rank}" }.toByteArray(),
+                items.joinToString("|") { "${it.id},${it.title},${it.author},${it.rank}" }
+                    .toByteArray(),
                 android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP
             )
             java.net.URLEncoder.encode(json, "UTF-8")
@@ -231,16 +238,19 @@ object NavViewModel : ViewModel() {
             ""
         }
     }
-    
+
     /**
      * 解码榜单数据
      */
     fun decodeRankingData(encodedData: String): List<com.novel.page.search.component.SearchRankingItem> {
         return try {
             val decodedJson = java.net.URLDecoder.decode(encodedData, "UTF-8")
-            val decodedBytes = android.util.Base64.decode(decodedJson, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+            val decodedBytes = android.util.Base64.decode(
+                decodedJson,
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP
+            )
             val dataString = String(decodedBytes)
-            
+
             dataString.split("|").mapNotNull { itemString ->
                 val parts = itemString.split(",")
                 if (parts.size >= 4) {
@@ -257,7 +267,7 @@ object NavViewModel : ViewModel() {
             emptyList()
         }
     }
-    
+
     /**
      * 导航到书籍详情页
      * @param bookId 书籍ID
@@ -267,16 +277,16 @@ object NavViewModel : ViewModel() {
         Log.d("NavViewModel", "===== 导航到书籍详情页 =====")
         Log.d("NavViewModel", "bookId: $bookId")
         Log.d("NavViewModel", "fromRank: $fromRank")
-        
+
         // 记录当前书籍信息
         currentBookInfo = bookId to fromRank
         Log.d("NavViewModel", "保存书籍信息: $currentBookInfo")
-        
+
         navController.value?.navigate("book_detail/$bookId?fromRank=$fromRank")
         Log.d("NavViewModel", "✅ 导航命令已发送")
         Log.d("NavViewModel", "==============================")
     }
-    
+
     /**
      * 导航到阅读器页面
      * @param bookId 书籍ID
@@ -286,18 +296,18 @@ object NavViewModel : ViewModel() {
         Log.d("NavViewModel", "===== 导航到阅读器页面 =====")
         Log.d("NavViewModel", "bookId: $bookId")
         Log.d("NavViewModel", "chapterId: $chapterId")
-        
+
         val route = if (chapterId != null) {
             "reader/$bookId?chapterId=$chapterId"
         } else {
             "reader/$bookId"
         }
-        
+
         navController.value?.navigate(route)
         Log.d("NavViewModel", "✅ 导航到阅读器命令已发送")
         Log.d("NavViewModel", "==============================")
     }
-    
+
     /**
      * 返回
      */

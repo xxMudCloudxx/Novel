@@ -304,7 +304,8 @@ fun Modifier.iosSwipeBack(
 @Composable
 fun SwipeBackIndicator(
     swipeState: SwipeBackState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    textColor: Color = NovelColors.NovelTextGray
 ) {
     Box(
         modifier = modifier
@@ -316,7 +317,7 @@ fun SwipeBackIndicator(
         Text(
             text = swipeState.hintText,
             lineHeight = 10.sp,
-            color = NovelColors.NovelTextGray,
+            color = textColor,
             fontSize = 9.sp,
             fontWeight = FontWeight.Normal
         )
@@ -343,6 +344,7 @@ fun SwipeBackContainer(
     firstThreshold: Float = 0.05f,
     completeThreshold: Float = 0.3f,
     backgroundColor: Color = NovelColors.NovelBookBackground.copy(alpha = 0.7f), // 默认浅灰色背景
+    textColor: Color = NovelColors.NovelTextGray,
     onSwipeComplete: (() -> Unit)? = null, // 侧滑完成回调
     onLeftSwipeToReader: (() -> Unit)? = null, // 左滑进入阅读器回调
     content: @Composable BoxScope.() -> Unit
@@ -366,7 +368,8 @@ fun SwipeBackContainer(
             // 背景指示器 - 显示在被露出的区域
             SwipeBackIndicator(
                 swipeState = swipeState,
-                modifier = Modifier.align(Alignment.CenterEnd)
+                modifier = Modifier.align(Alignment.CenterEnd),
+                textColor = textColor
             )
         }
 

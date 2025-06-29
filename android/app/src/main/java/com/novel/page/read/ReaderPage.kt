@@ -75,18 +75,28 @@ fun ReaderPage(
     chapterId: String? = null,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
+    val activeController = flipBookController ?: NavViewModel.currentFlipBookController()
+
     val uiState by viewModel.uiState.collectAsState()
     val density = LocalDensity.current
 
     val coroutineScope = rememberCoroutineScope()
 
-    // 定义返回函数，供多处调用
-    val performBack = remember {
+    // —— 只做反向动画 + 清理 controller，不做导航 ——
+    val reverseOnly = remember {
         {
             coroutineScope.launch {
-                flipBookController?.triggerReverseAnimation()
+                activeController?.triggerReverseAnimation()
             }
             NavViewModel.setFlipBookController(null)
+        }
+    }
+
+    // —— 真正的“后退”：先做动画，再清理 controller，最后导航 ——
+    val performBack = remember {
+        {
+            reverseOnly()
+            NavViewModel.navigateBack()
         }
     }
 
@@ -125,11 +135,22 @@ fun ReaderPage(
 
     LaunchedEffect(uiState.readerSettings) {
         Log.d("ReaderPage", "设置状态变化监听触发")
-        Log.d("ReaderPage", "当前背景颜色: ${String.format("#%08X", uiState.readerSettings.backgroundColor.toArgb())}")
-        Log.d("ReaderPage", "当前文字颜色: ${String.format("#%08X", uiState.readerSettings.textColor.toArgb())}")
+        Log.d(
+            "ReaderPage",
+            "当前背景颜色: ${
+                String.format(
+                    "#%08X",
+                    uiState.readerSettings.backgroundColor.toArgb()
+                )
+            }"
+        )
+        Log.d(
+            "ReaderPage",
+            "当前文字颜色: ${String.format("#%08X", uiState.readerSettings.textColor.toArgb())}"
+        )
         Log.d("ReaderPage", "当前字体大小: ${uiState.readerSettings.fontSize}sp")
         Log.d("ReaderPage", "当前翻页效果: ${uiState.readerSettings.pageFlipEffect}")
-        
+
         // 强制触发更新容器尺寸，确保页数正确刷新
         if (uiState.containerSize != IntSize.Zero) {
             viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
@@ -140,14 +161,14 @@ fun ReaderPage(
     // 初始化阅读器并启动页数计算
     LaunchedEffect(bookId, chapterId) {
         viewModel.onIntent(ReaderIntent.InitReader(bookId, chapterId))
-        
+
         // 确保在初始化完成后立即启动页数计算
         delay(100) // 等待初始化完成
         if (uiState.isSuccess && uiState.containerSize != IntSize.Zero) {
             // 强制触发页数缓存更新，确保首次打开时页数能正确显示
             viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
         }
-        
+
         // 如果是恢复阅读进度（没有指定章节），显示恢复提示
         if (chapterId == null) {
             delay(1000) // 等待内容加载完成
@@ -209,14 +230,14 @@ fun ReaderPage(
     val handleLeftSwipeToReader: () -> Unit = {
         Log.d("BookDetailPage", "左滑进入阅读器: bookId=$bookId")
         // 把当前的 FlipBookAnimationController 暂存到全局
-        NavViewModel.setFlipBookController(flipBookController)
+        NavViewModel.setFlipBookController(activeController)
     }
     CompositionLocalProvider(LocalReaderInfo provides readerInfo) {
         LoadingStateComponent(
             component = loadingStateComponent,
             modifier = Modifier.fillMaxSize(),
             backgroundColor = NovelColors.NovelBookBackground,
-            flipBookController = flipBookController,
+            flipBookController = activeController,
             onLeftSwipeToReader = handleLeftSwipeToReader
         ) {
             Box(
@@ -276,7 +297,7 @@ fun ReaderPage(
                                     },
                                     onSwipeBack = {
                                         // iOS侧滑返回
-                                        performBack()
+                                        reverseOnly()
                                     },
                                     onVerticalScrollPageChange = { pageIndex ->
                                         viewModel.updateCurrentPageFromScroll(pageIndex)
@@ -396,7 +417,10 @@ fun ReaderPage(
                                         text = "已恢复上次阅读位置",
                                         color = Color.White,
                                         fontSize = 14.sp,
-                                        modifier = Modifier.padding(horizontal = 16.wdp, vertical = 8.wdp)
+                                        modifier = Modifier.padding(
+                                            horizontal = 16.wdp,
+                                            vertical = 8.wdp
+                                        )
                                     )
                                 }
                             }
@@ -413,12 +437,18 @@ fun ReaderPage(
                                 onBack = performBack,
                                 onPreviousChapter = {
                                     viewModel.onIntent(ReaderIntent.PreviousChapter)
-                                                    },
+                                },
 
                                 onNextChapter = {
                                     viewModel.onIntent(ReaderIntent.NextChapter)
-                                                },
-                                onSeekToProgress = { progress -> viewModel.onIntent(ReaderIntent.SeekToProgress(progress)) },
+                                },
+                                onSeekToProgress = { progress ->
+                                    viewModel.onIntent(
+                                        ReaderIntent.SeekToProgress(
+                                            progress
+                                        )
+                                    )
+                                },
                                 onShowChapterList = {
                                     showChapterList = !showChapterList
                                     showSettings = false
@@ -640,7 +670,9 @@ private fun BottomControls(
                     fontSize = 10.ssp,
                     color = uiState.readerSettings.textColor.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
                 )
             }
 

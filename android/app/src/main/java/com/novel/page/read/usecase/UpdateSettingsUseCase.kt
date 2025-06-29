@@ -1,77 +1,109 @@
 package com.novel.page.read.usecase
 
-import android.util.Log
 import androidx.compose.ui.graphics.toArgb
 import com.novel.page.read.components.PageFlipEffect
 import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.service.SettingsService
+import com.novel.page.read.service.common.DispatcherProvider
+import com.novel.page.read.service.common.ServiceLogger
+import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import javax.inject.Inject
 
+/**
+ * 更新设置用例
+ * 
+ * 负责处理阅读器设置更新的完整流程：
+ * 1. 保存新设置到本地存储
+ * 2. 检查是否需要重新分页
+ * 3. 重新分页并恢复阅读进度
+ * 4. 处理分页失败的回退逻辑
+ */
 class UpdateSettingsUseCase @Inject constructor(
     private val settingsService: SettingsService,
     private val paginateChapterUseCase: PaginateChapterUseCase,
-    private val splitContentUseCase: SplitContentUseCase
-) {
+    private val splitContentUseCase: SplitContentUseCase,
+    dispatchers: DispatcherProvider,
+    logger: ServiceLogger
+) : BaseUseCase(dispatchers, logger) {
+    
     companion object {
         private const val TAG = ReaderLogTags.UPDATE_SETTINGS_USE_CASE
     }
+
+    override fun getServiceTag(): String = TAG
 
     sealed class UpdateResult {
         data class Success(val newPageData: PageData?, val newPageIndex: Int = 0) : UpdateResult()
         // No failure case for now, as saveSettings is fire-and-forget
     }
 
+    /**
+     * 执行设置更新
+     * 
+     * @param newSettings 新的阅读器设置
+     * @param state 当前阅读器状态
+     * @return 更新结果
+     */
     suspend fun execute(
         newSettings: ReaderSettings,
         state: ReaderUiState
     ): UpdateResult {
-        Log.d(TAG, "开始更新设置")
-        Log.d(TAG, "新设置详情:")
-        Log.d(TAG, "  - 字体大小: ${newSettings.fontSize}sp")
-        Log.d(TAG, "  - 亮度: ${(newSettings.brightness * 100).toInt()}%")
-        Log.d(TAG, "  - 背景颜色: ${colorToHex(newSettings.backgroundColor)}")
-        Log.d(TAG, "  - 文字颜色: ${colorToHex(newSettings.textColor)}")
-        Log.d(TAG, "  - 翻页效果: ${newSettings.pageFlipEffect}")
+        return executeWithResult("更新设置") {
+        logOperationStart("更新设置", "开始更新阅读器设置")
         
-        Log.d(TAG, "保存设置到本地存储")
+        logger.logDebug("新设置详情:", TAG)
+        logger.logDebug("  - 字体大小: ${newSettings.fontSize}sp", TAG)
+        logger.logDebug("  - 亮度: ${(newSettings.brightness * 100).toInt()}%", TAG)
+        logger.logDebug("  - 背景颜色: ${colorToHex(newSettings.backgroundColor)}", TAG)
+        logger.logDebug("  - 文字颜色: ${colorToHex(newSettings.textColor)}", TAG)
+        logger.logDebug("  - 翻页效果: ${newSettings.pageFlipEffect}", TAG)
+        
+        logger.logDebug("保存设置到本地存储", TAG)
         settingsService.saveSettings(newSettings)
 
         val needsRepagination = needsRepagination(state.readerSettings, newSettings, state)
-        Log.d(TAG, "是否需要重新分页: $needsRepagination")
+        logger.logDebug("是否需要重新分页: $needsRepagination", TAG)
 
         if (!needsRepagination) {
-            Log.d(TAG, "无需重新分页，直接返回成功")
-            return UpdateResult.Success(null)
+            logger.logDebug("无需重新分页，直接返回成功", TAG)
+            return@executeWithResult UpdateResult.Success(null)
         }
 
-        val currentChapter = state.currentChapter ?: run {
-            Log.w(TAG, "当前章节为空，无法重新分页")
-            return UpdateResult.Success(null)
+        val currentChapter = state.currentChapter
+        if (currentChapter == null) {
+            logger.logWarning("当前章节为空，无法重新分页", TAG)
+            return@executeWithResult UpdateResult.Success(null)
         }
+        
         val chapterContent = state.bookContent
-        val density = state.density ?: run {
-            Log.w(TAG, "屏幕密度为空，无法重新分页")
-            return UpdateResult.Success(null)
+        val density = state.density
+        if (density == null) {
+            logger.logWarning("屏幕密度为空，无法重新分页", TAG)
+            return@executeWithResult UpdateResult.Success(null)
         }
 
-        // Calculate current progress to restore after re-pagination
+        // 计算当前进度以便重新分页后恢复
         val currentProgress = if (state.currentPageData?.pages?.isNotEmpty() == true && state.currentPageIndex >= 0) {
             (state.currentPageIndex.toFloat() + 1) / state.currentPageData.pages.size.toFloat()
         } else 0f
         
-        Log.d(TAG, "重新分页前当前进度: ${(currentProgress * 100).toInt()}% (页面${state.currentPageIndex + 1}/${state.currentPageData?.pages?.size ?: 0})")
+        logger.logDebug(
+            "重新分页前当前进度: ${(currentProgress * 100).toInt()}% " +
+            "(页面${state.currentPageIndex + 1}/${state.currentPageData?.pages?.size ?: 0})", 
+            TAG
+        )
 
-        // Create state for re-pagination
+        // 创建用于重新分页的状态
         val stateForSplitting = state.copy(
             readerSettings = newSettings,
             currentPageIndex = state.currentPageIndex
         )
 
-        return try {
-            Log.d(TAG, "开始使用SplitContentUseCase重新分页")
+        try {
+            logger.logDebug("开始使用SplitContentUseCase重新分页", TAG)
             // Use SplitContentUseCase for re-pagination
             val splitResult = splitContentUseCase.execute(
                 state = stateForSplitting,
@@ -81,12 +113,14 @@ class UpdateSettingsUseCase @Inject constructor(
 
             when (splitResult) {
                 is SplitContentUseCase.SplitResult.Success -> {
-                    Log.d(TAG, "重新分页成功: 新页数=${splitResult.pageData.pages.size}, 恢复到页面=${splitResult.safePageIndex + 1}")
-                    UpdateResult.Success(splitResult.pageData, splitResult.safePageIndex)
+                    logger.logDebug("重新分页成功: 新页数=${splitResult.pageData.pages.size}, 恢复到页面=${splitResult.safePageIndex + 1}", TAG)
+                    val result = UpdateResult.Success(splitResult.pageData, splitResult.safePageIndex)
+                    logOperationComplete("更新设置", "设置更新成功，重新分页完成")
+                    result
                 }
                 is SplitContentUseCase.SplitResult.Failure -> {
-                    Log.w(TAG, "SplitContentUseCase失败，回退到基础分页")
-                    // Fallback to basic pagination
+                    logger.logWarning("SplitContentUseCase失败，回退到基础分页", TAG)
+                    // 回退到基础分页
                     val newPageData = paginateChapterUseCase.execute(
                         chapter = currentChapter,
                         content = chapterContent,
@@ -102,20 +136,30 @@ class UpdateSettingsUseCase @Inject constructor(
                             .coerceIn(0, newPageData.pages.size - 1)
                     } else 0
                     
-                    Log.d(TAG, "基础分页完成: 新页数=${newPageData.pages.size}, 恢复到页面=${restoredPageIndex + 1}")
-                    UpdateResult.Success(newPageData, restoredPageIndex)
+                    logger.logDebug("基础分页完成: 新页数=${newPageData.pages.size}, 恢复到页面=${restoredPageIndex + 1}", TAG)
+                    val result = UpdateResult.Success(newPageData, restoredPageIndex)
+                    logOperationComplete("更新设置", "设置更新成功，基础分页完成")
+                    result
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "重新分页失败", e)
-            // If splitting fails, return success with no new page data
+            logger.logError("重新分页失败", e, TAG)
+            // 如果分页失败，返回成功但无新页面数据
+            UpdateResult.Success(null)
+        }
+        }.getOrElse { throwable ->
+            logger.logError("设置更新失败", throwable as? Exception ?: Exception(throwable), TAG)
             UpdateResult.Success(null)
         }
     }
 
+    /**
+     * 检查是否需要重新分页
+     * 根据设置变化判断是否影响页面布局
+     */
     private fun needsRepagination(oldSettings: ReaderSettings, newSettings: ReaderSettings, state: ReaderUiState): Boolean {
         if (state.containerSize.width == 0 || state.containerSize.height == 0) {
-            Log.d(TAG, "容器尺寸无效，跳过重新分页")
+            logger.logDebug("容器尺寸无效，跳过重新分页", TAG)
             return false
         }
         
@@ -124,10 +168,10 @@ class UpdateSettingsUseCase @Inject constructor(
         val pageFlipEffectChanged = oldSettings.pageFlipEffect != newSettings.pageFlipEffect &&
                 (oldSettings.pageFlipEffect.isVertical() || newSettings.pageFlipEffect.isVertical())
         
-        Log.d(TAG, "分页影响因素检查:")
-        Log.d(TAG, "  - 字体大小变化: $fontSizeChanged (${oldSettings.fontSize}sp -> ${newSettings.fontSize}sp)")
-        Log.d(TAG, "  - 背景颜色变化: $backgroundColorChanged (${colorToHex(oldSettings.backgroundColor)} -> ${colorToHex(newSettings.backgroundColor)})")
-        Log.d(TAG, "  - 翻页效果变化影响布局: $pageFlipEffectChanged")
+        logger.logDebug("分页影响因素检查:", TAG)
+        logger.logDebug("  - 字体大小变化: $fontSizeChanged (${oldSettings.fontSize}sp -> ${newSettings.fontSize}sp)", TAG)
+        logger.logDebug("  - 背景颜色变化: $backgroundColorChanged (${colorToHex(oldSettings.backgroundColor)} -> ${colorToHex(newSettings.backgroundColor)})", TAG)
+        logger.logDebug("  - 翻页效果变化影响布局: $pageFlipEffectChanged", TAG)
         
         return fontSizeChanged || backgroundColorChanged || pageFlipEffectChanged
     }

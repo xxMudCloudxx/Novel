@@ -7,6 +7,10 @@ import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.ProgressService
 import com.novel.page.read.service.SettingsService
+import com.novel.page.read.service.common.DispatcherProvider
+import com.novel.page.read.service.common.ServiceLogger
+import com.novel.page.read.usecase.common.BaseUseCase
+import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +48,16 @@ class InitReaderUseCase @Inject constructor(
     private val paginateChapterUseCase: PaginateChapterUseCase,
     private val preloadChaptersUseCase: PreloadChaptersUseCase,
     private val splitContentUseCase: SplitContentUseCase,
-    private val paginationService: PaginationService
-) {
+    private val paginationService: PaginationService,
+    dispatchers: DispatcherProvider,
+    logger: ServiceLogger
+) : BaseUseCase(dispatchers, logger) {
+
+    companion object {
+        private const val TAG = ReaderLogTags.INIT_READER_USE_CASE
+    }
+
+    override fun getServiceTag(): String = TAG
     /**
      * 执行阅读器初始化
      * 
@@ -61,23 +73,30 @@ class InitReaderUseCase @Inject constructor(
         initialState: ReaderUiState,
         scope: CoroutineScope
     ): Result<InitReaderResult> {
-        return try {
+        return executeWithResult("初始化阅读器") {
+            logOperationStart("初始化阅读器", "书籍ID=$bookId, 章节ID=$chapterId")
             // 1. 加载设置和章节列表
+            logger.logDebug("加载用户设置和章节列表", TAG)
             val settings = settingsService.loadSettings()
             val chapterList = chapterService.getChapterList(bookId)
             if (chapterList.isEmpty()) {
-                return Result.failure(Exception("未找到章节列表"))
+                throw Exception("未找到章节列表")
             }
+            logger.logInfo("章节列表加载完成，共 ${chapterList.size} 章", TAG)
 
             // 2. 确定初始章节和页面索引
+            logger.logDebug("确定初始章节和页面索引", TAG)
             val progress = chapterId?.let { null } ?: progressService.getProgress(bookId)
             val initialChapter = chapterList.find { it.id == (chapterId ?: progress?.chapterId) } ?: chapterList.first()
             val initialChapterIndex = chapterList.indexOf(initialChapter)
             val initialPageIndex = progress?.pageIndex ?: 0
+            logger.logInfo("初始章节确定: ${initialChapter.chapterName}，页面索引: $initialPageIndex", TAG)
 
             // 3. 获取初始章节内容
+            logger.logDebug("获取初始章节内容", TAG)
             val initialContent = chapterService.getChapterContent(initialChapter.id)
-                ?: return Result.failure(Exception("章节内容加载失败"))
+                ?: throw Exception("章节内容加载失败")
+            logger.logInfo("初始章节内容加载完成，内容长度: ${initialContent.content.length}", TAG)
 
             // 4. 创建分页状态
             val stateForSplitting = initialState.copy(
@@ -103,20 +122,39 @@ class InitReaderUseCase @Inject constructor(
                 }
                 is SplitContentUseCase.SplitResult.Failure -> {
                     // 降级到基础分页
-                    val basicPageData = paginateChapterUseCase.execute(
-                        chapter = initialChapter,
-                        content = initialContent.content,
-                        readerSettings = settings,
-                        containerSize = initialState.containerSize,
-                        density = initialState.density!!,
-                        isFirstChapter = initialChapterIndex == 0,
-                        isLastChapter = initialChapterIndex == chapterList.size - 1
-                    )
+                    val basicPageData = if (initialState.density != null &&
+                        initialState.containerSize.width > 0 && initialState.containerSize.height > 0) {
+                        // 正常分页路径
+                        paginateChapterUseCase.execute(
+                            chapter = initialChapter,
+                            content = initialContent.content,
+                            readerSettings = settings,
+                            containerSize = initialState.containerSize,
+                            density = initialState.density!!,
+                            isFirstChapter = initialChapterIndex == 0,
+                            isLastChapter = initialChapterIndex == chapterList.size - 1
+                        )
+                    } else {
+                        // 当容器信息尚未就绪时，降级为单页数据，避免空指针异常
+                        logger.logWarning(
+                            "容器尺寸或 Density 未就绪，使用单页降级策略进行初始化", TAG
+                        )
+                        com.novel.page.read.viewmodel.PageData(
+                            chapterId = initialChapter.id,
+                            chapterName = initialChapter.chapterName,
+                            content = initialContent.content,
+                            pages = listOf(initialContent.content),
+                            isFirstChapter = initialChapterIndex == 0,
+                            isLastChapter = initialChapterIndex == chapterList.size - 1,
+                            hasBookDetailPage = initialChapterIndex == 0
+                        )
+                    }
                     basicPageData to initialPageIndex.coerceIn(0, basicPageData.pages.size - 1)
                 }
             }
             
             // 6. 启动预加载任务（传递状态信息以支持分页处理）
+            logger.logDebug("启动预加载任务", TAG)
             val finalStateForPreload = stateForSplitting.copy(
                 currentPageData = initialPageData,
                 currentPageIndex = safePageIndex,
@@ -126,6 +164,7 @@ class InitReaderUseCase @Inject constructor(
 
             // 7. 启动后台全书分页计算（非纵向滚动模式）
             if (initialState.containerSize.width > 0 && initialState.containerSize.height > 0) {
+                logger.logDebug("启动后台全书分页计算", TAG)
                 scope.launch {
                     paginationService.fetchAllBookContentAndPaginateInBackground(
                         bookId = bookId,
@@ -138,25 +177,25 @@ class InitReaderUseCase @Inject constructor(
             }
 
             // 8. 立即获取或创建页数缓存，确保首次打开时页数能正确显示
+            logger.logDebug("获取页数缓存", TAG)
             val pageCountCache = paginationService.getPageCountCache(
                 bookId = bookId,
                 fontSize = settings.fontSize,
                 containerSize = initialState.containerSize
             )
 
-            Result.success(
-                InitReaderResult(
-                    settings = settings,
-                    chapterList = chapterList,
-                    initialChapter = initialChapter,
-                    initialChapterIndex = initialChapterIndex,
-                    initialPageData = initialPageData,
-                    initialPageIndex = safePageIndex,
-                    pageCountCache = pageCountCache
-                )
+            val result = InitReaderResult(
+                settings = settings,
+                chapterList = chapterList,
+                initialChapter = initialChapter,
+                initialChapterIndex = initialChapterIndex,
+                initialPageData = initialPageData,
+                initialPageIndex = safePageIndex,
+                pageCountCache = pageCountCache
             )
-        } catch (e: Exception) {
-            Result.failure(e)
+
+            logOperationComplete("初始化阅读器", "成功初始化，初始章节: ${initialChapter.chapterName}")
+            result
         }
     }
 } 

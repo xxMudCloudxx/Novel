@@ -1,19 +1,41 @@
 package com.novel.page.read.usecase
 
 import com.novel.page.read.service.ChapterService
+import com.novel.page.read.service.common.DispatcherProvider
+import com.novel.page.read.service.common.ServiceLogger
+import com.novel.page.read.usecase.common.BaseUseCase
+import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
+/**
+ * 切换章节用例
+ * 
+ * 负责处理章节切换的完整流程：
+ * 1. 保存当前章节的阅读进度
+ * 2. 加载目标章节内容
+ * 3. 分页处理新章节
+ * 4. 触发预加载相邻章节
+ * 5. 根据翻页方向确定初始页面位置
+ */
 class SwitchChapterUseCase @Inject constructor(
     private val chapterService: ChapterService,
     private val paginateChapterUseCase: PaginateChapterUseCase,
     private val preloadChaptersUseCase: PreloadChaptersUseCase,
     private val saveProgressUseCase: SaveProgressUseCase,
-    private val splitContentUseCase: SplitContentUseCase
-) {
+    private val splitContentUseCase: SplitContentUseCase,
+    dispatchers: DispatcherProvider,
+    logger: ServiceLogger
+) : BaseUseCase(dispatchers, logger) {
+    
+    companion object {
+        private const val TAG = ReaderLogTags.SWITCH_CHAPTER_USE_CASE
+    }
+
+    override fun getServiceTag(): String = TAG
 
     sealed class SwitchResult {
         data class Success(
@@ -25,44 +47,69 @@ class SwitchChapterUseCase @Inject constructor(
         data object NoOp : SwitchResult()
     }
 
+    /**
+     * 执行章节切换
+     * 
+     * @param state 当前阅读器状态
+     * @param newChapterId 目标章节ID
+     * @param scope 协程作用域
+     * @param flipDirection 翻页方向（可选）
+     * @return 切换结果
+     */
     suspend fun execute(
         state: ReaderUiState,
         newChapterId: String,
         scope: CoroutineScope,
         flipDirection: FlipDirection? = null
     ): SwitchResult {
-        val currentChapter = state.currentChapter ?: return SwitchResult.NoOp
+        return executeWithResult("切换章节") {
+        val currentChapter = state.currentChapter
+        if (currentChapter == null) {
+            logger.logWarning("当前章节为空，无法切换", TAG)
+            return@executeWithResult SwitchResult.NoOp
+        }
+        
         if (currentChapter.id == newChapterId) {
-            return SwitchResult.NoOp
+            logger.logDebug("目标章节与当前章节相同，无需切换", TAG)
+            return@executeWithResult SwitchResult.NoOp
         }
 
         val newChapterIndex = state.chapterList.indexOfFirst { it.id == newChapterId }
         if (newChapterIndex == -1) {
-            return SwitchResult.Failure(IllegalArgumentException("Chapter not found in list"))
+            logger.logError("目标章节在列表中不存在: $newChapterId", null, TAG)
+            return@executeWithResult SwitchResult.Failure(IllegalArgumentException("目标章节在列表中不存在"))
         }
+        
         val newChapter = state.chapterList[newChapterIndex]
+        logOperationStart("切换章节", "从 ${currentChapter.chapterName} 切换到 ${newChapter.chapterName}")
 
-        // 1. Save progress for the current chapter
+        // 1. 保存当前章节的阅读进度
+        logger.logDebug("保存当前章节进度", TAG)
         saveProgressUseCase.execute(state)
 
-        return try {
-            // 2. Fetch new chapter content
+        try {
+            // 2. 获取新章节内容
+            logger.logDebug("加载章节内容: ${newChapter.chapterName}", TAG)
             val chapterContent = chapterService.getChapterContent(newChapterId)
-                ?: return SwitchResult.Failure(IllegalStateException("Chapter content not available"))
+            if (chapterContent == null) {
+                logger.logError("无法加载章节内容: ${newChapter.chapterName}", null, TAG)
+                return@executeWithResult SwitchResult.Failure(IllegalStateException("无法加载章节内容"))
+            }
 
-            // 3. Create state for content splitting
+            // 3. 创建用于内容分割的状态
             val stateForSplitting = state.copy(
                 currentChapter = newChapter,
                 currentChapterIndex = newChapterIndex,
                 bookContent = chapterContent.content,
                 currentPageIndex = when (flipDirection) {
-                    FlipDirection.PREVIOUS -> -1 // Will be set to last page after splitting
+                    FlipDirection.PREVIOUS -> -1 // 将在分割后设置为最后一页
                     FlipDirection.NEXT -> 0
                     else -> 0
                 }
             )
 
-            // 4. Split content using SplitContentUseCase
+            // 4. 使用 SplitContentUseCase 分割内容
+            logger.logDebug("开始内容分割", TAG)
             val splitResult = splitContentUseCase.execute(
                 state = stateForSplitting,
                 restoreProgress = null,
@@ -75,10 +122,12 @@ class SwitchChapterUseCase @Inject constructor(
                         FlipDirection.PREVIOUS -> (splitResult.pageData.pages.size - 1).coerceAtLeast(0)
                         else -> splitResult.safePageIndex
                     }
+                    logger.logDebug("内容分割成功，页数: ${splitResult.pageData.pages.size}", TAG)
                     splitResult.pageData to adjustedPageIndex
                 }
                 is SplitContentUseCase.SplitResult.Failure -> {
-                    // Fallback to basic pagination
+                    // 回退到基础分页
+                    logger.logWarning("内容分割失败，使用基础分页", TAG)
                     val basicPageData = paginateChapterUseCase.execute(
                         chapter = newChapter,
                         content = chapterContent.content,
@@ -96,12 +145,19 @@ class SwitchChapterUseCase @Inject constructor(
                 }
             }
 
-            // 5. Trigger preloading for surrounding chapters
+            // 5. 触发周围章节的预加载
+            logger.logDebug("触发预加载相邻章节", TAG)
             preloadChaptersUseCase.execute(scope, state.chapterList, newChapterId)
 
-            SwitchResult.Success(newChapterIndex, pageData, initialPageIndex)
+            val result = SwitchResult.Success(newChapterIndex, pageData, initialPageIndex)
+            logOperationComplete("切换章节", "成功切换到 ${newChapter.chapterName}，初始页面: $initialPageIndex")
+            result
         } catch (e: Exception) {
+            logger.logError("章节切换失败", e, TAG)
             SwitchResult.Failure(e)
+        }
+        }.getOrElse { throwable ->
+            SwitchResult.Failure(throwable as? Exception ?: Exception(throwable))
         }
     }
 } 

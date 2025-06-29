@@ -5,10 +5,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.novel.page.component.NovelImageView
@@ -27,12 +33,22 @@ import com.novel.utils.wdp
 fun SearchResultItem(
     book: BookInfoRespDto,
     onClick: () -> Unit,
+    onClickWithPosition: ((BookInfoRespDto, androidx.compose.ui.geometry.Offset, androidx.compose.ui.geometry.Size) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    // 记录封面在屏幕中的位置和大小
+    var positionInfo by remember {
+        mutableStateOf(Pair(androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Size.Zero))
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .debounceClickable(onClick = onClick)
+            .debounceClickable(onClick = {
+                // 优先触发携带位置的回调
+                onClickWithPosition?.invoke(book, positionInfo.first, positionInfo.second)
+                onClick()
+            })
             .padding(horizontal = 16.wdp, vertical = 12.wdp)
     ) {
         Row(
@@ -44,7 +60,14 @@ fun SearchResultItem(
                 modifier = Modifier
                     .size(80.wdp, 100.wdp)
                     .clip(RoundedCornerShape(6.wdp))
-                    .background(NovelColors.NovelTextGray.copy(alpha = 0.1f)),
+                    .background(NovelColors.NovelTextGray.copy(alpha = 0.1f))
+                    .onGloballyPositioned { coordinates ->
+                        val windowRect = coordinates.boundsInWindow()
+                        positionInfo = androidx.compose.ui.geometry.Offset(windowRect.left, windowRect.top) to androidx.compose.ui.geometry.Size(
+                            coordinates.size.width.toFloat(),
+                            coordinates.size.height.toFloat()
+                        )
+                    },
                 contentScale = ContentScale.Crop,
                 placeholderContent = {
                     Box(

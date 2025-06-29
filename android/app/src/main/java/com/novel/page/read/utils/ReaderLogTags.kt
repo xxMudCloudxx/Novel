@@ -27,6 +27,7 @@ object ReaderLogTags {
     const val PRELOAD_CHAPTERS_USE_CASE = "PreloadChaptersUseCase"
     const val SPLIT_CONTENT_USE_CASE = "SplitContentUseCase"
     const val BUILD_VIRTUAL_PAGES_USE_CASE = "BuildVirtualPagesUseCase"
+    const val OBSERVE_PAGINATION_PROGRESS_USE_CASE = "ObservePaginationProgressUseCase"
     
     // Repository层
     const val READING_PROGRESS_REPOSITORY = "ReadingProgressRepo"

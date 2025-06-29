@@ -25,6 +25,12 @@ import com.novel.utils.NavViewModel
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import com.novel.page.component.GlobalFlipBookOverlay
+import com.novel.page.component.rememberFlipBookAnimationController
+import kotlinx.coroutines.launch
 
 /**
  * 搜索结果页面
@@ -32,18 +38,28 @@ import com.novel.utils.wdp
 @Composable
 fun SearchResultPage(
     initialQuery: String = "",
-    viewModel: SearchResultViewModel = hiltViewModel()
+    viewModel: SearchResultViewModel = hiltViewModel(),
+    globalFlipBookController: com.novel.page.component.FlipBookAnimationController? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle(initialValue = null)
     val listState = rememberLazyListState()
+
+    // 准备翻书动画控制器与覆盖层
+    val flipBookController = globalFlipBookController ?: com.novel.page.component.rememberFlipBookAnimationController()
+    val coroutineScope = rememberCoroutineScope()
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenSize = remember(configuration, density) {
+        Pair(configuration.screenWidthDp * density.density, configuration.screenHeightDp * density.density)
+    }
 
     // 处理事件
     LaunchedEffect(events) {
         events?.let { event ->
             when (event) {
                 is SearchResultEvent.NavigateToDetail -> {
-                    NavViewModel.navigateToBookDetail(event.bookId, fromRank = false)
+                    NavViewModel.navigateToReader(event.bookId, null)
                 }
 
                 is SearchResultEvent.NavigateBack -> {
@@ -120,14 +136,23 @@ fun SearchResultPage(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 16.wdp)
                     ) {
-                        items(
-                            items = uiState.data.books,
-                            key = { it.id }
-                        ) { book ->
+                        items(items = uiState.data.books, key = { it.id }) { book ->
                             SearchResultItem(
                                 book = book,
-                                onClick = {
-                                    viewModel.onAction(SearchResultAction.NavigateToDetail(book.id.toString()))
+                                onClick = {},
+                                onClickWithPosition = { b, offset, size ->
+                                    coroutineScope.launch {
+                                        flipBookController.startScaleFadeAnimation(
+                                            bookId = b.id.toString(),
+                                            imageUrl = b.picUrl ?: "",
+                                            originalPosition = offset,
+                                            originalSize = size,
+                                            screenWidth = screenSize.first,
+                                            screenHeight = screenSize.second
+                                        )
+                                    }
+                                    NavViewModel.setFlipBookController(flipBookController)
+                                    NavViewModel.navigateToReader(b.id.toString(), null)
                                 }
                             )
                         }
@@ -213,6 +238,9 @@ fun SearchResultPage(
             }
         )
     }
+
+    // 全局动画覆盖层 - 保证动画渲染
+    com.novel.page.component.GlobalFlipBookOverlay(controller = flipBookController)
 }
 
 /**

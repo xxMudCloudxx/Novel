@@ -62,7 +62,13 @@ class NovelDateFormatter
         Log.d(TAG, "格式化日期: $dateString")
         
         // 1. 解析输入时间字符串
-        val localDateTime = LocalDateTime.parse(dateString, parseFormatter)
+        val localDateTime = try {
+            LocalDateTime.parse(dateString, parseFormatter)
+        } catch (e: java.time.format.DateTimeParseException) {
+            // 尝试解析 "yyyy-MM-dd HH:mm:ss" 格式
+            val altFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            LocalDateTime.parse(dateString, altFormatter)
+        }
         val dateTime = localDateTime.atZone(ZoneId.systemDefault())
         val now = ZonedDateTime.now(clock)
 

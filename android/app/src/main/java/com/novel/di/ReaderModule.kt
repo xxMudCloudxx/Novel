@@ -1,6 +1,8 @@
 package com.novel.page.read.di
 
 import com.novel.page.read.service.*
+import com.novel.page.read.service.common.DispatcherProvider
+import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.*
 import dagger.Module
 import dagger.Provides
@@ -18,17 +20,21 @@ object ReaderModule {
     @ViewModelScoped
     fun provideSplitContentUseCase(
         paginationService: PaginationService,
-        chapterService: ChapterService
+        chapterService: ChapterService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): SplitContentUseCase {
-        return SplitContentUseCase(paginationService, chapterService)
+        return SplitContentUseCase(paginationService, chapterService, dispatchers, logger)
     }
 
     @Provides
     @ViewModelScoped
     fun provideBuildVirtualPagesUseCase(
-        chapterService: ChapterService
+        chapterService: ChapterService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): BuildVirtualPagesUseCase {
-        return BuildVirtualPagesUseCase(chapterService)
+        return BuildVirtualPagesUseCase(chapterService, dispatchers, logger)
     }
 
     @Provides
@@ -40,7 +46,9 @@ object ReaderModule {
         paginateChapterUseCase: PaginateChapterUseCase,
         preloadChaptersUseCase: PreloadChaptersUseCase,
         splitContentUseCase: SplitContentUseCase,
-        paginationService: PaginationService
+        paginationService: PaginationService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): InitReaderUseCase {
         return InitReaderUseCase(
             settingsService,
@@ -49,7 +57,9 @@ object ReaderModule {
             paginateChapterUseCase,
             preloadChaptersUseCase,
             splitContentUseCase,
-            paginationService
+            paginationService,
+            dispatchers,
+            logger
         )
     }
 
@@ -57,9 +67,11 @@ object ReaderModule {
     @ViewModelScoped
     fun provideFlipPageUseCase(
         switchChapterUseCase: SwitchChapterUseCase,
-        preloadChaptersUseCase: PreloadChaptersUseCase
+        preloadChaptersUseCase: PreloadChaptersUseCase,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): FlipPageUseCase {
-        return FlipPageUseCase(switchChapterUseCase, preloadChaptersUseCase)
+        return FlipPageUseCase(switchChapterUseCase, preloadChaptersUseCase, dispatchers, logger)
     }
 
     @Provides
@@ -69,14 +81,18 @@ object ReaderModule {
         paginateChapterUseCase: PaginateChapterUseCase,
         preloadChaptersUseCase: PreloadChaptersUseCase,
         saveProgressUseCase: SaveProgressUseCase,
-        splitContentUseCase: SplitContentUseCase
+        splitContentUseCase: SplitContentUseCase,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): SwitchChapterUseCase {
         return SwitchChapterUseCase(
             chapterService,
             paginateChapterUseCase,
             preloadChaptersUseCase,
             saveProgressUseCase,
-            splitContentUseCase
+            splitContentUseCase,
+            dispatchers,
+            logger
         )
     }
 
@@ -85,15 +101,21 @@ object ReaderModule {
     fun provideSeekProgressUseCase(
         paginationService: PaginationService,
         chapterService: ChapterService,
-        paginateChapterUseCase: PaginateChapterUseCase
+        paginateChapterUseCase: PaginateChapterUseCase,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): SeekProgressUseCase {
-        return SeekProgressUseCase(paginationService, chapterService, paginateChapterUseCase)
+        return SeekProgressUseCase(paginationService, chapterService, paginateChapterUseCase, dispatchers, logger)
     }
 
     @Provides
     @ViewModelScoped
-    fun provideSaveProgressUseCase(progressService: ProgressService): SaveProgressUseCase {
-        return SaveProgressUseCase(progressService)
+    fun provideSaveProgressUseCase(
+        progressService: ProgressService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
+    ): SaveProgressUseCase {
+        return SaveProgressUseCase(progressService, dispatchers, logger)
     }
 
     @Provides
@@ -102,29 +124,41 @@ object ReaderModule {
         settingsService: SettingsService,
         paginateChapterUseCase: PaginateChapterUseCase,
         splitContentUseCase: SplitContentUseCase,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): UpdateSettingsUseCase {
-        return UpdateSettingsUseCase(settingsService, paginateChapterUseCase, splitContentUseCase)
+        return UpdateSettingsUseCase(settingsService, paginateChapterUseCase, splitContentUseCase, dispatchers, logger)
     }
 
     @Provides
     @ViewModelScoped
-    fun providePaginateChapterUseCase(paginationService: PaginationService): PaginateChapterUseCase {
-        return PaginateChapterUseCase(paginationService)
+    fun providePaginateChapterUseCase(
+        paginationService: PaginationService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
+    ): PaginateChapterUseCase {
+        return PaginateChapterUseCase(paginationService, dispatchers, logger)
     }
 
     @Provides
     @ViewModelScoped
     fun providePreloadChaptersUseCase(
         chapterService: ChapterService,
-        paginationService: PaginationService
+        paginationService: PaginationService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
     ): PreloadChaptersUseCase {
-        return PreloadChaptersUseCase(chapterService, paginationService)
+        return PreloadChaptersUseCase(chapterService, paginationService, dispatchers, logger)
     }
 
     @Provides
     @ViewModelScoped
-    fun provideObservePaginationProgressUseCase(paginationService: PaginationService): ObservePaginationProgressUseCase {
-        return ObservePaginationProgressUseCase(paginationService)
+    fun provideObservePaginationProgressUseCase(
+        paginationService: PaginationService,
+        dispatchers: DispatcherProvider,
+        logger: ServiceLogger
+    ): ObservePaginationProgressUseCase {
+        return ObservePaginationProgressUseCase(paginationService, dispatchers, logger)
     }
 
 

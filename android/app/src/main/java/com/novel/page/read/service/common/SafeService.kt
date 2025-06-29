@@ -189,7 +189,6 @@ abstract class SafeService(
      */
     protected abstract fun getServiceTag(): String
 }
-
 /**
  * 服务日志记录器接口
  * 

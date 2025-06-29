@@ -112,10 +112,6 @@ fun CoverFlipContainer(
                         // 每次拖拽都重新计算方向，不依赖之前的状态
                         val newDirection = if (dragAmount.x > 0) FlipDirection.PREVIOUS else FlipDirection.NEXT
                         val newOffset = dragOffset + dragAmount.x
-
-                        Log.d("CoverFlipContainer", "DragAmount: $virtualPageIndex")
-                        Log.d("CoverFlipContainer", "DragDirection: $newDirection")
-                        Log.d("CoverFlipContainer", "DragOffset: $dragOffset")
                         
                         // 检查是否可以朝该方向翻页
                         val canFlip = when(newDirection) {

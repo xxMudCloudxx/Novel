@@ -2,15 +2,36 @@ package com.novel.page.read.usecase
 
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
+import com.novel.page.read.service.common.DispatcherProvider
+import com.novel.page.read.service.common.ServiceLogger
+import com.novel.page.read.usecase.common.BaseUseCase
+import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
 import javax.inject.Inject
 
+/**
+ * 跳转阅读进度用例
+ * 
+ * 负责根据进度百分比跳转到指定位置：
+ * 1. 计算目标页面的全局索引
+ * 2. 查找对应的章节和页面
+ * 3. 加载章节内容并分页
+ * 4. 返回跳转结果
+ */
 class SeekProgressUseCase @Inject constructor(
     private val paginationService: PaginationService,
     private val chapterService: ChapterService,
-    private val paginateChapterUseCase: PaginateChapterUseCase
-) {
+    private val paginateChapterUseCase: PaginateChapterUseCase,
+    dispatchers: DispatcherProvider,
+    logger: ServiceLogger
+) : BaseUseCase(dispatchers, logger) {
+    
+    companion object {
+        private const val TAG = ReaderLogTags.SEEK_PROGRESS_USE_CASE
+    }
+
+    override fun getServiceTag(): String = TAG
 
     sealed class SeekResult {
         data class Success(
@@ -22,34 +43,63 @@ class SeekProgressUseCase @Inject constructor(
         data object NoOp : SeekResult()
     }
 
+    /**
+     * 执行跳转操作
+     * 
+     * @param progress 目标进度（0.0-1.0）
+     * @param state 当前阅读器状态
+     * @return 跳转结果
+     */
     suspend fun execute(
         progress: Float,
         state: ReaderUiState
     ): SeekResult {
-        val pageCountCache = state.pageCountCache ?: return SeekResult.NoOp
-        if (pageCountCache.totalPages <= 0) return SeekResult.NoOp
+        return executeWithResult("跳转阅读进度") {
+        logOperationStart("跳转阅读进度", "目标进度=${(progress * 100).toInt()}%")
         
-        val targetGlobalPage = (progress * pageCountCache.totalPages).toInt().coerceIn(0, pageCountCache.totalPages - 1)
+        val pageCountCache = state.pageCountCache
+        if (pageCountCache == null) {
+            logger.logWarning("页数缓存为空，无法跳转", TAG)
+            return@executeWithResult SeekResult.NoOp
+        }
+        
+        if (pageCountCache.totalPages <= 0) {
+            logger.logWarning("总页数为0，无法跳转", TAG)
+            return@executeWithResult SeekResult.NoOp
+        }
+        
+        val targetGlobalPage = (progress * pageCountCache.totalPages).toInt()
+            .coerceIn(0, pageCountCache.totalPages - 1)
+        logger.logDebug("计算目标页面: 全局页面索引=$targetGlobalPage", TAG)
+        
         val targetChapterInfo = paginationService.findChapterByAbsolutePage(pageCountCache, targetGlobalPage)
-            ?: return SeekResult.Failure(IllegalStateException("Could not find chapter for progress"))
+        if (targetChapterInfo == null) {
+            logger.logError("无法找到目标进度对应的章节", null, TAG)
+            return@executeWithResult SeekResult.Failure(IllegalStateException("无法找到目标进度对应的章节"))
+        }
 
         val (targetChapterId, targetPageIndex) = targetChapterInfo
+        logger.logDebug("目标位置: 章节ID=$targetChapterId, 页面索引=$targetPageIndex", TAG)
         
         if (targetChapterId == state.currentChapter?.id) {
-            // It's in the same chapter, we just need to update the index.
-            // But the current design doesn't allow returning just an index.
-            // So we'll fall through and treat it as a chapter switch to itself.
+            logger.logDebug("目标位置在当前章节内", TAG)
         }
 
         val targetChapterIndex = state.chapterList.indexOfFirst { it.id == targetChapterId }
         if (targetChapterIndex == -1) {
-            return SeekResult.Failure(IllegalArgumentException("Chapter not found in list"))
+            logger.logError("章节在列表中不存在: $targetChapterId", null, TAG)
+            return@executeWithResult SeekResult.Failure(IllegalArgumentException("章节在列表中不存在"))
         }
+        
         val targetChapter = state.chapterList[targetChapterIndex]
+        logger.logDebug("目标章节: ${targetChapter.chapterName}", TAG)
 
-        return try {
+        try {
             val chapterContent = chapterService.getChapterContent(targetChapterId)
-                ?: return SeekResult.Failure(IllegalStateException("Could not load chapter content"))
+            if (chapterContent == null) {
+                logger.logError("无法加载章节内容: ${targetChapter.chapterName}", null, TAG)
+                return@executeWithResult SeekResult.Failure(IllegalStateException("无法加载章节内容"))
+            }
 
             val newPageData = paginateChapterUseCase.execute(
                 chapter = targetChapter,
@@ -61,9 +111,15 @@ class SeekProgressUseCase @Inject constructor(
                 isLastChapter = targetChapterIndex == state.chapterList.size - 1
             )
             
-            SeekResult.Success(targetChapterIndex, newPageData, targetPageIndex)
+            val result = SeekResult.Success(targetChapterIndex, newPageData, targetPageIndex)
+            logOperationComplete("跳转阅读进度", "成功跳转到 ${targetChapter.chapterName} 第${targetPageIndex + 1}页")
+            result
         } catch(e: Exception) {
+            logger.logError("跳转进度失败", e, TAG)
             SeekResult.Failure(e)
+        }
+        }.getOrElse { throwable ->
+            SeekResult.Failure(throwable as? Exception ?: Exception(throwable))
         }
     }
 } 

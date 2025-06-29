@@ -77,6 +77,8 @@ fun PageCurlFlipContainer(
     if (isOnBookDetailPage) {
         SwipeBackContainer(
             modifier = Modifier.fillMaxSize(),
+            backgroundColor = readerSettings.backgroundColor,
+            textColor = readerSettings.textColor,
             onSwipeComplete = onSwipeBack,
             onLeftSwipeToReader = {
                 onPageChange(FlipDirection.NEXT)

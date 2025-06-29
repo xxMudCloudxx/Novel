@@ -1,8 +1,10 @@
 package com.novel.page.read.usecase
 
-import android.util.Log
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
+import com.novel.page.read.service.common.DispatcherProvider
+import com.novel.page.read.service.common.ServiceLogger
+import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderUiState
@@ -19,11 +21,16 @@ import javax.inject.Inject
  */
 class SplitContentUseCase @Inject constructor(
     private val paginationService: PaginationService,
-    private val chapterService: ChapterService
-) {
+    private val chapterService: ChapterService,
+    dispatchers: DispatcherProvider,
+    logger: ServiceLogger
+) : BaseUseCase(dispatchers, logger) {
+    
     companion object {
         private const val TAG = ReaderLogTags.SPLIT_CONTENT_USE_CASE
     }
+
+    override fun getServiceTag(): String = TAG
 
     sealed class SplitResult {
         data class Success(
@@ -46,75 +53,75 @@ class SplitContentUseCase @Inject constructor(
         restoreProgress: Float? = null,
         includeAdjacentChapters: Boolean = false
     ): SplitResult {
-        return try {
-            val currentChapter = state.currentChapter
-            val chapterContent = state.bookContent
-            val density = state.density
-            
-            if (currentChapter == null || chapterContent.isEmpty() || density == null) {
-                Log.w(TAG, "内容分割失败: 缺少必要参数")
-                return SplitResult.Failure(IllegalStateException("缺少必要的分割参数"))
+        return executeWithResult("内容分割") {
+        val currentChapter = state.currentChapter
+        val chapterContent = state.bookContent
+        val density = state.density
+        
+        if (currentChapter == null || chapterContent.isEmpty() || density == null) {
+            logger.logWarning("内容分割失败: 缺少必要参数", TAG)
+            return@executeWithResult SplitResult.Failure(IllegalStateException("缺少必要的分割参数"))
+        }
+
+        logOperationStart("内容分割", "章节=${currentChapter.chapterName}, 内容长度=${chapterContent.length}")
+
+        // 1. 分割当前章节内容
+        val pages = paginationService.splitContent(
+            content = chapterContent,
+            containerSize = state.containerSize,
+            readerSettings = state.readerSettings,
+            density = density
+        )
+
+        logger.logDebug("章节分页完成: 页数=${pages.size}", TAG)
+
+        // 2. 创建基础PageData
+        var pageData = PageData(
+            chapterId = currentChapter.id,
+            chapterName = currentChapter.chapterName,
+            content = chapterContent,
+            pages = pages,
+            isFirstChapter = state.isFirstChapter,
+            isLastChapter = state.isLastChapter,
+            hasBookDetailPage = state.isFirstChapter
+        )
+
+        // 3. 加载书籍信息（如果是第一章）
+        if (state.isFirstChapter) {
+            logger.logDebug("加载书籍信息", TAG)
+            val bookInfo = chapterService.loadBookInfo(state.bookId)
+            if (bookInfo != null) {
+                pageData = pageData.copy(bookInfo = bookInfo)
+                logger.logDebug("书籍信息加载成功: ${bookInfo.bookName}", TAG)
+            } else {
+                logger.logWarning("书籍信息加载失败", TAG)
             }
+        }
 
-            Log.d(TAG, "开始内容分割: 章节=${currentChapter.chapterName}, 内容长度=${chapterContent.length}")
-
-            // 1. 分割当前章节内容
-            val pages = paginationService.splitContent(
-                content = chapterContent,
-                containerSize = state.containerSize,
-                readerSettings = state.readerSettings,
-                density = density
+        // 4. 加载相邻章节数据
+        if (includeAdjacentChapters) {
+            logger.logDebug("开始加载相邻章节数据", TAG)
+            val (previousChapterData, nextChapterData) = loadAdjacentChapterData(state)
+            pageData = pageData.copy(
+                previousChapterData = previousChapterData,
+                nextChapterData = nextChapterData
             )
+            logger.logDebug("相邻章节数据加载完成: 前章=${previousChapterData != null}, 后章=${nextChapterData != null}", TAG)
+        }
 
-            Log.d(TAG, "章节分页完成: 页数=${pages.size}")
+        // 5. 计算安全的页面索引
+        val safePageIndex = calculateSafePageIndex(state, pageData, restoreProgress)
+        
+        logger.logDebug("内容分割成功: 最终页面索引=$safePageIndex", TAG)
+        
+        // 6. 更新章节缓存中的分页数据
+        chapterService.setCachedChapterPageData(currentChapter.id, pageData)
 
-            // 2. 创建基础PageData
-            var pageData = PageData(
-                chapterId = currentChapter.id,
-                chapterName = currentChapter.chapterName,
-                content = chapterContent,
-                pages = pages,
-                isFirstChapter = state.isFirstChapter,
-                isLastChapter = state.isLastChapter,
-                hasBookDetailPage = state.isFirstChapter
-            )
-
-            // 3. 加载书籍信息（如果是第一章）
-            if (state.isFirstChapter) {
-                Log.d(TAG, "加载书籍信息")
-                val bookInfo = chapterService.loadBookInfo(state.bookId)
-                if (bookInfo != null) {
-                    pageData = pageData.copy(bookInfo = bookInfo)
-                    Log.d(TAG, "书籍信息加载成功: ${bookInfo.bookName}")
-                } else {
-                    Log.w(TAG, "书籍信息加载失败")
-                }
-            }
-
-            // 4. 加载相邻章节数据
-            if (includeAdjacentChapters) {
-                Log.d(TAG, "开始加载相邻章节数据")
-                val (previousChapterData, nextChapterData) = loadAdjacentChapterData(state)
-                pageData = pageData.copy(
-                    previousChapterData = previousChapterData,
-                    nextChapterData = nextChapterData
-                )
-                Log.d(TAG, "相邻章节数据加载完成: 前章=${previousChapterData != null}, 后章=${nextChapterData != null}")
-            }
-
-            // 4. 计算安全的页面索引
-            val safePageIndex = calculateSafePageIndex(state, pageData, restoreProgress)
-            
-            Log.d(TAG, "内容分割成功: 最终页面索引=$safePageIndex")
-            
-            // 5. 更新章节缓存中的分页数据
-            chapterService.setCachedChapterPageData(currentChapter.id, pageData)
-
-            SplitResult.Success(pageData, safePageIndex)
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "内容分割失败", e)
-            SplitResult.Failure(e)
+            val result = SplitResult.Success(pageData, safePageIndex)
+            logOperationComplete("内容分割", "分割完成，页数=${pages.size}，页面索引=$safePageIndex")
+            result
+        }.getOrElse { throwable ->
+            SplitResult.Failure(throwable as? Exception ?: Exception(throwable))
         }
     }
 
@@ -135,7 +142,7 @@ class SplitContentUseCase @Inject constructor(
         if (prevIndex >= 0) {
             try {
                 val prevChapter = chapterList[prevIndex]
-                Log.d(TAG, "加载前序章节: ${prevChapter.chapterName}")
+                logger.logDebug("加载前序章节: ${prevChapter.chapterName}", TAG)
                 
                 val prevContent = chapterService.getChapterContent(prevChapter.id)
                 if (prevContent != null) {
@@ -157,10 +164,10 @@ class SplitContentUseCase @Inject constructor(
                     
                     // 更新缓存
                     chapterService.setCachedChapterPageData(prevChapter.id, previousChapterData)
-                    Log.d(TAG, "前序章节加载成功: 页数=${prevPages.size}")
+                    logger.logDebug("前序章节加载成功: 页数=${prevPages.size}", TAG)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "前序章节加载失败", e)
+                logger.logError("前序章节加载失败", e, TAG)
             }
         }
 
@@ -169,7 +176,7 @@ class SplitContentUseCase @Inject constructor(
         if (nextIndex < chapterList.size) {
             try {
                 val nextChapter = chapterList[nextIndex]
-                Log.d(TAG, "加载后续章节: ${nextChapter.chapterName}")
+                logger.logDebug("加载后续章节: ${nextChapter.chapterName}", TAG)
                 
                 val nextContent = chapterService.getChapterContent(nextChapter.id)
                 if (nextContent != null) {
@@ -191,10 +198,10 @@ class SplitContentUseCase @Inject constructor(
                     
                     // 更新缓存
                     chapterService.setCachedChapterPageData(nextChapter.id, nextChapterData)
-                    Log.d(TAG, "后续章节加载成功: 页数=${nextPages.size}")
+                    logger.logDebug("后续章节加载成功: 页数=${nextPages.size}", TAG)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "后续章节加载失败", e)
+                logger.logError("后续章节加载失败", e, TAG)
             }
         }
 
@@ -212,7 +219,7 @@ class SplitContentUseCase @Inject constructor(
     ): Int {
         val pages = pageData.pages
         if (pages.isEmpty()) {
-            Log.w(TAG, "页面为空，返回索引0")
+            logger.logWarning("页面为空，返回索引0", TAG)
             return 0
         }
 
@@ -221,25 +228,25 @@ class SplitContentUseCase @Inject constructor(
             restoreProgress != null -> {
                 val progressIndex = (restoreProgress * pages.size).toInt()
                 val safeIndex = progressIndex.coerceIn(0, pages.size - 1)
-                Log.d(TAG, "按进度恢复页面索引: 进度=$restoreProgress -> 索引=$safeIndex")
+                logger.logDebug("按进度恢复页面索引: 进度=$restoreProgress -> 索引=$safeIndex", TAG)
                 safeIndex
             }
             
             // 如果当前页面索引有效，保持不变
             state.currentPageIndex in 0 until pages.size -> {
-                Log.d(TAG, "保持当前页面索引: ${state.currentPageIndex}")
+                logger.logDebug("保持当前页面索引: ${state.currentPageIndex}", TAG)
                 state.currentPageIndex
             }
             
             // 如果是书籍详情页（索引-1），保持不变
             state.currentPageIndex == -1 && pageData.hasBookDetailPage -> {
-                Log.d(TAG, "保持书籍详情页索引: -1")
+                logger.logDebug("保持书籍详情页索引: -1", TAG)
                 -1
             }
             
             // 其他情况，使用第一页
             else -> {
-                Log.d(TAG, "使用默认页面索引: 0")
+                logger.logDebug("使用默认页面索引: 0", TAG)
                 0
             }
         }
