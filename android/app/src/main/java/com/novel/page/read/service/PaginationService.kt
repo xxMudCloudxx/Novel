@@ -156,9 +156,16 @@ class PaginationService @Inject constructor(
                         logger.logDebug("书籍缓存完整，直接使用", TAG)
                         bookCache
                     } else {
-                        // 缓存不完整，重新构建
+                        // 缓存不完整，重新构建，并在获取每章后立即分页
                         logger.logDebug("书籍缓存不完整，开始重新构建", TAG)
-                        fetchAndBuildBookCache(bookId, chapterList, bookCache)
+                        fetchAndBuildBookCache(
+                            bookId = bookId,
+                            chapterList = chapterList,
+                            existingBookCache = bookCache,
+                            readerSettings = readerSettings,
+                            containerSize = containerSize,
+                            density = density
+                        )
                     }
 
                     // 2. 启动渐进式分页计算
@@ -178,15 +185,24 @@ class PaginationService @Inject constructor(
      * @param bookId 书籍ID
      * @param chapterList 完整章节列表
      * @param existingBookCache 现有缓存（可能不完整）
+     * @param readerSettings 阅读器设置
+     * @param containerSize 容器尺寸
+     * @param density 屏幕密度
      * @return 完整的书籍缓存数据
      */
     private suspend fun fetchAndBuildBookCache(
         bookId: String,
         chapterList: List<com.novel.page.read.components.Chapter>,
-        existingBookCache: BookCacheData?
+        existingBookCache: BookCacheData?,
+        readerSettings: ReaderSettings,
+        containerSize: IntSize,
+        density: Density
     ): BookCacheData {
         return withPerformanceMonitoring("fetchAndBuildBookCache") {
             val cachedChapters = existingBookCache?.chapters?.toMutableList() ?: mutableListOf()
+            // 提前推送"正在计算中"状态
+            bookCacheManager.startDynamicPagination(chapterList.size)
+            var currentCalculatedPages = 0 // 用于动态进度统计
             val cachedChapterIds = cachedChapters.map { it.chapterId }.toSet()
             val chaptersToFetch = chapterList.filterNot { cachedChapterIds.contains(it.id) }
 
@@ -217,6 +233,34 @@ class PaginationService @Inject constructor(
                                 chapterNum = contentData.chapterInfo.chapterNum
                             )
                             logger.logDebug("章节获取成功: ${contentData.chapterInfo.chapterName}", TAG)
+
+                            // 立即对获取到的章节内容进行分页处理并缓存页数
+                            if (containerSize.width > 0 && containerSize.height > 0) {
+                                try {
+                                    val pages = PageSplitter.splitContent(
+                                        content = contentData.bookContent,
+                                        containerSize = containerSize,
+                                        readerSettings = readerSettings,
+                                        density = density
+                                    )
+
+                                    // 保存单章节页数缓存，供后续快速命中
+                                    bookCacheManager.saveChapterPageCountCache(
+                                        chapterId = contentData.chapterInfo.id.toString(),
+                                        fontSize = readerSettings.fontSize,
+                                        containerSize = containerSize,
+                                        pageCount = pages.size
+                                    )
+
+                                    logger.logDebug(
+                                        "章节分页并缓存完成: ${contentData.chapterInfo.chapterName} -> ${pages.size}页",
+                                        TAG
+                                    )
+                                } catch (e: Exception) {
+                                    logger.logError("章节即时分页失败: ${contentData.chapterInfo.chapterName}", e, TAG)
+                                }
+                            }
+
                             chapterData
                         } else {
                             logger.logWarning("章节内容为空: ${chapter.chapterName}", TAG)
@@ -224,7 +268,26 @@ class PaginationService @Inject constructor(
                         }
                     }
                     
-                    result?.let { fetchedChapters.add(it) }
+                    result?.let {
+                        // --- 更新动态分页进度 ——
+                        currentCalculatedPages += try {
+                            val charPages = bookCacheManager.getChapterPageCountCache(
+                                it.chapterId,
+                                readerSettings.fontSize,
+                                containerSize
+                            ) ?: 0
+                            charPages
+                        } catch (_: Exception) { 0 }
+
+                        val calculatedChapters = fetchedChapters.size + cachedChapters.size
+                        bookCacheManager.updateDynamicPaginationProgress(
+                            currentCalculatedPages = currentCalculatedPages,
+                            calculatedChapters = calculatedChapters,
+                            totalChapters = chapterList.size
+                        )
+
+                        fetchedChapters.add(it)
+                    }
                 }
                 
                 // 批次间短暂延迟，减少系统压力

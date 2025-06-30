@@ -517,4 +517,36 @@ class BookCacheManager @Inject constructor(
     ): String {
         return "${chapterId}_${fontSize}_${containerSize.width}x${containerSize.height}"
     }
+    
+    /**
+     * 动态分页：在章节逐步下载+分页阶段提前推送进度，
+     * 便于 UI 及时展示 "正在计算中" 状态。
+     */
+    fun startDynamicPagination(totalChapters: Int) {
+        _progressiveCalculationState.value = ProgressiveCalculationState(
+            isCalculating = true,
+            currentCalculatedPages = 0,
+            totalChapters = totalChapters,
+            calculatedChapters = 0,
+            estimatedTotalPages = 0
+        )
+    }
+    
+    fun updateDynamicPaginationProgress(
+        currentCalculatedPages: Int,
+        calculatedChapters: Int,
+        totalChapters: Int
+    ) {
+        val averagePages = if (calculatedChapters > 0) {
+            currentCalculatedPages.toFloat() / calculatedChapters
+        } else 1f
+        val estimatedTotalPages = (averagePages * totalChapters).toInt()
+        _progressiveCalculationState.value = ProgressiveCalculationState(
+            isCalculating = true,
+            currentCalculatedPages = currentCalculatedPages,
+            totalChapters = totalChapters,
+            calculatedChapters = calculatedChapters,
+            estimatedTotalPages = estimatedTotalPages
+        )
+    }
 } 
