@@ -1,6 +1,7 @@
 plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21'
     id("com.google.dagger.hilt.android")
+    id 'io.gitlab.arturbosch.detekt' version '1.23.4'
 }
 
 apply plugin: "com.android.application"
@@ -111,6 +112,7 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            buildConfigField "boolean", "ENABLE_LOGGING", "true"
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -118,7 +120,28 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            buildConfigField "boolean", "ENABLE_LOGGING", "false"
         }
+    }
+    
+    // 启用 buildFeatures
+    buildFeatures {
+        buildConfig = true
+    }
+}
+
+// Detekt 配置
+detekt {
+    toolVersion = "1.23.4"
+    config.setFrom(file("../detekt.yml"))
+    buildUponDefaultConfig = true
+    
+    reports {
+        html.required = true
+        xml.required = false
+        txt.required = false
+        sarif.required = false
+        md.required = false
     }
 }
 
@@ -167,14 +190,16 @@ dependencies {
     // Timber 日志框架
     implementation "com.jakewharton.timber:timber:5.0.1"
 
+    // Debug 工具 - 仅在 debug 构建中包含
+    debugImplementation "com.squareup.leakcanary:leakcanary-android:2.12"
+    debugImplementation "androidx.compose.ui:ui-tooling"
+    debugImplementation "androidx.compose.ui:ui-test-manifest"
+
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation "androidx.test.ext:junit:1.2.1"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.6.1"
     androidTestImplementation platform("androidx.compose:compose-bom:2025.05.01")
     androidTestImplementation "androidx.compose.ui:ui-test-junit4"
-    debugImplementation "androidx.compose.ui:ui-tooling"
-    debugImplementation "androidx.compose.ui:ui-test-manifest"
-
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
