@@ -1,6 +1,6 @@
 package com.novel.utils
 
-import android.util.Log
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
  * @param modifier 修饰符
  * @param content Composable内容
  */
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun AdaptiveScreen(
     modifier: Modifier = Modifier,
@@ -55,8 +56,8 @@ fun AdaptiveScreen(
         
         // 记录适配信息（仅在调试模式下）
         LaunchedEffect(scaleX, scaleY) {
-            Log.d(TAG, "屏幕适配 - 实际尺寸: ${maxWidth}×${maxHeight}, 设计尺寸: ${DESIGN_WIDTH}×${DESIGN_HEIGHT}")
-            Log.d(TAG, "缩放比例 - X: $scaleX, Y: $scaleY")
+            TimberLogger.d(TAG, "屏幕适配 - 实际尺寸: ${maxWidth}×${maxHeight}, 设计尺寸: ${DESIGN_WIDTH}×${DESIGN_HEIGHT}")
+            TimberLogger.d(TAG, "缩放比例 - X: $scaleX, Y: $scaleY")
         }
 
         content()

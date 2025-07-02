@@ -1,6 +1,6 @@
 package com.novel.page.login.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.login.dao.UserRepository
 import com.novel.utils.ReactNativeBridge
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
@@ -67,14 +67,14 @@ class AuthService @Inject constructor(
     suspend fun login(username: String, password: String): AuthResult =
         withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "开始用户登录，用户名: $username")
+                TimberLogger.d(TAG, "开始用户登录，用户名: $username")
                 
                 val response = userService.loginBlocking(
                     UserService.LoginRequest(username, password)
                 )
 
                 if (response.ok == true && response.data != null) {
-                    Log.d(TAG, "登录成功，用户ID: ${response.data.uid}")
+                    TimberLogger.d(TAG, "登录成功，用户ID: ${response.data.uid}")
                     
                     // 保存认证信息
                     saveAuthInfo(response.data.token, response.data.uid)
@@ -82,15 +82,15 @@ class AuthService @Inject constructor(
                     // 异步加载用户详情
                     loadAndCacheUserInfo()
                     
-                    Log.d(TAG, "用户登录流程完成")
+                    TimberLogger.d(TAG, "用户登录流程完成")
                     AuthResult.Success("登录成功")
                 } else {
                     val errorMsg = response.msg ?: "登录失败"
-                    Log.w(TAG, "登录失败: $errorMsg")
+                    TimberLogger.w(TAG, "登录失败: $errorMsg")
                     AuthResult.Error(errorMsg)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "登录过程发生异常", e)
+                TimberLogger.e(TAG, "登录过程发生异常", e)
                 AuthResult.Error("网络异常：${e.localizedMessage}")
             }
         }
@@ -110,7 +110,7 @@ class AuthService @Inject constructor(
      */
     suspend fun register(request: RegisterRequest): AuthResult = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "开始用户注册，用户名: ${request.username}")
+            TimberLogger.d(TAG, "开始用户注册，用户名: ${request.username}")
             
             val response = userService.registerBlocking(
                 UserService.RegisterRequest(
@@ -122,7 +122,7 @@ class AuthService @Inject constructor(
             )
 
             if (response.ok == true && response.data != null) {
-                Log.d(TAG, "注册成功，用户ID: ${response.data.uid}")
+                TimberLogger.d(TAG, "注册成功，用户ID: ${response.data.uid}")
                 
                 // 保存认证信息
                 saveAuthInfo(response.data.token, response.data.uid)
@@ -130,15 +130,15 @@ class AuthService @Inject constructor(
                 // 异步加载用户详情
                 loadAndCacheUserInfo()
                 
-                Log.d(TAG, "用户注册流程完成")
+                TimberLogger.d(TAG, "用户注册流程完成")
                 AuthResult.Success("注册成功")
             } else {
                 val errorMsg = response.msg ?: "注册失败"
-                Log.w(TAG, "注册失败: $errorMsg")
+                TimberLogger.w(TAG, "注册失败: $errorMsg")
                 AuthResult.Error(errorMsg)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "注册过程发生异常", e)
+            TimberLogger.e(TAG, "注册过程发生异常", e)
             AuthResult.Error("网络异常：${e.localizedMessage}")
         }
     }
@@ -167,7 +167,7 @@ class AuthService @Inject constructor(
      */
     suspend fun logout() = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "开始退出登录")
+            TimberLogger.d(TAG, "开始退出登录")
             
             // 清理认证信息
             tokenProvider.clear()
@@ -178,9 +178,9 @@ class AuthService @Inject constructor(
             // 清理本地用户缓存
             userRepository.clearAllUsers()
             
-            Log.d(TAG, "退出登录完成，所有认证信息已清理")
+            TimberLogger.d(TAG, "退出登录完成，所有认证信息已清理")
         } catch (e: Exception) {
-            Log.e(TAG, "退出登录过程发生异常", e)
+            TimberLogger.e(TAG, "退出登录过程发生异常", e)
         }
     }
 
@@ -198,7 +198,7 @@ class AuthService @Inject constructor(
      */
     private suspend fun saveAuthInfo(token: String, uid: Int) {
         try {
-            Log.d(TAG, "保存认证信息，用户ID: $uid")
+            TimberLogger.d(TAG, "保存认证信息，用户ID: $uid")
             
             tokenProvider.saveToken(token, "")
             userDefaults.set(
@@ -208,9 +208,9 @@ class AuthService @Inject constructor(
             userDefaults.set(true, NovelUserDefaultsKey.IS_LOGGED_IN)
             userDefaults.set(uid, NovelUserDefaultsKey.USER_ID)
             
-            Log.d(TAG, "认证信息保存成功")
+            TimberLogger.d(TAG, "认证信息保存成功")
         } catch (e: Exception) {
-            Log.e(TAG, "保存认证信息失败", e)
+            TimberLogger.e(TAG, "保存认证信息失败", e)
         }
     }
 
@@ -225,12 +225,12 @@ class AuthService @Inject constructor(
      */
     private suspend fun loadAndCacheUserInfo() {
         runCatching {
-            Log.d(TAG, "开始加载用户详细信息")
+            TimberLogger.d(TAG, "开始加载用户详细信息")
             
             val userInfo = userService.getUserInfoBlocking()
             userInfo?.data?.let { 
                 userRepository.cacheUser(it)
-                Log.d(TAG, "用户信息缓存成功")
+                TimberLogger.d(TAG, "用户信息缓存成功")
             }
             
             // 准备同步到RN端的数据
@@ -246,9 +246,9 @@ class AuthService @Inject constructor(
             
             // 同步到RN端
             ReactNativeBridge.sendUserDataToRN(uid.toString(), token, nickname, photo, sex)
-            Log.d(TAG, "用户数据已同步到RN端")
+            TimberLogger.d(TAG, "用户数据已同步到RN端")
         }.onFailure { e ->
-            Log.e(TAG, "加载用户信息失败", e)
+            TimberLogger.e(TAG, "加载用户信息失败", e)
         }
     }
 }

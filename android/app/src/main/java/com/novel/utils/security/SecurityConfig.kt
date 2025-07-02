@@ -1,6 +1,6 @@
 package com.novel.utils.security
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -66,7 +66,7 @@ class SecurityConfig @Inject constructor() {
      */
     fun getTokenExpiryTimestamp(): Long {
         val timestamp = System.currentTimeMillis() + TOKEN_EXPIRY_DURATION_MS
-        Log.d(TAG, "生成Token过期时间戳: $timestamp")
+        TimberLogger.d(TAG, "生成Token过期时间戳: $timestamp")
         return timestamp
     }
     
@@ -77,7 +77,7 @@ class SecurityConfig @Inject constructor() {
      */
     fun shouldRefreshToken(expiryTimestamp: Long): Boolean {
         val shouldRefresh = (expiryTimestamp - System.currentTimeMillis()) <= TOKEN_REFRESH_THRESHOLD_MS
-        Log.d(TAG, "检查Token刷新需求: ${if (shouldRefresh) "需要刷新" else "无需刷新"}")
+        TimberLogger.d(TAG, "检查Token刷新需求: ${if (shouldRefresh) "需要刷新" else "无需刷新"}")
         return shouldRefresh
     }
     
@@ -89,7 +89,7 @@ class SecurityConfig @Inject constructor() {
     fun isFileExtensionAllowed(fileName: String): Boolean {
         val extension = fileName.substringAfterLast('.', "").lowercase()
         val isAllowed = extension in ALLOWED_IMAGE_EXTENSIONS
-        Log.v(TAG, "文件扩展名验证: $extension -> ${if (isAllowed) "允许" else "拒绝"}")
+        TimberLogger.v(TAG, "文件扩展名验证: $extension -> ${if (isAllowed) "允许" else "拒绝"}")
         return isAllowed
     }
     
@@ -100,7 +100,7 @@ class SecurityConfig @Inject constructor() {
      */
     fun getOperatorServiceNumber(operatorName: String): String {
         val serviceNumber = OPERATOR_SERVICE_NUMBERS[operatorName] ?: OPERATOR_SERVICE_NUMBERS["default"]!!
-        Log.d(TAG, "获取运营商客服电话: $operatorName -> $serviceNumber")
+        TimberLogger.d(TAG, "获取运营商客服电话: $operatorName -> $serviceNumber")
         return serviceNumber
     }
     
@@ -112,7 +112,7 @@ class SecurityConfig @Inject constructor() {
     fun generateCaptchaFileName(sessionId: String): String {
         val timestamp = System.currentTimeMillis()
         val fileName = "${CAPTCHA_CACHE_PREFIX}${sessionId}_${timestamp}${CAPTCHA_FILE_EXTENSION}"
-        Log.d(TAG, "生成验证码文件名: ${sanitizeForLog(sessionId)} -> $fileName")
+        TimberLogger.d(TAG, "生成验证码文件名: ${sanitizeForLog(sessionId)} -> $fileName")
         return fileName
     }
     
@@ -124,7 +124,7 @@ class SecurityConfig @Inject constructor() {
     fun isCaptchaFile(fileName: String): Boolean {
         val isCaptcha = fileName.startsWith(CAPTCHA_CACHE_PREFIX) && 
                fileName.endsWith(CAPTCHA_FILE_EXTENSION)
-        Log.v(TAG, "验证码文件检查: $fileName -> ${if (isCaptcha) "是" else "否"}")
+        TimberLogger.v(TAG, "验证码文件检查: $fileName -> ${if (isCaptcha) "是" else "否"}")
         return isCaptcha
     }
     
@@ -137,7 +137,7 @@ class SecurityConfig @Inject constructor() {
      */
     fun isInputLengthValid(input: String, minLength: Int, maxLength: Int): Boolean {
         val isValid = input.length in minLength..maxLength
-        Log.v(TAG, "输入长度验证: 长度${input.length} 范围[$minLength-$maxLength] -> ${if (isValid) "有效" else "无效"}")
+        TimberLogger.v(TAG, "输入长度验证: 长度${input.length} 范围[$minLength-$maxLength] -> ${if (isValid) "有效" else "无效"}")
         return isValid
     }
     

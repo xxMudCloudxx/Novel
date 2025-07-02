@@ -1,6 +1,6 @@
 package com.novel.page.search
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -60,22 +60,22 @@ fun SearchPage(
         viewModel.events.collect { event ->
             when (event) {
                 is SearchEvent.NavigateToBookDetail -> {
-                    Log.d(TAG, "导航到书籍详情: ${event.bookId}")
+                    TimberLogger.d(TAG, "导航到书籍详情: ${event.bookId}")
                     onNavigateToBookDetail(event.bookId)
                 }
 
                 is SearchEvent.NavigateToSearchResult -> {
-                    Log.d(TAG, "导航到搜索结果: ${event.query}")
+                    TimberLogger.d(TAG, "导航到搜索结果: ${event.query}")
                     NavViewModel.navigateToSearchResult(event.query)
                 }
 
                 is SearchEvent.NavigateBack -> {
-                    Log.d(TAG, "返回上级页面")
+                    TimberLogger.d(TAG, "返回上级页面")
                     onNavigateBack()
                 }
 
                 is SearchEvent.ShowToast -> {
-                    Log.d(TAG, "显示Toast: ${event.message}")
+                    TimberLogger.d(TAG, "显示Toast: ${event.message}")
                     // TODO: 集成Toast显示组件
                 }
             }
@@ -84,7 +84,7 @@ fun SearchPage(
 
     // 初始化搜索页面数据
     LaunchedEffect(Unit) {
-        Log.d(TAG, "初始化搜索页面数据")
+        TimberLogger.d(TAG, "初始化搜索页面数据")
         viewModel.onAction(SearchAction.LoadInitialData)
     }
 
@@ -106,7 +106,7 @@ fun SearchPage(
             override fun cancelLoading() {}
             override fun showViewState(viewState: ViewState) {}
             override fun retry() {
-                Log.d(TAG, "重试加载搜索页面数据")
+                TimberLogger.d(TAG, "重试加载搜索页面数据")
                 viewModel.onAction(SearchAction.LoadInitialData)
             }
         }
@@ -162,7 +162,7 @@ private fun SearchPageContent(
             },
             onSearchClick = {
                 if (uiState.searchQuery.isNotBlank()) {
-                    Log.d(TAG, "执行搜索: ${uiState.searchQuery}")
+                    TimberLogger.d(TAG, "执行搜索: ${uiState.searchQuery}")
                     onAction(SearchAction.PerformSearch(uiState.searchQuery))
                 }
             }
@@ -209,7 +209,7 @@ private fun SearchPageContent(
                         "新书榜" -> uiState.newBookRanking
                         else -> emptyList()
                     }
-                    Log.d(TAG, "查看完整榜单: $rankingType, 项目数: ${rankingItems.size}")
+                    TimberLogger.d(TAG, "查看完整榜单: $rankingType, 项目数: ${rankingItems.size}")
                     NavViewModel.navigateToFullRanking(rankingType, rankingItems)
                 }
             )

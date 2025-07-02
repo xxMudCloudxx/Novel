@@ -2,7 +2,7 @@ package com.novel.di
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChain
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.SharedPrefsUserDefaults
@@ -52,7 +52,7 @@ object NovelUserDefaultsModule {
     fun provideSharedPreferences(
         @ApplicationContext ctx: Context
     ): SharedPreferences {
-        Log.d(TAG, "创建SharedPreferences: $PREFS_NAME")
+        TimberLogger.d(TAG, "创建SharedPreferences: $PREFS_NAME")
         return ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
@@ -69,7 +69,7 @@ object NovelUserDefaultsModule {
     fun provideNovelUserDefaults(
         impl: SharedPrefsUserDefaults
     ): NovelUserDefaults {
-        Log.d(TAG, "创建NovelUserDefaults服务")
+        TimberLogger.d(TAG, "创建NovelUserDefaults服务")
         return impl
     }
 
@@ -87,7 +87,7 @@ object NovelUserDefaultsModule {
     @Provides
     @Singleton
     fun provideTokenProvider(keyChain: NovelKeyChain): TokenProvider {
-        Log.d(TAG, "创建TokenProvider服务")
+        TimberLogger.d(TAG, "创建TokenProvider服务")
         return TokenProvider(keyChain)
     }
 
@@ -114,7 +114,7 @@ object NovelUserDefaultsModule {
     @Provides
     @Singleton
     fun provideClock(): Clock {
-        Log.d(TAG, "创建Clock服务")
+        TimberLogger.d(TAG, "创建Clock服务")
         return Clock.systemDefaultZone()
     }
 
@@ -134,7 +134,7 @@ object NovelUserDefaultsModule {
     fun provideStringProvider(
         androidStringProvider: AndroidStringProvider
     ): StringProvider {
-        Log.d(TAG, "创建StringProvider服务")
+        TimberLogger.d(TAG, "创建StringProvider服务")
         return androidStringProvider
     }
 
@@ -157,7 +157,7 @@ object NovelUserDefaultsModule {
         @ApplicationContext context: Context,
         novelUserDefaults: NovelUserDefaults
     ): SettingsUtils {
-        Log.d(TAG, "创建SettingsUtils工具")
+        TimberLogger.d(TAG, "创建SettingsUtils工具")
         return SettingsUtils(context, novelUserDefaults)
     }
 }

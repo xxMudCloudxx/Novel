@@ -1,6 +1,6 @@
 package com.novel.page.login.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -77,7 +77,7 @@ fun AgreementSection(
                 modifier = Modifier
                     .size(12.wdp)
                     .debounceClickable(onClick = { 
-                        Log.d(TAG, "切换协议同意状态: $isChecked -> ${!isChecked}")
+                        TimberLogger.d(TAG, "切换协议同意状态: $isChecked -> ${!isChecked}")
                         onCheckedChange(!isChecked) 
                     }),
                 contentAlignment = Alignment.Center
@@ -114,7 +114,7 @@ fun AgreementSection(
                         tag = "TEL",
                         styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
                         linkInteractionListener = { 
-                            Log.d(TAG, "点击运营商认证服务协议: $operator")
+                            TimberLogger.d(TAG, "点击运营商认证服务协议: $operator")
                             onTelServiceClick() 
                         }
                     ),
@@ -138,7 +138,7 @@ fun AgreementSection(
                     tag = "USER",
                     styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
                     linkInteractionListener = { 
-                        Log.d(TAG, "点击用户协议")
+                        TimberLogger.d(TAG, "点击用户协议")
                         onUserAgreementClick() 
                     }
                 ),
@@ -152,7 +152,7 @@ fun AgreementSection(
                     tag = "REGISTER",
                     styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
                     linkInteractionListener = { 
-                        Log.d(TAG, "点击注册协议")
+                        TimberLogger.d(TAG, "点击注册协议")
                         onRegisterAgreementClick() 
                     }
                 ),

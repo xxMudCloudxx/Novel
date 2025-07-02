@@ -1,7 +1,7 @@
 package com.novel.page.search
 
 import android.annotation.SuppressLint
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -64,7 +64,7 @@ fun FullRankingPage(
     onNavigateToBookDetail: (Long) -> Unit
 ) {
     val TAG = "FullRankingPage"
-    Log.d(TAG, "渲染全排行榜页面: $rankingType, 条目数量: ${rankingItems.size}")
+    TimberLogger.d(TAG, "渲染全排行榜页面: $rankingType, 条目数量: ${rankingItems.size}")
     
     /* ---------- ScrollBehavior ---------- */
     val toolbarState = rememberTopAppBarState()
@@ -78,7 +78,7 @@ fun FullRankingPage(
     // 差值（像素）——用来位移整块顶栏
     val diffPx = remember(density) { 
         val diff = with(density) { (expandedHeight - collapsedHeight).toPx() }
-        Log.v(TAG, "计算顶栏高度差: ${diff}px")
+        TimberLogger.v(TAG, "计算顶栏高度差: ${diff}px")
         diff
     }
 
@@ -88,7 +88,7 @@ fun FullRankingPage(
 
     // 告诉 TopAppBarState 能收缩多少像素（负值）
     LaunchedEffect(diffPx) {
-        Log.d(TAG, "设置顶栏高度偏移限制: ${-diffPx}px")
+        TimberLogger.d(TAG, "设置顶栏高度偏移限制: ${-diffPx}px")
         toolbarState.heightOffsetLimit = -diffPx
     }
 
@@ -148,7 +148,7 @@ fun FullRankingPage(
                 /* 返回按钮 - 固定位置不动 */
                 IconButton(
                     onClick = {
-                        Log.d(TAG, "点击返回按钮")
+                        TimberLogger.d(TAG, "点击返回按钮")
                         onNavigateBack()
                     },
                     modifier = Modifier
@@ -195,11 +195,11 @@ fun FullRankingPage(
     ) { innerPadding ->
         if (rankingItems.isEmpty()) {
             /* 显示骨架屏或空状态 */
-            Log.w(TAG, "排行榜数据为空，显示骨架屏")
+            TimberLogger.w(TAG, "排行榜数据为空，显示骨架屏")
             FullRankingPageSkeleton()
         } else {
             /* 榜单列表 - 性能优化 */
-            Log.d(TAG, "渲染排行榜列表，条目数量: ${rankingItems.size}")
+            TimberLogger.d(TAG, "渲染排行榜列表，条目数量: ${rankingItems.size}")
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -214,7 +214,7 @@ fun FullRankingPage(
                     FullRankingItem(
                         item = item, 
                         onClick = { 
-                            Log.d(TAG, "点击榜单条目: ${item.title} (ID: ${item.id})")
+                            TimberLogger.d(TAG, "点击榜单条目: ${item.title} (ID: ${item.id})")
                             onNavigateToBookDetail(item.id) 
                         }
                     )

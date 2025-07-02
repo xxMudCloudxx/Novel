@@ -1,6 +1,6 @@
 package com.novel.page.book.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -42,7 +42,7 @@ fun BookStatsSection(
 
     // 空数据保护
     if (bookInfo == null) {
-        Log.w(TAG, "BookInfo为空，跳过渲染")
+        TimberLogger.w(TAG, "BookInfo为空，跳过渲染")
         return
     }
 
@@ -89,7 +89,7 @@ fun BookStatsSection(
             subtitle = updateTime
         )
         
-        Log.v(TAG, "展示统计信息 - 访问量: ${bookInfo.visitCount}, 字数: ${bookInfo.wordCount}")
+        TimberLogger.v(TAG, "展示统计信息 - 访问量: ${bookInfo.visitCount}, 字数: ${bookInfo.wordCount}")
     }
 }
 

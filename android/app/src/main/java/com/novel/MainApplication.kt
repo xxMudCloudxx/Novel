@@ -3,7 +3,7 @@ package com.novel
 import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Bundle
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -93,50 +93,50 @@ class MainApplication : Application(), ReactApplication {
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
                     // 在生产环境中，可以将日志发送到远程服务器
                     // 这里只记录错误和警告级别的日志
-                    if (priority >= Log.WARN) {
-                        Log.println(priority, tag ?: "Novel", message)
+                    if (priority >= android.util.Log.WARN) {
+                        android.util.Log.println(priority, tag ?: "Novel", message)
                         t?.printStackTrace()
                     }
                 }
             })
         }
         
-        Timber.d("===== MainApplication 初始化开始 =====")
+        TimberLogger.d(TAG, "===== MainApplication 初始化开始 =====")
         
         instance = this
         
         // 初始化全局主题管理器
-        Timber.d("初始化ThemeManager...")
+        TimberLogger.d(TAG, "初始化ThemeManager...")
         ThemeManager.initialize(this)
         
         // 初始化网络服务
-        Timber.d("初始化RetrofitClient...")
+        TimberLogger.d(TAG, "初始化RetrofitClient...")
         RetrofitClient.init(
             authInterceptor = authInterceptor,
             tokenProvider = tokenProvider
         )
         
         // 初始化SoLoader
-        Timber.d("初始化SoLoader...")
+        TimberLogger.d(TAG, "初始化SoLoader...")
         SoLoader.init(this, OpenSourceMergedSoMapping)
         
         // 启用新架构支持
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-            Timber.d("启用React Native新架构...")
+            TimberLogger.d(TAG, "启用React Native新架构...")
             load()
         }
         
         // 初始化自动主题切换功能
-        Timber.d("初始化自动主题切换...")
+        TimberLogger.d(TAG, "初始化自动主题切换...")
         settingsUtils.initializeAutoThemeSwitch()
         
-        Timber.i("✅ MainApplication 初始化完成")
-        Timber.d("====================================")
+        TimberLogger.i(TAG, "✅ MainApplication 初始化完成")
+        TimberLogger.d(TAG, "====================================")
     }
 
     override fun onTerminate() {
         super.onTerminate()
-        Timber.d("MainApplication 终止，清理资源...")
+        TimberLogger.d(TAG, "MainApplication 终止，清理资源...")
         
         // 清理定时器资源
         settingsUtils.cleanup()
@@ -157,20 +157,20 @@ class MainApplication : Application(), ReactApplication {
         initialProps: Bundle? = null
     ): ReactRootView {
         return reactRootViewCache.getOrPut(componentName) {
-            Timber.d("创建新的ReactRootView: $componentName")
+            TimberLogger.d(TAG, "创建新的ReactRootView: $componentName")
             ReactRootView(this).apply {
                 setIsFabric(BuildConfig.IS_NEW_ARCHITECTURE_ENABLED)
                 
                 val rim = reactNativeHost.reactInstanceManager
                 if (rim.currentReactContext != null) {
-                    Timber.d("立即启动React应用: $componentName")
+                    TimberLogger.d(TAG, "立即启动React应用: $componentName")
                     startReactApplication(rim, componentName, initialProps)
                 } else {
-                    Timber.d("等待React上下文初始化: $componentName")
+                    TimberLogger.d(TAG, "等待React上下文初始化: $componentName")
                     rim.addReactInstanceEventListener(
                         object : ReactInstanceManager.ReactInstanceEventListener {
                             override fun onReactContextInitialized(context: ReactContext) {
-                                Timber.d("React上下文就绪，启动应用: $componentName")
+                                TimberLogger.d(TAG, "React上下文就绪，启动应用: $componentName")
                                 startReactApplication(rim, componentName, initialProps)
                                 rim.removeReactInstanceEventListener(this)
                             }
@@ -186,7 +186,7 @@ class MainApplication : Application(), ReactApplication {
      */
     fun clearReactRootViewCache(componentName: String) {
         reactRootViewCache.remove(componentName)?.let {
-            Timber.d("清理ReactRootView缓存: $componentName")
+            TimberLogger.d(TAG, "清理ReactRootView缓存: $componentName")
         }
     }
     
@@ -195,6 +195,6 @@ class MainApplication : Application(), ReactApplication {
      */
     fun clearAllReactRootViewCache() {
         reactRootViewCache.clear()
-        Timber.d("清理所有ReactRootView缓存")
+        TimberLogger.d(TAG, "清理所有ReactRootView缓存")
     }
 }

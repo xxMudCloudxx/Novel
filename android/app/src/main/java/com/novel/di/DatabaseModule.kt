@@ -1,7 +1,7 @@
 package com.novel.di
 
 import android.content.Context
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.room.Room
 import com.novel.page.login.dao.UserDao
 import com.novel.page.home.dao.HomeDao
@@ -43,7 +43,7 @@ object DatabaseModule {
     @Provides 
     @Singleton
     fun provideDatabase(@ApplicationContext ctx: Context): NovelDatabase {
-        Log.d(TAG, "创建Room数据库实例: $DATABASE_NAME")
+        TimberLogger.d(TAG, "创建Room数据库实例: $DATABASE_NAME")
         return Room.databaseBuilder(ctx, NovelDatabase::class.java, DATABASE_NAME)
             .fallbackToDestructiveMigration(true)  // 开发阶段使用破坏性迁移
             .build()
@@ -57,7 +57,7 @@ object DatabaseModule {
      */
     @Provides
     fun provideUserDao(db: NovelDatabase): UserDao {
-        Log.d(TAG, "提供UserDao实例")
+        TimberLogger.d(TAG, "提供UserDao实例")
         return db.userDao()
     }
 
@@ -69,7 +69,7 @@ object DatabaseModule {
      */
     @Provides
     fun provideHomeDao(db: NovelDatabase): HomeDao {
-        Log.d(TAG, "提供HomeDao实例")
+        TimberLogger.d(TAG, "提供HomeDao实例")
         return db.homeDao()
     }
 }

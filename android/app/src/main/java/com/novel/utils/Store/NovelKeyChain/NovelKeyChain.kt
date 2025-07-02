@@ -2,7 +2,7 @@ package com.novel.utils.Store.NovelKeyChain
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.Binds
@@ -83,7 +83,7 @@ class EncryptedNovelKeyChain @Inject constructor(
     /** 延迟初始化的加密SharedPreferences实例 */
     private val prefs: SharedPreferences by lazy {
         try {
-            Log.d(TAG, "初始化加密存储")
+            TimberLogger.d(TAG, "初始化加密存储")
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
@@ -95,10 +95,10 @@ class EncryptedNovelKeyChain @Inject constructor(
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             ).also {
-                Log.d(TAG, "加密存储初始化成功")
+                TimberLogger.d(TAG, "加密存储初始化成功")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "加密存储初始化失败", e)
+            TimberLogger.e(TAG, "加密存储初始化失败", e)
             throw e
         }
     }
@@ -109,7 +109,7 @@ class EncryptedNovelKeyChain @Inject constructor(
      * 便捷方法，同时保存访问令牌和刷新令牌
      */
     override fun saveToken(accessToken: String?, refreshToken: String?) {
-        Log.d(TAG, "保存Token对: accessToken=${accessToken != null}, refreshToken=${refreshToken != null}")
+        TimberLogger.d(TAG, "保存Token对: accessToken=${accessToken != null}, refreshToken=${refreshToken != null}")
         accessToken?.let { save(NovelKeyChainType.TOKEN, it) }
         refreshToken?.let { save(NovelKeyChainType.REFRESH_TOKEN, it) }
     }
@@ -121,13 +121,13 @@ class EncryptedNovelKeyChain @Inject constructor(
      */
     override fun save(key: NovelKeyChainType, value: String) {
         runCatching {
-            Log.d(TAG, "保存数据: key=${key.key}")
+            TimberLogger.d(TAG, "保存数据: key=${key.key}")
             prefs.edit {
                 putString(key.key, value)
             }
-            Log.d(TAG, "数据保存成功: key=${key.key}")
+            TimberLogger.d(TAG, "数据保存成功: key=${key.key}")
         }.onFailure { 
-            Log.e(TAG, "数据保存失败: key=${key.key}", it)
+            TimberLogger.e(TAG, "数据保存失败: key=${key.key}", it)
             it.printStackTrace() 
         }
     }
@@ -140,10 +140,10 @@ class EncryptedNovelKeyChain @Inject constructor(
     override fun read(key: NovelKeyChainType): String? =
         runCatching { 
             val value = prefs.getString(key.key, null)
-            Log.d(TAG, "读取数据: key=${key.key}, found=${value != null}")
+            TimberLogger.d(TAG, "读取数据: key=${key.key}, found=${value != null}")
             value
         }.getOrElse { 
-            Log.e(TAG, "读取数据失败: key=${key.key}", it)
+            TimberLogger.e(TAG, "读取数据失败: key=${key.key}", it)
             null 
         }
 
@@ -154,13 +154,13 @@ class EncryptedNovelKeyChain @Inject constructor(
      */
     override fun delete(key: NovelKeyChainType) {
         runCatching {
-            Log.d(TAG, "删除数据: key=${key.key}")
+            TimberLogger.d(TAG, "删除数据: key=${key.key}")
             prefs.edit {
                 remove(key.key)
             }
-            Log.d(TAG, "数据删除成功: key=${key.key}")
+            TimberLogger.d(TAG, "数据删除成功: key=${key.key}")
         }.onFailure { 
-            Log.e(TAG, "数据删除失败: key=${key.key}", it)
+            TimberLogger.e(TAG, "数据删除失败: key=${key.key}", it)
             it.printStackTrace() 
         }
     }
@@ -198,7 +198,7 @@ class KeyChainTokenProvider @Inject constructor(
      */
     override fun getToken(): String? {
         val token = NovelKeyChain.read(NovelKeyChainType.TOKEN)
-        Log.d(TAG, "获取Token: found=${token != null}")
+        TimberLogger.d(TAG, "获取Token: found=${token != null}")
         return token
     }
 }

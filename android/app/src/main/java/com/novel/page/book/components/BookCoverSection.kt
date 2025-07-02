@@ -1,6 +1,6 @@
 package com.novel.page.book.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,7 +29,7 @@ fun BookCoverSection(bookInfo: BookDetailUiState.BookInfo?) {
 
     // 空数据保护
     if (bookInfo == null) {
-        Log.w(TAG, "BookInfo为空，跳过渲染")
+        TimberLogger.w(TAG, "BookInfo为空，跳过渲染")
         return
     }
 
@@ -49,7 +49,7 @@ fun BookCoverSection(bookInfo: BookDetailUiState.BookInfo?) {
         )
         
         if (BuildConfig.DEBUG && bookInfo.picUrl.isNotEmpty()) {
-            Log.v(TAG, "渲染书籍封面: ${bookInfo.picUrl}")
+            TimberLogger.v(TAG, "渲染书籍封面: ${bookInfo.picUrl}")
         }
     }
 }

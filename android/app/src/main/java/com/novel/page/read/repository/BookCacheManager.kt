@@ -1,7 +1,7 @@
 package com.novel.page.read.repository
 
 import android.content.Context
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Density
 import com.google.gson.Gson
@@ -135,9 +135,9 @@ class BookCacheManager @Inject constructor(
         // 创建缓存目录
         contentCacheDir.mkdirs()
         pageCountCacheDir.mkdirs()
-        Log.d(TAG, "书籍缓存管理器初始化")
-        Log.d(TAG, "内容缓存目录: ${contentCacheDir.absolutePath}")
-        Log.d(TAG, "页数缓存目录: ${pageCountCacheDir.absolutePath}")
+        TimberLogger.d(TAG, "书籍缓存管理器初始化")
+        TimberLogger.d(TAG, "内容缓存目录: ${contentCacheDir.absolutePath}")
+        TimberLogger.d(TAG, "页数缓存目录: ${pageCountCacheDir.absolutePath}")
         
         // 清理过期缓存
         cleanExpiredCaches()

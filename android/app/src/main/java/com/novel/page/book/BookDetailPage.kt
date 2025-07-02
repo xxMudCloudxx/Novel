@@ -12,7 +12,7 @@ import com.novel.page.component.*
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import com.novel.utils.NavViewModel
-import android.util.Log
+import com.novel.utils.TimberLogger
 
 /**
  * 书籍详情页面组件
@@ -47,7 +47,7 @@ fun BookDetailPage(
 
     // 初始化书籍详情数据
     LaunchedEffect(bookId) {
-        Log.d("BookDetailPage", "开始加载书籍详情: $bookId")
+        TimberLogger.d("BookDetailPage", "开始加载书籍详情: $bookId")
         viewModel.loadBookDetail(bookId)
     }
 
@@ -82,7 +82,7 @@ fun BookDetailPage(
             }
 
             override fun retry() {
-                Log.d("BookDetailPage", "重试加载书籍详情: $bookId")
+                TimberLogger.d("BookDetailPage", "重试加载书籍详情: $bookId")
                 viewModel.loadBookDetail(bookId)
             }
         }
@@ -95,7 +95,7 @@ fun BookDetailPage(
 
     // 左滑进入阅读器的回调函数
     val handleLeftSwipeToReader: () -> Unit = {
-        Log.d("BookDetailPage", "左滑进入阅读器: bookId=$bookId")
+        TimberLogger.d("BookDetailPage", "左滑进入阅读器: bookId=$bookId")
         // 把当前的 FlipBookAnimationController 暂存到全局
         NavViewModel.setFlipBookController(flipBookController)
         onNavigateToReader?.invoke(bookId, null)
@@ -117,7 +117,7 @@ fun BookDetailPage(
         ) {
             // 性能优化：只在成功状态下渲染内容，避免不必要的组合
             if (uiState.isSuccess) {
-                Log.d("BookDetailPage", "渲染书籍详情内容")
+                TimberLogger.d("BookDetailPage", "渲染书籍详情内容")
                 BookDetailContent(
                     uiState = uiState.data
                 )

@@ -1,6 +1,6 @@
 package com.novel.page.login.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -59,7 +59,7 @@ fun ActionButtons(
                 .height(48.wdp),
             enabldeClicke = isFirstEnabled,
             onClick = {
-                Log.d(TAG, "点击主操作按钮: $firstText")
+                TimberLogger.d(TAG, "点击主操作按钮: $firstText")
                 onFirstClick()
             }
         )
@@ -78,7 +78,7 @@ fun ActionButtons(
                 .width(330.wdp)
                 .height(48.wdp),
             onClick = {
-                Log.d(TAG, "点击次要操作按钮: $secondText")
+                TimberLogger.d(TAG, "点击次要操作按钮: $secondText")
                 onSecondClick()
             }
         )

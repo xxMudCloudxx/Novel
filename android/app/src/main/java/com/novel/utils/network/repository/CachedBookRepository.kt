@@ -1,6 +1,6 @@
 package com.novel.utils.network.repository
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -92,10 +92,10 @@ class CachedBookRepository @Inject constructor(
                         val data = extractData(result.data)
                         if (data != null && isValidBusinessData(data)) {
                             updateState(data)
-                            Log.d(TAG, "$operationName succeeded on attempt ${attempt + 1}")
+                            TimberLogger.d(TAG, "$operationName succeeded on attempt ${attempt + 1}")
                             return result.data
                         } else {
-                            Log.w(TAG, "$operationName returned invalid data on attempt ${attempt + 1}")
+                            TimberLogger.w(TAG, "$operationName returned invalid data on attempt ${attempt + 1}")
                             if (attempt < MAX_RETRY_COUNT - 1) {
                                 kotlinx.coroutines.delay(RETRY_DELAY_MS)
                             }
@@ -103,14 +103,14 @@ class CachedBookRepository @Inject constructor(
                     }
                     is CacheResult.Error -> {
                         lastError = result.error
-                        Log.w(TAG, "$operationName failed on attempt ${attempt + 1}: ${result.error.message}")
+                        TimberLogger.w(TAG, "$operationName failed on attempt ${attempt + 1}: ${result.error.message}")
                         
                         // 如果有缓存数据，尝试使用缓存数据
                         result.cachedData?.let { cachedData ->
                             val data = extractData(cachedData)
                             if (data != null) {
                                 updateState(data)
-                                Log.d(TAG, "$operationName using cached data as fallback")
+                                TimberLogger.d(TAG, "$operationName using cached data as fallback")
                                 return cachedData
                             }
                         }
@@ -122,7 +122,7 @@ class CachedBookRepository @Inject constructor(
                 }
             } catch (e: Exception) {
                 lastError = e
-                Log.e(TAG, "$operationName exception on attempt ${attempt + 1}", e)
+                TimberLogger.e(TAG, "$operationName exception on attempt ${attempt + 1}", e)
                 if (attempt < MAX_RETRY_COUNT - 1) {
                     kotlinx.coroutines.delay(RETRY_DELAY_MS)
                 }
@@ -130,7 +130,7 @@ class CachedBookRepository @Inject constructor(
         }
         
         _error.value = lastError?.message ?: "Data retrieval failed after $MAX_RETRY_COUNT attempts"
-        Log.e(TAG, "$operationName failed after $MAX_RETRY_COUNT attempts")
+        TimberLogger.e(TAG, "$operationName failed after $MAX_RETRY_COUNT attempts")
         return null
     }
     
@@ -164,7 +164,7 @@ class CachedBookRepository @Inject constructor(
                         strategy = strategy,
                         onCacheUpdate = { response ->
                             response.data?.let { _bookInfo.value = it }
-                            Log.d(TAG, "Book info cache updated for bookId: $bookId")
+                            TimberLogger.d(TAG, "Book info cache updated for bookId: $bookId")
                         }
                     )
                 },
@@ -191,7 +191,7 @@ class CachedBookRepository @Inject constructor(
                         strategy = strategy,
                         onCacheUpdate = { response ->
                             response.data?.let { _bookChapters.value = it }
-                            Log.d(TAG, "Book chapters cache updated for bookId: $bookId")
+                            TimberLogger.d(TAG, "Book chapters cache updated for bookId: $bookId")
                         }
                     )
                 },
@@ -217,7 +217,7 @@ class CachedBookRepository @Inject constructor(
                         cacheManager = cacheManager,
                         strategy = strategy,
                         onCacheUpdate = {
-                            Log.d(TAG, "Book content cache updated for chapterId: $chapterId")
+                            TimberLogger.d(TAG, "Book content cache updated for chapterId: $chapterId")
                         }
                     )
                 },
@@ -241,13 +241,13 @@ class CachedBookRepository @Inject constructor(
                     strategy = strategy,
                     onCacheUpdate = { response ->
                         response.data?.let { _visitRankBooks.value = it }
-                        Log.d(TAG, "Visit rank books cache updated")
+                        TimberLogger.d(TAG, "Visit rank books cache updated")
                     }
                 ).onSuccess { response, fromCache ->
                     response.data?.let { _visitRankBooks.value = it }
-                    Log.d(TAG, "Visit rank books loaded from ${if (fromCache) "cache" else "network"}")
+                    TimberLogger.d(TAG, "Visit rank books loaded from ${if (fromCache) "cache" else "network"}")
                 }.onError { error, cachedData ->
-                    Log.e(TAG, "Failed to load visit rank books", error)
+                    TimberLogger.e(TAG, "Failed to load visit rank books", error)
                     cachedData?.data?.let { _visitRankBooks.value = it }
                     _error.value = error.message
                 }.let { result ->
@@ -257,7 +257,7 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: ClassCastException) {
-                Log.e(TAG, "ClassCastException in getVisitRankBooks, clearing cache and retrying", e)
+                TimberLogger.e(TAG, "ClassCastException in getVisitRankBooks, clearing cache and retrying", e)
                 // 清理相关缓存
                 cacheManager.clearCache("visit_rank_books")
                 _visitRankBooks.value = emptyList()
@@ -269,12 +269,12 @@ class CachedBookRepository @Inject constructor(
                         books
                     } ?: emptyList()
                 } catch (networkError: Exception) {
-                    Log.e(TAG, "Network fallback also failed for visit rank books", networkError)
+                    TimberLogger.e(TAG, "Network fallback also failed for visit rank books", networkError)
                     _error.value = networkError.message
                     emptyList()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in getVisitRankBooks", e)
+                TimberLogger.e(TAG, "Unexpected error in getVisitRankBooks", e)
                 _error.value = e.message
                 emptyList()
             }
@@ -294,13 +294,13 @@ class CachedBookRepository @Inject constructor(
                     strategy = strategy,
                     onCacheUpdate = { response ->
                         response.data?.let { _updateRankBooks.value = it }
-                        Log.d(TAG, "Update rank books cache updated")
+                        TimberLogger.d(TAG, "Update rank books cache updated")
                     }
                 ).onSuccess { response, fromCache ->
                     response.data?.let { _updateRankBooks.value = it }
-                    Log.d(TAG, "Update rank books loaded from ${if (fromCache) "cache" else "network"}")
+                    TimberLogger.d(TAG, "Update rank books loaded from ${if (fromCache) "cache" else "network"}")
                 }.onError { error, cachedData ->
-                    Log.e(TAG, "Failed to load update rank books", error)
+                    TimberLogger.e(TAG, "Failed to load update rank books", error)
                     cachedData?.data?.let { _updateRankBooks.value = it }
                     _error.value = error.message
                 }.let { result ->
@@ -310,7 +310,7 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: ClassCastException) {
-                Log.e(TAG, "ClassCastException in getUpdateRankBooks, clearing cache and retrying", e)
+                TimberLogger.e(TAG, "ClassCastException in getUpdateRankBooks, clearing cache and retrying", e)
                 // 清理相关缓存
                 cacheManager.clearCache("update_rank_books")
                 _updateRankBooks.value = emptyList()
@@ -322,12 +322,12 @@ class CachedBookRepository @Inject constructor(
                         books
                     } ?: emptyList()
                 } catch (networkError: Exception) {
-                    Log.e(TAG, "Network fallback also failed for update rank books", networkError)
+                    TimberLogger.e(TAG, "Network fallback also failed for update rank books", networkError)
                     _error.value = networkError.message
                     emptyList()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in getUpdateRankBooks", e)
+                TimberLogger.e(TAG, "Unexpected error in getUpdateRankBooks", e)
                 _error.value = e.message
                 emptyList()
             }
@@ -347,13 +347,13 @@ class CachedBookRepository @Inject constructor(
                     strategy = strategy,
                     onCacheUpdate = { response ->
                         response.data?.let { _newestRankBooks.value = it }
-                        Log.d(TAG, "Newest rank books cache updated")
+                        TimberLogger.d(TAG, "Newest rank books cache updated")
                     }
                 ).onSuccess { response, fromCache ->
                     response.data?.let { _newestRankBooks.value = it }
-                    Log.d(TAG, "Newest rank books loaded from ${if (fromCache) "cache" else "network"}")
+                    TimberLogger.d(TAG, "Newest rank books loaded from ${if (fromCache) "cache" else "network"}")
                 }.onError { error, cachedData ->
-                    Log.e(TAG, "Failed to load newest rank books", error)
+                    TimberLogger.e(TAG, "Failed to load newest rank books", error)
                     cachedData?.data?.let { _newestRankBooks.value = it }
                     _error.value = error.message
                 }.let { result ->
@@ -363,7 +363,7 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: ClassCastException) {
-                Log.e(TAG, "ClassCastException in getNewestRankBooks, clearing cache and retrying", e)
+                TimberLogger.e(TAG, "ClassCastException in getNewestRankBooks, clearing cache and retrying", e)
                 // 清理相关缓存
                 clearNewestRankCache()
                 try {
@@ -374,12 +374,12 @@ class CachedBookRepository @Inject constructor(
                         books
                     } ?: emptyList()
                 } catch (networkError: Exception) {
-                    Log.e(TAG, "Network fallback also failed for newest rank books", networkError)
+                    TimberLogger.e(TAG, "Network fallback also failed for newest rank books", networkError)
                     _error.value = networkError.message
                     emptyList()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in getNewestRankBooks", e)
+                TimberLogger.e(TAG, "Unexpected error in getNewestRankBooks", e)
                 _error.value = e.message
                 emptyList()
             }
@@ -401,13 +401,13 @@ class CachedBookRepository @Inject constructor(
                     strategy = strategy,
                     onCacheUpdate = { response ->
                         response.data?.let { _bookCategories.value = it }
-                        Log.d(TAG, "Book categories cache updated for workDirection: $workDirection")
+                        TimberLogger.d(TAG, "Book categories cache updated for workDirection: $workDirection")
                     }
                 ).onSuccess { response, fromCache ->
                     response.data?.let { _bookCategories.value = it }
-                    Log.d(TAG, "Book categories loaded from ${if (fromCache) "cache" else "network"} for workDirection: $workDirection")
+                    TimberLogger.d(TAG, "Book categories loaded from ${if (fromCache) "cache" else "network"} for workDirection: $workDirection")
                 }.onError { error, cachedData ->
-                    Log.e(TAG, "Failed to load book categories for workDirection: $workDirection", error)
+                    TimberLogger.e(TAG, "Failed to load book categories for workDirection: $workDirection", error)
                     cachedData?.data?.let { _bookCategories.value = it }
                     _error.value = error.message
                 }.let { result ->
@@ -417,7 +417,7 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: ClassCastException) {
-                Log.e(TAG, "ClassCastException in getBookCategories, clearing cache and retrying", e)
+                TimberLogger.e(TAG, "ClassCastException in getBookCategories, clearing cache and retrying", e)
                 // 清理相关缓存
                 cacheManager.clearCache("book_categories_$workDirection")
                 _bookCategories.value = emptyList()
@@ -429,12 +429,12 @@ class CachedBookRepository @Inject constructor(
                         categories
                     } ?: emptyList()
                 } catch (networkError: Exception) {
-                    Log.e(TAG, "Network fallback also failed for book categories", networkError)
+                    TimberLogger.e(TAG, "Network fallback also failed for book categories", networkError)
                     _error.value = networkError.message
                     emptyList()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in getBookCategories", e)
+                TimberLogger.e(TAG, "Unexpected error in getBookCategories", e)
                 _error.value = e.message
                 emptyList()
             }
@@ -447,7 +447,7 @@ class CachedBookRepository @Inject constructor(
     suspend fun clearBookCache(bookId: Long) {
         cacheManager.clearCache("book_info_$bookId")
         cacheManager.clearCache("book_chapters_$bookId")
-        Log.d(TAG, "Book cache cleared for bookId: $bookId")
+        TimberLogger.d(TAG, "Book cache cleared for bookId: $bookId")
     }
     
     /**
@@ -457,7 +457,7 @@ class CachedBookRepository @Inject constructor(
         cacheManager.clearCache("visit_rank_books")
         cacheManager.clearCache("update_rank_books")
         cacheManager.clearCache("newest_rank_books")
-        Log.d(TAG, "Rank cache cleared")
+        TimberLogger.d(TAG, "Rank cache cleared")
     }
     
     /**
@@ -466,7 +466,7 @@ class CachedBookRepository @Inject constructor(
     suspend fun clearNewestRankCache() {
         cacheManager.clearCache("newest_rank_books")
         _newestRankBooks.value = emptyList()
-        Log.d(TAG, "Newest rank cache cleared")
+        TimberLogger.d(TAG, "Newest rank cache cleared")
     }
     
     /**
@@ -510,12 +510,12 @@ class CachedBookRepository @Inject constructor(
                     cacheManager = cacheManager,
                     strategy = strategy,
                     onCacheUpdate = {
-                        Log.d(TAG, "Search books cache updated for keyword: $keyword")
+                        TimberLogger.d(TAG, "Search books cache updated for keyword: $keyword")
                     }
                 ).onSuccess { response, fromCache ->
-                    Log.d(TAG, "Search books loaded from ${if (fromCache) "cache" else "network"} for keyword: $keyword")
+                    TimberLogger.d(TAG, "Search books loaded from ${if (fromCache) "cache" else "network"} for keyword: $keyword")
                 }.onError { error, cachedData ->
-                    Log.e(TAG, "Failed to search books for keyword: $keyword", error)
+                    TimberLogger.e(TAG, "Failed to search books for keyword: $keyword", error)
                     _error.value = error.message
                 }.let { result ->
                     when (result) {
@@ -524,7 +524,7 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: ClassCastException) {
-                Log.e(TAG, "ClassCastException in searchBooks, clearing search cache and retrying", e)
+                TimberLogger.e(TAG, "ClassCastException in searchBooks, clearing search cache and retrying", e)
                 // 清理搜索缓存
                 clearSearchCache(keyword, workDirection, categoryId, isVip, bookStatus, wordCountMin, wordCountMax, updateTimeMin, sort, pageNum, pageSize)
                 try {
@@ -544,12 +544,12 @@ class CachedBookRepository @Inject constructor(
                     )
                     response.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
                 } catch (networkError: Exception) {
-                    Log.e(TAG, "Network fallback also failed for search", networkError)
+                    TimberLogger.e(TAG, "Network fallback also failed for search", networkError)
                     _error.value = networkError.message
                     SearchService.PageResponse(0, 0, 0, emptyList(), 0)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in searchBooks", e)
+                TimberLogger.e(TAG, "Unexpected error in searchBooks", e)
                 _error.value = e.message
                 SearchService.PageResponse(0, 0, 0, emptyList(), 0)
             }
@@ -579,7 +579,7 @@ class CachedBookRepository @Inject constructor(
         
         val cacheKey = "search_books_$paramsHash"
         cacheManager.clearCache(cacheKey)
-        Log.d(TAG, "Search cache cleared for key: $cacheKey")
+        TimberLogger.d(TAG, "Search cache cleared for key: $cacheKey")
     }
     
     /**
@@ -591,7 +591,7 @@ class CachedBookRepository @Inject constructor(
             _error.value = null
             block()
         } catch (e: Exception) {
-            Log.e(TAG, "Operation failed", e)
+            TimberLogger.e(TAG, "Operation failed", e)
             _error.value = e.message
             null
         } finally {
@@ -608,7 +608,7 @@ class CachedBookRepository @Inject constructor(
             _error.value = null
             block()
         } catch (e: Exception) {
-            Log.e(TAG, "Operation failed", e)
+            TimberLogger.e(TAG, "Operation failed", e)
             _error.value = e.message
             null
         } finally {

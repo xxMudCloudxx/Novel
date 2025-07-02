@@ -2,7 +2,7 @@ package com.novel
 
 import android.content.res.Configuration
 import android.os.Bundle
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -49,7 +49,7 @@ class ComposeMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "Activity创建开始")
+        TimberLogger.d(TAG, "Activity创建开始")
         
         // 在后台初始化React Native上下文，避免阻塞UI线程
         rim.createReactContextInBackground()
@@ -77,26 +77,26 @@ class ComposeMainActivity : ComponentActivity() {
             }
         }
         
-        Log.d(TAG, "Activity创建完成")
+        TimberLogger.d(TAG, "Activity创建完成")
     }
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "Activity恢复可见")
+        TimberLogger.d(TAG, "Activity恢复可见")
         // 恢复React Native实例状态
         rim.onHostResume(this)
     }
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG, "Activity暂停")
+        TimberLogger.d(TAG, "Activity暂停")
         // 暂停React Native实例
         rim.onHostPause(this)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "Activity销毁")
+        TimberLogger.d(TAG, "Activity销毁")
         // 清理React Native实例资源
         rim.onHostDestroy(this)
         
@@ -106,16 +106,16 @@ class ComposeMainActivity : ComponentActivity() {
     
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        Log.d(TAG, "配置发生变化")
+        TimberLogger.d(TAG, "配置发生变化")
         
         // 检查是否为主题变化
         val uiMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
         when (uiMode) {
             Configuration.UI_MODE_NIGHT_YES -> {
-                Log.d(TAG, "系统切换到深色模式")
+                TimberLogger.d(TAG, "系统切换到深色模式")
             }
             Configuration.UI_MODE_NIGHT_NO -> {
-                Log.d(TAG, "系统切换到浅色模式")
+                TimberLogger.d(TAG, "系统切换到浅色模式")
             }
         }
         
@@ -124,7 +124,7 @@ class ComposeMainActivity : ComponentActivity() {
             val themeManager = ThemeManager.getInstance(this)
             themeManager.notifySystemThemeChanged()
         } catch (e: Exception) {
-            Log.e(TAG, "通知主题变化失败", e)
+            TimberLogger.e(TAG, "通知主题变化失败", e)
         }
     }
 }

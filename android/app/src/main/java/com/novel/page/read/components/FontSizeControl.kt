@@ -1,6 +1,6 @@
 package com.novel.page.read.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -70,7 +70,7 @@ fun FontSizeControl(
                     onClick = {
                         if (canDecrease) {
                             val newSize = fontSizes[currentIndex - 1]
-                            Log.d(TAG, "减小字号: $fontSize -> $newSize")
+                            TimberLogger.d(TAG, "减小字号: $fontSize -> $newSize")
                             onFontSizeChange(newSize)
                         }
                     }
@@ -111,7 +111,7 @@ fun FontSizeControl(
                     onClick = {
                         if (canIncrease) {
                             val newSize = fontSizes[currentIndex + 1]
-                            Log.d(TAG, "增大字号: $fontSize -> $newSize")
+                            TimberLogger.d(TAG, "增大字号: $fontSize -> $newSize")
                             onFontSizeChange(newSize)
                         }
                     }

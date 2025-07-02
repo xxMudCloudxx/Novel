@@ -1,6 +1,6 @@
 package com.novel.page.login.dao
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
 import com.novel.utils.network.api.front.user.UserService
@@ -42,11 +42,11 @@ class UserRepository @Inject constructor(
             val uid = userDefaults.get<Int>(NovelUserDefaultsKey.USER_ID)?.toString()
             
             if (uid.isNullOrEmpty()) {
-                Log.e(TAG, "缓存用户失败: UID为空")
+                TimberLogger.e(TAG, "缓存用户失败: UID为空")
                 return@withContext false
             }
             
-            Log.d(TAG, "开始缓存用户数据: uid=$uid")
+            TimberLogger.d(TAG, "开始缓存用户数据: uid=$uid")
             
             // 先清空旧数据，确保数据一致性
             userDao.clearAll()
@@ -55,10 +55,10 @@ class UserRepository @Inject constructor(
             val userEntity = data.toEntity(uid)
             userDao.insertUser(userEntity)
             
-            Log.d(TAG, "用户数据缓存成功: ${userEntity.nickName}")
+            TimberLogger.d(TAG, "用户数据缓存成功: ${userEntity.nickName}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "缓存用户数据失败", e)
+            TimberLogger.e(TAG, "缓存用户数据失败", e)
             false
         }
     }
@@ -72,17 +72,17 @@ class UserRepository @Inject constructor(
         try {
             val uid = userDefaults.get<Int>(NovelUserDefaultsKey.USER_ID)?.toString()
             if (uid.isNullOrEmpty()) {
-                Log.w(TAG, "获取当前用户失败: UID为空")
+                TimberLogger.w(TAG, "获取当前用户失败: UID为空")
                 return@withContext null
             }
             
             val user = userDao.getUserByUid(uid)
             if (user != null) {
-                Log.v(TAG, "成功获取当前用户: ${user.nickName}")
+                TimberLogger.v(TAG, "成功获取当前用户: ${user.nickName}")
             }
             user
         } catch (e: Exception) {
-            Log.e(TAG, "获取当前用户失败", e)
+            TimberLogger.e(TAG, "获取当前用户失败", e)
             null
         }
     }
@@ -97,10 +97,10 @@ class UserRepository @Inject constructor(
     fun getAllUsersFlow(): Flow<List<UserEntity>> = flow {
         try {
             val users = userDao.getAllUsers()
-            Log.v(TAG, "发射用户列表，数量: ${users.size}")
+            TimberLogger.v(TAG, "发射用户列表，数量: ${users.size}")
             emit(users)
         } catch (e: Exception) {
-            Log.e(TAG, "获取用户列表失败", e)
+            TimberLogger.e(TAG, "获取用户列表失败", e)
             emit(emptyList())
         }
     }.flowOn(Dispatchers.IO)
@@ -116,7 +116,7 @@ class UserRepository @Inject constructor(
         try {
             userDao.getAllUsers()
         } catch (e: Exception) {
-            Log.e(TAG, "获取用户列表失败", e)
+            TimberLogger.e(TAG, "获取用户列表失败", e)
             emptyList()
         }
     }
@@ -131,10 +131,10 @@ class UserRepository @Inject constructor(
     suspend fun clearAllUsers(): Boolean = withContext(Dispatchers.IO) {
         try {
             userDao.clearAll()
-            Log.d(TAG, "已清理所有用户数据")
+            TimberLogger.d(TAG, "已清理所有用户数据")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "清理用户数据失败", e)
+            TimberLogger.e(TAG, "清理用户数据失败", e)
             false
         }
     }
@@ -150,10 +150,10 @@ class UserRepository @Inject constructor(
     suspend fun updateUser(userEntity: UserEntity): Boolean = withContext(Dispatchers.IO) {
         try {
             userDao.insertUser(userEntity) // Room的REPLACE策略会自动更新
-            Log.d(TAG, "用户信息更新成功: ${userEntity.nickName}")
+            TimberLogger.d(TAG, "用户信息更新成功: ${userEntity.nickName}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "用户信息更新失败", e)
+            TimberLogger.e(TAG, "用户信息更新失败", e)
             false
         }
     }
@@ -167,7 +167,7 @@ class UserRepository @Inject constructor(
         try {
             userDao.getUserCount() > 0
         } catch (e: Exception) {
-            Log.e(TAG, "检查用户缓存失败", e)
+            TimberLogger.e(TAG, "检查用户缓存失败", e)
             false
         }
     }
@@ -181,7 +181,7 @@ class UserRepository @Inject constructor(
         try {
             userDao.getUserCount()
         } catch (e: Exception) {
-            Log.e(TAG, "获取用户缓存数量失败", e)
+            TimberLogger.e(TAG, "获取用户缓存数量失败", e)
             0
         }
     }

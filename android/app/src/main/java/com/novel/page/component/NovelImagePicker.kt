@@ -3,7 +3,7 @@ package com.novel.page.component
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.GetContent
 import androidx.compose.runtime.*
@@ -42,7 +42,7 @@ fun NovelImagePickerLauncher(
     // 注册系统图片选择回调
     val launcher = rememberLauncherForActivityResult(GetContent()) { uri: Uri? ->
         uri?.let {
-            Log.d("NovelImagePicker", "图片选择成功: $uri")
+            TimberLogger.d("NovelImagePicker", "图片选择成功: $uri")
             scope.launch {
                 // IO线程解码Bitmap
                 val bmp = withContext(Dispatchers.IO) {
@@ -50,14 +50,14 @@ fun NovelImagePickerLauncher(
                         ?.use { stream -> BitmapFactory.decodeStream(stream) }
                 }
                 bmp?.let { bitmap ->
-                    Log.d("NovelImagePicker", "Bitmap解码成功: ${bitmap.width}x${bitmap.height}")
+                    TimberLogger.d("NovelImagePicker", "Bitmap解码成功: ${bitmap.width}x${bitmap.height}")
                     onImagePicked(bitmap)
                 } ?: run {
-                    Log.w("NovelImagePicker", "Bitmap解码失败")
+                    TimberLogger.w("NovelImagePicker", "Bitmap解码失败")
                 }
             }
         } ?: run {
-            Log.d("NovelImagePicker", "用户取消图片选择")
+            TimberLogger.d("NovelImagePicker", "用户取消图片选择")
         }
         onDismiss()
     }
@@ -65,7 +65,7 @@ fun NovelImagePickerLauncher(
     // 当isPresented=true时自动调起选图
     LaunchedEffect(isPresented) {
         if (isPresented) {
-            Log.d("NovelImagePicker", "启动图片选择器")
+            TimberLogger.d("NovelImagePicker", "启动图片选择器")
             launcher.launch("image/*")
         }
     }

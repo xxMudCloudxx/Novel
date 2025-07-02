@@ -1,7 +1,7 @@
 package com.novel.page
 
 import android.annotation.SuppressLint
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,13 +49,13 @@ fun ReactNativePage(
     val reactInstanceManager = remember { mainApplication.reactNativeHost.reactInstanceManager }
     var isContextReady by remember { mutableStateOf(reactInstanceManager.currentReactContext != null) }
 
-    Log.d(TAG, "组件渲染 - componentName: $componentName, isContextReady: $isContextReady, destroyOnBack: $destroyOnBack")
+    TimberLogger.d(TAG, "组件渲染 - componentName: $componentName, isContextReady: $isContextReady, destroyOnBack: $destroyOnBack")
 
     // 如果启用了返回时销毁，则设置BackHandler
     if (destroyOnBack) {
         val navController = NavViewModelHolder.navController.value
         BackHandler(enabled = true) {
-            Log.d(TAG, "BackHandler触发 for $componentName, 准备销毁缓存并返回。")
+            TimberLogger.d(TAG, "BackHandler触发 for $componentName, 准备销毁缓存并返回。")
             mainApplication.clearReactRootViewCache(componentName)
             navController?.popBackStack()
         }
@@ -63,7 +63,7 @@ fun ReactNativePage(
 
     // 获取缓存的ReactRootView实例
     val rootView = remember(componentName, initialProps) {
-        Log.d(TAG, "获取缓存的ReactRootView for $componentName")
+        TimberLogger.d(TAG, "获取缓存的ReactRootView for $componentName")
         
         // 将Map转换为Bundle
         val bundle = bundleOf().apply {
@@ -85,12 +85,12 @@ fun ReactNativePage(
 
     // 管理RN上下文监听器的生命周期
     DisposableEffect(reactInstanceManager, componentName) {
-        Log.d(TAG, "DisposableEffect启动 for $componentName")
+        TimberLogger.d(TAG, "DisposableEffect启动 for $componentName")
         
         val contextListener = if (!isContextReady) {
-            Log.d(TAG, "添加RN上下文监听器 for $componentName")
+            TimberLogger.d(TAG, "添加RN上下文监听器 for $componentName")
             ReactInstanceManager.ReactInstanceEventListener { 
-                Log.d(TAG, "RN上下文状态变更为就绪 for $componentName")
+                TimberLogger.d(TAG, "RN上下文状态变更为就绪 for $componentName")
                 isContextReady = true 
                 
                 // 🎯 RN上下文就绪时，主动同步主题信息
@@ -106,7 +106,7 @@ fun ReactNativePage(
         
         onDispose {
             contextListener?.let { listener ->
-                Log.d(TAG, "移除RN上下文监听器，防止内存泄漏 for $componentName")
+                TimberLogger.d(TAG, "移除RN上下文监听器，防止内存泄漏 for $componentName")
                 reactInstanceManager.removeReactInstanceEventListener(listener)
             }
         }
@@ -115,7 +115,7 @@ fun ReactNativePage(
     // 使用AndroidView嵌入缓存的ReactRootView
     AndroidView(
         factory = { 
-            Log.d(TAG, "AndroidView factory返回缓存的ReactRootView for $componentName")
+            TimberLogger.d(TAG, "AndroidView factory返回缓存的ReactRootView for $componentName")
             rootView 
         },
         modifier = Modifier.fillMaxSize()
@@ -123,7 +123,7 @@ fun ReactNativePage(
 
     // 在RN未就绪时显示加载指示器
     if (!isContextReady) {
-        Log.v(TAG, "显示加载指示器 for $componentName")
+        TimberLogger.v(TAG, "显示加载指示器 for $componentName")
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -136,15 +136,15 @@ fun ReactNativePage(
  */
 private fun syncThemeToRN(componentName: String) {
     try {
-        Log.d("ReactNativePage", "🎯 开始同步主题信息到RN for $componentName")
+        TimberLogger.d("ReactNativePage", "🎯 开始同步主题信息到RN for $componentName")
         val themeManager = ThemeManager.getInstance()
         val actualTheme = themeManager.getCurrentActualThemeMode()
-        Log.d("ReactNativePage", "当前实际主题: $actualTheme for $componentName")
+        TimberLogger.d("ReactNativePage", "当前实际主题: $actualTheme for $componentName")
         
         // 通过ThemeManager发送主题变更事件到RN
         themeManager.notifyThemeChangedToRN(actualTheme)
-        Log.d("ReactNativePage", "✅ 主题信息已同步到RN: $actualTheme for $componentName")
+        TimberLogger.d("ReactNativePage", "✅ 主题信息已同步到RN: $actualTheme for $componentName")
     } catch (e: Exception) {
-        Log.e("ReactNativePage", "❌ 同步主题信息到RN失败 for $componentName", e)
+        TimberLogger.e("ReactNativePage", "❌ 同步主题信息到RN失败 for $componentName", e)
     }
 }

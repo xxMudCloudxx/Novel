@@ -1,6 +1,6 @@
 package com.novel.page.home.viewmodel
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.page.home.dao.HomeBookEntity
@@ -358,7 +358,7 @@ class HomeViewModel @Inject constructor(
                 
                 updateState { it.copy(isLoading = false) }
             } catch (e: Exception) {
-                Log.e(TAG, "加载初始数据失败", e)
+                TimberLogger.e(TAG, "加载初始数据失败", e)
                 updateState { 
                     it.copy(
                         isLoading = false, 
@@ -379,7 +379,7 @@ class HomeViewModel @Inject constructor(
             try {
                 homeRepository.getBookCategories(strategy = com.novel.utils.network.cache.CacheStrategy.CACHE_FIRST)
                     .catch { e ->
-                        Log.e(TAG, "加载分类筛选器失败", e)
+                        TimberLogger.e(TAG, "加载分类筛选器失败", e)
                         updateState { 
                             it.copy(
                                 categoryFiltersLoading = false,
@@ -401,7 +401,7 @@ class HomeViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
-                Log.e(TAG, "加载分类筛选器异常", e)
+                TimberLogger.e(TAG, "加载分类筛选器异常", e)
                 updateState { 
                     it.copy(
                         categoryFiltersLoading = false,
@@ -452,7 +452,7 @@ class HomeViewModel @Inject constructor(
                 
                 // 修复：当获取到的数据为0时，强制重新获取网络数据
                 if (currentBooks.isEmpty() && !isRefresh) {
-                    Log.w(TAG, "首页推荐数据为空，尝试从网络获取")
+                    TimberLogger.w(TAG, "首页推荐数据为空，尝试从网络获取")
                     // 使用网络优先策略重新获取
                     val networkBooks = homeRepository.getHomeBooks(
                         strategy = com.novel.utils.network.cache.CacheStrategy.NETWORK_ONLY
@@ -489,7 +489,7 @@ class HomeViewModel @Inject constructor(
 
                 // 首页推荐数据加载完成
             } catch (e: Exception) {
-                Log.e(TAG, "加载首页推荐书籍失败", e)
+                TimberLogger.e(TAG, "加载首页推荐书籍失败", e)
                 updateState { 
                     it.copy(
                         homeRecommendLoading = false,
@@ -543,7 +543,7 @@ class HomeViewModel @Inject constructor(
                 
                 // 修复：当获取到的数据为0时，强制重新获取网络数据
                 if (booksData.list.isEmpty()) {
-                    Log.w(TAG, "分类推荐数据为空，尝试从网络获取")
+                    TimberLogger.w(TAG, "分类推荐数据为空，尝试从网络获取")
                     // 使用网络优先策略重新获取
                     val networkBooksData = cachedBookRepository.searchBooks(
                         categoryId = categoryId,
@@ -588,7 +588,7 @@ class HomeViewModel @Inject constructor(
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "根据分类加载推荐书籍失败", e)
+                TimberLogger.e(TAG, "根据分类加载推荐书籍失败", e)
                 updateState { 
                     it.copy(
                         recommendLoading = false,
@@ -638,7 +638,7 @@ class HomeViewModel @Inject constructor(
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "加载更多推荐书籍失败", e)
+                TimberLogger.e(TAG, "加载更多推荐书籍失败", e)
                 updateState { 
                     it.copy(
                         recommendLoading = false,
@@ -661,7 +661,7 @@ class HomeViewModel @Inject constructor(
                 
                 // 修复：当获取到的榜单数据为0时，强制重新获取网络数据
                 if (rankBooks.isEmpty()) {
-                    Log.w(TAG, "榜单数据为空，尝试从网络获取")
+                    TimberLogger.w(TAG, "榜单数据为空，尝试从网络获取")
                     // 使用网络优先策略重新获取
                     val networkRankBooks = homeRepository.getRankBooks(
                         rankType,
@@ -694,7 +694,7 @@ class HomeViewModel @Inject constructor(
                 }
                 // 榜单数据加载完成
             } catch (e: Exception) {
-                Log.e(TAG, "加载榜单书籍异常", e)
+                TimberLogger.e(TAG, "加载榜单书籍异常", e)
                 updateState { 
                     it.copy(
                         rankLoading = false,
@@ -752,7 +752,7 @@ class HomeViewModel @Inject constructor(
                 sendEvent(HomeEvent.ShowToast("刷新成功"))
                 
             } catch (e: Exception) {
-                Log.e(TAG, "刷新数据失败", e)
+                TimberLogger.e(TAG, "刷新数据失败", e)
                 updateState { 
                     it.copy(error = "刷新失败：${e.localizedMessage}") 
                 }
@@ -772,7 +772,7 @@ class HomeViewModel @Inject constructor(
             
             homeRepository.getCategories(forceRefresh)
                 .catch { e ->
-                    Log.e(TAG, "加载分类失败", e)
+                    TimberLogger.e(TAG, "加载分类失败", e)
                     updateState { it.copy(categoryLoading = false) }
                 }
                 .collect { apiCategories ->
@@ -828,9 +828,9 @@ class HomeViewModel @Inject constructor(
                             isLoading = false
                         ) 
                     }
-                    Log.d(TAG, "书籍数据加载完成：轮播${carouselEntities.size}，热门${hotEntities.size}，最新${newEntities.size}，VIP${vipEntities.size}")
+                    TimberLogger.d(TAG, "书籍数据加载完成：轮播${carouselEntities.size}，热门${hotEntities.size}，最新${newEntities.size}，VIP${vipEntities.size}")
                 }.catch { e ->
-                    Log.e(TAG, "加载书籍数据失败", e)
+                    TimberLogger.e(TAG, "加载书籍数据失败", e)
                     updateState { 
                         it.copy(
                             booksLoading = false,
@@ -841,7 +841,7 @@ class HomeViewModel @Inject constructor(
                 }.collect()
                 
             } catch (e: Exception) {
-                Log.e(TAG, "加载书籍数据异常", e)
+                TimberLogger.e(TAG, "加载书籍数据异常", e)
                 updateState { 
                     it.copy(
                         booksLoading = false,
@@ -895,7 +895,7 @@ class HomeViewModel @Inject constructor(
                 
                 // 加载更多首页推荐完成
             } catch (e: Exception) {
-                Log.e(TAG, "加载更多首页推荐书籍失败", e)
+                TimberLogger.e(TAG, "加载更多首页推荐书籍失败", e)
                 updateState { 
                     it.copy(
                         homeRecommendLoading = false,
@@ -962,7 +962,7 @@ class HomeViewModel @Inject constructor(
                 // 预加载分类数据成功
                 
             } catch (e: Exception) {
-                Log.e(TAG, "预加载分类 $categoryName 数据失败", e)
+                TimberLogger.e(TAG, "预加载分类 $categoryName 数据失败", e)
             } finally {
                 categoryLoadingSet.remove(categoryName)
             }
@@ -1009,7 +1009,7 @@ class HomeViewModel @Inject constructor(
                 rankBooksCache[rankType] = rankBooks
                 // 预加载榜单数据成功
             } catch (e: Exception) {
-                Log.e(TAG, "预加载榜单 $rankType 数据失败", e)
+                TimberLogger.e(TAG, "预加载榜单 $rankType 数据失败", e)
             } finally {
                 rankLoadingSet.remove(rankType)
             }

@@ -1,6 +1,6 @@
 package com.novel.page.home.dao
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
@@ -151,11 +151,11 @@ interface HomeDao {
      */
     @Transaction
     suspend fun clearAllHomeData() {
-        Log.d("HomeDao", "开始清空所有首页数据")
+        TimberLogger.d("HomeDao", "开始清空所有首页数据")
         clearAllBooks()
         clearAllBanners()
         clearAllCategories()
-        Log.d("HomeDao", "所有首页数据清空完成")
+        TimberLogger.d("HomeDao", "所有首页数据清空完成")
     }
     
     // endregion

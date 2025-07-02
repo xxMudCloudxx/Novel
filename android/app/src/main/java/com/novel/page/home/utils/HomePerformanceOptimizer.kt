@@ -1,6 +1,6 @@
 package com.novel.page.home.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 
 /**
  * 首页性能优化工具类
@@ -66,9 +66,9 @@ object HomePerformanceOptimizer {
      * 建议在用户离开首页或内存压力较大时调用
      */
     fun clearHeightCache() {
-        Log.d(TAG, "清理高度缓存，缓存项数量: ${imageHeightCache.size}")
+        TimberLogger.d(TAG, "清理高度缓存，缓存项数量: ${imageHeightCache.size}")
         imageHeightCache.clear()
-        Log.d(TAG, "高度缓存清理完成")
+        TimberLogger.d(TAG, "高度缓存清理完成")
     }
     
     /**
@@ -78,7 +78,7 @@ object HomePerformanceOptimizer {
      */
     fun getCacheSize(): Int {
         return imageHeightCache.size.also {
-            Log.d(TAG, "当前缓存大小: $it")
+            TimberLogger.d(TAG, "当前缓存大小: $it")
         }
     }
 } 

@@ -1,6 +1,6 @@
 package com.novel.utils.network
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChain
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChainType
 import kotlinx.coroutines.sync.Mutex
@@ -32,7 +32,7 @@ class TokenProvider @Inject constructor(
      */
     suspend fun accessToken(): String = mutex.withLock {
         val token = keyChain.read(NovelKeyChainType.TOKEN) ?: ""
-        Log.d(TAG, "获取访问令牌: ${if (token.isNotEmpty()) "已存在" else "不存在"}")
+        TimberLogger.d(TAG, "获取访问令牌: ${if (token.isNotEmpty()) "已存在" else "不存在"}")
         token
     }
 
@@ -43,9 +43,9 @@ class TokenProvider @Inject constructor(
      * @param refresh 刷新令牌
      */
     suspend fun saveToken(access: String, refresh: String) = mutex.withLock {
-        Log.d(TAG, "保存令牌 - 访问令牌长度: ${access.length}, 刷新令牌长度: ${refresh.length}")
+        TimberLogger.d(TAG, "保存令牌 - 访问令牌长度: ${access.length}, 刷新令牌长度: ${refresh.length}")
         keyChain.saveToken(access, refresh)
-        Log.d(TAG, "令牌保存完成")
+        TimberLogger.d(TAG, "令牌保存完成")
     }
 
     /**
@@ -54,9 +54,9 @@ class TokenProvider @Inject constructor(
      * 用于用户登出或令牌失效时的清理操作
      */
     fun clear() {
-        Log.d(TAG, "开始清除所有令牌")
+        TimberLogger.d(TAG, "开始清除所有令牌")
         keyChain.delete(NovelKeyChainType.TOKEN)
         keyChain.delete(NovelKeyChainType.REFRESH_TOKEN)
-        Log.d(TAG, "令牌清除完成")
+        TimberLogger.d(TAG, "令牌清除完成")
     }
 }

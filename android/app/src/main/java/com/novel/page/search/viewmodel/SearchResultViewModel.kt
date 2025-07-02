@@ -1,6 +1,6 @@
 package com.novel.page.search.viewmodel
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.viewModelScope
 import com.novel.page.component.BaseViewModel
 import com.novel.page.component.StateHolderImpl
@@ -59,7 +59,7 @@ class SearchResultViewModel @Inject constructor(
     private var isLoadingMore = false
 
     init {
-        Log.d(TAG, "SearchResultViewModel初始化")
+        TimberLogger.d(TAG, "SearchResultViewModel初始化")
         // 预加载分类筛选配置
         loadCategoryFilters()
     }
@@ -100,7 +100,7 @@ class SearchResultViewModel @Inject constructor(
      * 重置分页状态，发起新的搜索请求
      */
     private fun performSearch(query: String) {
-        Log.d(TAG, "执行搜索: $query")
+        TimberLogger.d(TAG, "执行搜索: $query")
         viewModelScope.launch {
             try {
                 // 重置分页状态
@@ -120,7 +120,7 @@ class SearchResultViewModel @Inject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
-                        Log.d(TAG, "搜索成功，获得${response.list.size}条结果")
+                        TimberLogger.d(TAG, "搜索成功，获得${response.list.size}条结果")
                         val loadedFilters = _uiState.value.data.categoryFilters
                         _uiState.value = _uiState.value.copy(
                             data = currentData.copy(
@@ -136,7 +136,7 @@ class SearchResultViewModel @Inject constructor(
                         )
                     },
                     onFailure = { exception ->
-                        Log.e(TAG, "搜索失败", exception)
+                        TimberLogger.e(TAG, "搜索失败", exception)
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             error = exception.message ?: "搜索失败"
@@ -144,7 +144,7 @@ class SearchResultViewModel @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "搜索异常", e)
+                TimberLogger.e(TAG, "搜索异常", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "搜索失败"
@@ -158,7 +158,7 @@ class SearchResultViewModel @Inject constructor(
      * 更新分类状态并重新搜索
      */
     private fun selectCategory(categoryId: Int?) {
-        Log.d(TAG, "选择分类: $categoryId")
+        TimberLogger.d(TAG, "选择分类: $categoryId")
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
             data = currentData.copy(selectedCategoryId = categoryId)
@@ -208,7 +208,7 @@ class SearchResultViewModel @Inject constructor(
      * 关闭面板并重新搜索
      */
     private fun applyFilters() {
-        Log.d(TAG, "应用筛选条件")
+        TimberLogger.d(TAG, "应用筛选条件")
         closeFilterSheet()
         val currentData = _uiState.value.data
         if (currentData.query.isNotEmpty()) {
@@ -221,7 +221,7 @@ class SearchResultViewModel @Inject constructor(
      * 重置为默认筛选状态
      */
     private fun clearFilters() {
-        Log.d(TAG, "清除筛选条件")
+        TimberLogger.d(TAG, "清除筛选条件")
         val currentData = _uiState.value.data
         _uiState.value = _uiState.value.copy(
             data = currentData.copy(filters = FilterState())
@@ -234,11 +234,11 @@ class SearchResultViewModel @Inject constructor(
      */
     private fun loadNextPage() {
         if (isLoadingMore || !_uiState.value.data.hasMore) {
-            Log.d(TAG, "跳过分页加载：isLoadingMore=$isLoadingMore, hasMore=${_uiState.value.data.hasMore}")
+            TimberLogger.d(TAG, "跳过分页加载：isLoadingMore=$isLoadingMore, hasMore=${_uiState.value.data.hasMore}")
             return
         }
         
-        Log.d(TAG, "加载第${currentPage + 1}页数据")
+        TimberLogger.d(TAG, "加载第${currentPage + 1}页数据")
         viewModelScope.launch {
             try {
                 isLoadingMore = true
@@ -255,7 +255,7 @@ class SearchResultViewModel @Inject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
-                        Log.d(TAG, "分页加载成功，新增${response.list.size}条结果")
+                        TimberLogger.d(TAG, "分页加载成功，新增${response.list.size}条结果")
                         val loadedFilters = _uiState.value.data.categoryFilters
                         val newBooks = response.list
                         _uiState.value = _uiState.value.copy(
@@ -267,12 +267,12 @@ class SearchResultViewModel @Inject constructor(
                         )
                     },
                     onFailure = { exception ->
-                        Log.w(TAG, "分页加载失败", exception)
+                        TimberLogger.e(TAG, "分页加载失败", exception)
                         currentPage-- // 恢复页码
                     }
                 )
             } catch (e: Exception) {
-                Log.w(TAG, "分页加载异常", e)
+                TimberLogger.e(TAG, "分页加载异常", e)
                 currentPage-- // 恢复页码
             } finally {
                 isLoadingMore = false

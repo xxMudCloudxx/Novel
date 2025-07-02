@@ -1,7 +1,7 @@
 package com.novel.page.login.viewmodel
 
 import android.annotation.SuppressLint
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.page.login.utils.AuthResult
@@ -176,7 +176,7 @@ class LoginViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
     init {
-        Log.d(TAG, "LoginViewModel初始化")
+        TimberLogger.d(TAG, "LoginViewModel初始化")
         // 初始化页面数据
         initializePageData()
         // 监听验证码状态变化
@@ -190,7 +190,7 @@ class LoginViewModel @Inject constructor(
      * 确保所有操作都在viewModelScope中执行
      */
     fun onAction(action: LoginAction) {
-        Log.d(TAG, "处理用户操作: ${action::class.simpleName}")
+        TimberLogger.d(TAG, "处理用户操作: ${action::class.simpleName}")
         viewModelScope.launch {
             when (action) {
                 is LoginAction.ToggleAgreement -> {
@@ -255,7 +255,7 @@ class LoginViewModel @Inject constructor(
                 }
 
                 LoginAction.ToggleRegisterMode -> {
-                    Log.d(TAG, "切换到${if (!uiState.value.isRegisterMode) "注册" else "登录"}模式")
+                    TimberLogger.d(TAG, "切换到${if (!uiState.value.isRegisterMode) "注册" else "登录"}模式")
                     _uiState.update { 
                         it.copy(
                             isRegisterMode = !it.isRegisterMode,

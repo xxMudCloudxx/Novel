@@ -1,6 +1,6 @@
 package com.novel.utils.network.interceptor
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.TokenProvider
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -35,13 +35,13 @@ class AuthInterceptor @Inject constructor(
      */
     override fun intercept(chain: Interceptor.Chain): Response = runBlocking {
         val token = tokenProvider.accessToken()
-        Log.d(TAG, "添加认证Token: ${token.take(20)}...")
+        TimberLogger.d(TAG, "添加认证Token: ${token.take(20)}...")
 
         val req = chain.request().newBuilder()
             .addHeader("Authorization", token)
             .build()
         
-        Log.d(TAG, "请求头部已更新: ${req.headers["Authorization"]?.take(20)}...")
+        TimberLogger.d(TAG, "请求头部已更新: ${req.headers["Authorization"]?.take(20)}...")
         chain.proceed(req)
     }
 }

@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.front.resource
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_RESOURCE
 import com.google.gson.Gson
@@ -68,7 +68,7 @@ class ResourceService @Inject constructor() {
         imageFile: File,
         callback: (ImageUploadResponse?, Throwable?) -> Unit
     ) {
-        Log.d("ResourceService", "开始 uploadImage()，文件：${imageFile.name}")
+        TimberLogger.d("ResourceService", "开始 uploadImage()，文件：${imageFile.name}")
         
         try {
             // 创建 multipart 请求体
@@ -93,7 +93,7 @@ class ResourceService @Inject constructor() {
                 handleResponse(response, error, ImageUploadResponse::class.java, callback)
             }
         } catch (e: Exception) {
-            Log.e("ResourceService", "上传图片失败", e)
+            TimberLogger.e("ResourceService", "上传图片失败", e)
             callback(null, e)
         }
     }
@@ -106,7 +106,7 @@ class ResourceService @Inject constructor() {
         fileName: String,
         callback: (ImageUploadResponse?, Throwable?) -> Unit
     ) {
-        Log.d("ResourceService", "开始 uploadImageBytes()，文件名：$fileName")
+        TimberLogger.d("ResourceService", "开始 uploadImageBytes()，文件名：$fileName")
         
         try {
             // 将字节数组转换为临时文件
@@ -119,7 +119,7 @@ class ResourceService @Inject constructor() {
                 callback(response, error)
             }
         } catch (e: Exception) {
-            Log.e("ResourceService", "上传图片字节失败", e)
+            TimberLogger.e("ResourceService", "上传图片字节失败", e)
             callback(null, e)
         }
     }
@@ -132,7 +132,7 @@ class ResourceService @Inject constructor() {
         fileName: String,
         callback: (ImageUploadResponse?, Throwable?) -> Unit
     ) {
-        Log.d("ResourceService", "开始 uploadImageBase64()，文件名：$fileName")
+        TimberLogger.d("ResourceService", "开始 uploadImageBase64()，文件名：$fileName")
         
         val params = mapOf(
             "file" to base64Image,

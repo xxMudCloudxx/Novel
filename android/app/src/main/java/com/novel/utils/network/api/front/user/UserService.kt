@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.front.user
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_USER
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
@@ -165,7 +165,7 @@ class UserService @Inject constructor() {
             "username" to request.username,
             "password" to request.password
         )
-        Log.d("UserService", "开始 login()，参数：$request")
+        TimberLogger.d("UserService", "开始 login()，参数：$request")
 
         ApiService.post(
             baseUrl = BASE_URL_USER,
@@ -176,7 +176,7 @@ class UserService @Inject constructor() {
                 "Accept" to "*/*"
             )
         ) { response, error ->
-            Log.d("UserService", "login 回调，response=$response, error=$error")
+            TimberLogger.d("UserService", "login 回调，response=$response, error=$error")
             handleResponse(response, error, LoginResponse::class.java, callback)
         }
     }
@@ -214,7 +214,7 @@ class UserService @Inject constructor() {
     fun getUserInfo(
         callback: (UserInfoResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始请求用户信息")
+        TimberLogger.d("UserService", "开始请求用户信息")
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
             params = mapOf(),
@@ -236,7 +236,7 @@ class UserService @Inject constructor() {
         request: UserInfoUpdateRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 updateUserInfo()，参数：$request")
+        TimberLogger.d("UserService", "开始 updateUserInfo()，参数：$request")
         
         val json = Gson().toJson(request)
         val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
@@ -261,7 +261,7 @@ class UserService @Inject constructor() {
         request: CommentRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 postComment()，参数：$request")
+        TimberLogger.d("UserService", "开始 postComment()，参数：$request")
         
         val requestBody = mapOf(
             "bookId" to request.bookId.toString(),
@@ -289,7 +289,7 @@ class UserService @Inject constructor() {
         content: String,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 updateComment()，参数：commentId=$commentId, content=$content")
+        TimberLogger.d("UserService", "开始 updateComment()，参数：commentId=$commentId, content=$content")
         
         ApiService.put(
             baseUrl = BASE_URL_USER,
@@ -311,7 +311,7 @@ class UserService @Inject constructor() {
         commentId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 deleteComment()，参数：$commentId")
+        TimberLogger.d("UserService", "开始 deleteComment()，参数：$commentId")
         
         ApiService.delete(
             baseUrl = BASE_URL_USER,
@@ -329,7 +329,7 @@ class UserService @Inject constructor() {
         pageRequest: PageRequest,
         callback: (UserCommentsResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 getUserComments()，参数：$pageRequest")
+        TimberLogger.d("UserService", "开始 getUserComments()，参数：$pageRequest")
         
         val params = mapOf(
             "pageNum" to pageRequest.pageNum.toString(),
@@ -354,7 +354,7 @@ class UserService @Inject constructor() {
         feedback: String,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 submitFeedback()，参数：$feedback")
+        TimberLogger.d("UserService", "开始 submitFeedback()，参数：$feedback")
         
         ApiService.post(
             baseUrl = BASE_URL_USER,
@@ -376,7 +376,7 @@ class UserService @Inject constructor() {
         feedbackId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 deleteFeedback()，参数：$feedbackId")
+        TimberLogger.d("UserService", "开始 deleteFeedback()，参数：$feedbackId")
         
         ApiService.delete(
             baseUrl = BASE_URL_USER,
@@ -394,7 +394,7 @@ class UserService @Inject constructor() {
         bookId: String,
         callback: (BookshelfStatusResponse?, Throwable?) -> Unit
     ) {
-        Log.d("UserService", "开始 getBookshelfStatus()，参数：$bookId")
+        TimberLogger.d("UserService", "开始 getBookshelfStatus()，参数：$bookId")
         
         ApiService.get(
             baseUrl = BASE_URL_USER,
@@ -441,15 +441,15 @@ class UserService @Inject constructor() {
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getUserInfoBlocking(): UserInfoResponse? = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { cont ->
-            Log.d("UserService", "开始请求用户信息")
+            TimberLogger.d("UserService", "开始请求用户信息")
             getUserInfo { response, error ->
                 if (error != null) {
-                    Log.w("UserService", error)
+                    TimberLogger.w("UserService", error.toString())
                     cont.resume(null, onCancellation = null)
                 } else if (response != null) {
                     cont.resume(response, onCancellation = null)
                 } else {
-                    Log.w("UserService", "收到空响应")
+                    TimberLogger.w("UserService", "收到空响应")
                     cont.resume(null, onCancellation = null)
                 }
             }

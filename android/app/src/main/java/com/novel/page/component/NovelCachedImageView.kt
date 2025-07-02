@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.collection.LruCache
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
@@ -100,7 +100,7 @@ class HttpImageLoaderService @Inject constructor(
             try {
                 // 1. 内存缓存命中检查
                 memoryCache.get(url)?.let { 
-                    Log.v(TAG, "内存缓存命中: $url")
+                    TimberLogger.v(TAG, "内存缓存命中: $url")
                     return@withContext it 
                 }
                 
@@ -111,7 +111,7 @@ class HttpImageLoaderService @Inject constructor(
                     "$BASE_URL$url"
                 }
                 
-                Log.d(TAG, "开始加载图片: $fullUrl")
+                TimberLogger.d(TAG, "开始加载图片: $fullUrl")
                 
                 // 3. 构建HTTP请求
                 val reqBuilder = Request.Builder()
@@ -124,7 +124,7 @@ class HttpImageLoaderService @Inject constructor(
                 // 4. 执行网络请求（自动利用OkHttp磁盘缓存）
                 client.newCall(reqBuilder.build()).execute().use { resp ->
                     if (!resp.isSuccessful) {
-                        Log.w(TAG, "网络请求失败: $fullUrl, 状态码: ${resp.code}")
+                        TimberLogger.w(TAG, "网络请求失败: $fullUrl, 状态码: ${resp.code}")
                         return@withContext null
                     }
                     
@@ -132,13 +132,13 @@ class HttpImageLoaderService @Inject constructor(
                         BitmapFactory.decodeStream(stream)?.also { bitmap ->
                             // 5. 写入内存缓存
                             memoryCache.put(url, bitmap)
-                            Log.d(TAG, "图片加载成功并缓存: $url")
+                            TimberLogger.d(TAG, "图片加载成功并缓存: $url")
                         }
                     }
                 }
             } catch (e: Exception) {
                 // 记录错误但不抛出异常，返回null让UI显示占位符
-                Log.w(TAG, "加载图片失败: $url", e)
+                TimberLogger.e(TAG, "加载图片失败: $url", e)
                 null
             }
         }
@@ -223,15 +223,15 @@ fun NovelCachedImageView(
     Box(modifier) {
         when (state) {
             is LoadState.Success -> {
-                Log.v("NovelCachedImageView", "渲染图片成功: $url")
+                TimberLogger.v("NovelCachedImageView", "渲染图片成功: $url")
                 content((state as LoadState.Success).image)
             }
             LoadState.Loading -> {
-                Log.v("NovelCachedImageView", "图片加载中: $url")
+                TimberLogger.v("NovelCachedImageView", "图片加载中: $url")
                 placeholder()
             }
             LoadState.Error -> {
-                Log.w("NovelCachedImageView", "图片加载失败，显示占位符: $url")
+                TimberLogger.w("NovelCachedImageView", "图片加载失败，显示占位符: $url")
                 placeholder()
             }
         }

@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.front
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
@@ -51,7 +51,7 @@ class HomeService @Inject constructor() {
     private fun getHomeBooks(
         callback: (HomeBooksResponse?, Throwable?) -> Unit
     ) {
-        Log.d("HomeService", "开始 getHomeBooks()")
+        TimberLogger.d("HomeService", "开始 getHomeBooks()")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -68,7 +68,7 @@ class HomeService @Inject constructor() {
     private fun getFriendLinks(
         callback: (FriendLinksResponse?, Throwable?) -> Unit
     ) {
-        Log.d("HomeService", "开始 getFriendLinks()")
+        TimberLogger.d("HomeService", "开始 getFriendLinks()")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,

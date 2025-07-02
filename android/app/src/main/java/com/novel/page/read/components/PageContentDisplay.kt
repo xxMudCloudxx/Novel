@@ -1,6 +1,6 @@
 package com.novel.page.read.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

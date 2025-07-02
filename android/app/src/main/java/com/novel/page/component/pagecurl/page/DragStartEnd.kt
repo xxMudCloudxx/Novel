@@ -1,6 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -36,28 +36,28 @@ internal fun Modifier.dragStartEnd(
     val isEnabledForward = rememberUpdatedState(enabledForward)
     val isEnabledBackward = rememberUpdatedState(enabledBackward)
 
-    Log.d("DragStartEnd", "配置起始-结束拖拽手势 - 向前: $enabledForward, 向后: $enabledBackward")
+    TimberLogger.d("DragStartEnd", "配置起始-结束拖拽手势 - 向前: $enabledForward, 向后: $enabledBackward")
 
     pointerInput(state) {
         // 计算相对区域的实际像素坐标
         val forwardStartRect by lazy { 
             val rect = dragInteraction.forward.start.multiply(size)
-            Log.v("DragStartEnd", "向前拖拽起始区域: $rect")
+            TimberLogger.v("DragStartEnd", "向前拖拽起始区域: $rect")
             rect
         }
         val forwardEndRect by lazy { 
             val rect = dragInteraction.forward.end.multiply(size)
-            Log.v("DragStartEnd", "向前拖拽结束区域: $rect")
+            TimberLogger.v("DragStartEnd", "向前拖拽结束区域: $rect")
             rect
         }
         val backwardStartRect by lazy { 
             val rect = dragInteraction.backward.start.multiply(size)
-            Log.v("DragStartEnd", "向后拖拽起始区域: $rect")
+            TimberLogger.v("DragStartEnd", "向后拖拽起始区域: $rect")
             rect
         }
         val backwardEndRect by lazy { 
             val rect = dragInteraction.backward.end.multiply(size)
-            Log.v("DragStartEnd", "向后拖拽结束区域: $rect")
+            TimberLogger.v("DragStartEnd", "向后拖拽结束区域: $rect")
             rect
         }
 
@@ -70,12 +70,12 @@ internal fun Modifier.dragStartEnd(
             isDragSucceed = { _, end -> 
                 val success = forwardEndRect.contains(end)
                 if (success) {
-                    Log.d("DragStartEnd", "向前拖拽成功结束于目标区域")
+                    TimberLogger.d("DragStartEnd", "向前拖拽成功结束于目标区域")
                 }
                 success
             },
             onChange = { 
-                Log.d("DragStartEnd", "向前翻页完成")
+                TimberLogger.d("DragStartEnd", "向前翻页完成")
                 onChange(+1) 
             }
         )
@@ -89,12 +89,12 @@ internal fun Modifier.dragStartEnd(
             isDragSucceed = { _, end -> 
                 val success = backwardEndRect.contains(end)
                 if (success) {
-                    Log.d("DragStartEnd", "向后拖拽成功结束于目标区域")
+                    TimberLogger.d("DragStartEnd", "向后拖拽成功结束于目标区域")
                 }
                 success
             },
             onChange = { 
-                Log.d("DragStartEnd", "向后翻页完成")
+                TimberLogger.d("DragStartEnd", "向后翻页完成")
                 onChange(-1) 
             }
         )
@@ -108,10 +108,10 @@ internal fun Modifier.dragStartEnd(
             },
             getConfig = { start, _ ->
                 val config = if (forwardStartRect.contains(start)) {
-                    Log.v("DragStartEnd", "从向前拖拽起始区域开始")
+                    TimberLogger.v("DragStartEnd", "从向前拖拽起始区域开始")
                     forwardConfig
                 } else if (backwardStartRect.contains(start)) {
-                    Log.v("DragStartEnd", "从向后拖拽起始区域开始")
+                    TimberLogger.v("DragStartEnd", "从向后拖拽起始区域开始")
                     backwardConfig
                 } else {
                     null

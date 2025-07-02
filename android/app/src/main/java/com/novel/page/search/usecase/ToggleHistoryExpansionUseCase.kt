@@ -1,6 +1,6 @@
 package com.novel.page.search.usecase
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.SearchRepository
 import javax.inject.Inject
 
@@ -26,7 +26,7 @@ class ToggleHistoryExpansionUseCase @Inject constructor(
      */
     operator fun invoke(currentState: Boolean): Boolean {
         val newState = !currentState
-        Log.d(TAG, "切换搜索历史展开状态: $currentState -> $newState")
+        TimberLogger.d(TAG, "切换搜索历史展开状态: $currentState -> $newState")
         searchRepository.saveHistoryExpansionState(newState)
         return newState
     }

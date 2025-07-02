@@ -1,6 +1,6 @@
 package com.novel.page.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +34,7 @@ abstract class BaseViewModel : ViewModel() {
 
     /** 懒加载的加载组件实现，避免不必要的初始化开销 */
     private val loadingComponentImpl by lazy { 
-        Log.d(TAG, "初始化LoadingComponent")
+        TimberLogger.d(TAG, "初始化LoadingComponent")
         LoadingComponentImpl() 
     }
 
@@ -88,7 +88,7 @@ abstract class BaseViewModel : ViewModel() {
          */
         override fun showLoading(show: Boolean) {
             if (_loading.value != show) {
-                Log.d(TAG, "更新加载状态: $show")
+                TimberLogger.d(TAG, "更新加载状态: $show")
                 _loading.value = show
             }
         }
@@ -98,7 +98,7 @@ abstract class BaseViewModel : ViewModel() {
          * 清理所有活跃任务并隐藏加载指示器
          */
         override fun cancelLoading() {
-            Log.d(TAG, "取消所有加载任务，当前任务数: ${loadingJobs.size}")
+            TimberLogger.d(TAG, "取消所有加载任务，当前任务数: ${loadingJobs.size}")
             showLoading(false)
             val jobs = loadingJobs
             if (jobs.isEmpty()) {
@@ -135,7 +135,7 @@ abstract class BaseViewModel : ViewModel() {
             val key = UUID.randomUUID()
             
             if (cancelable) {
-                Log.d(TAG, "注册可取消任务: $key")
+                TimberLogger.d(TAG, "注册可取消任务: $key")
                 jobs[key] = this
             }
             
@@ -143,7 +143,7 @@ abstract class BaseViewModel : ViewModel() {
             invokeOnCompletion { exception ->
                 if (cancelable) {
                     jobs.remove(key)
-                    Log.d(TAG, "清理任务: $key, 剩余任务数: ${jobs.size}")
+                    TimberLogger.d(TAG, "清理任务: $key, 剩余任务数: ${jobs.size}")
                 }
                 if (jobs.isEmpty()) {
                     showLoading(false)
@@ -151,7 +151,7 @@ abstract class BaseViewModel : ViewModel() {
                 
                 // 记录异常信息（不影响性能）
                 exception?.let { 
-                    Log.w(TAG, "任务完成时发生异常: ${it.message}")
+                    TimberLogger.w(TAG, "任务完成时发生异常: ${it.message}")
                 }
             }
         }

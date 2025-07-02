@@ -1,6 +1,6 @@
 package com.novel.page.book.viewmodel
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.viewModelScope
 import com.novel.page.component.BaseViewModel
 import com.novel.page.component.StateHolderImpl
@@ -63,7 +63,7 @@ class BookDetailViewModel @Inject constructor(
     fun loadBookDetail(bookId: String, useCache: Boolean = true) {
         viewModelScope.launchWithLoading {
             try {
-                Log.d(TAG, "开始加载书籍详情: bookId=$bookId, useCache=$useCache")
+                TimberLogger.d(TAG, "开始加载书籍详情: bookId=$bookId, useCache=$useCache")
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                 
                 // 根据参数选择缓存策略
@@ -76,7 +76,7 @@ class BookDetailViewModel @Inject constructor(
                 )
                 
                 if (bookInfo != null) {
-                    Log.d(TAG, "书籍信息加载成功: ${bookInfo.bookName}")
+                    TimberLogger.d(TAG, "书籍信息加载成功: ${bookInfo.bookName}")
                     
                     // 转换为UI层数据模型
                     val bookDetailInfo = BookDetailUiState.BookInfo(
@@ -107,14 +107,14 @@ class BookDetailViewModel @Inject constructor(
                     // 异步加载最新章节信息，不阻塞主流程
                     loadLastChapterInfo(bookId.toLong())
                 } else {
-                    Log.w(TAG, "书籍信息加载失败: bookId=$bookId")
+                    TimberLogger.w(TAG, "书籍信息加载失败: bookId=$bookId")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = "书籍信息加载失败"
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "加载书籍详情异常: bookId=$bookId", e)
+                TimberLogger.e(TAG, "加载书籍详情异常: bookId=$bookId", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "未知错误"
@@ -137,7 +137,7 @@ class BookDetailViewModel @Inject constructor(
     private fun loadLastChapterInfo(bookId: Long) {
         viewModelScope.launchWithLoading {
             try {
-                Log.d(TAG, "开始加载最新章节信息: bookId=$bookId")
+                TimberLogger.d(TAG, "开始加载最新章节信息: bookId=$bookId")
                 
                 val chapters = cachedBookRepository.getBookChapters(
                     bookId = bookId,
@@ -151,7 +151,7 @@ class BookDetailViewModel @Inject constructor(
                         chapterUpdateTime = lastChapter.chapterUpdateTime
                     )
                     
-                    Log.d(TAG, "最新章节加载成功: ${lastChapter.chapterName}")
+                    TimberLogger.d(TAG, "最新章节加载成功: ${lastChapter.chapterName}")
                     
                     // 更新UI状态中的最新章节信息
                     val currentData = _uiState.value.data
@@ -159,10 +159,10 @@ class BookDetailViewModel @Inject constructor(
                         data = currentData.copy(lastChapter = lastChapterInfo)
                     )
                 } else {
-                    Log.w(TAG, "未找到章节信息: bookId=$bookId")
+                    TimberLogger.w(TAG, "未找到章节信息: bookId=$bookId")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "最新章节信息加载失败，不影响主要功能", e)
+                TimberLogger.e(TAG, "最新章节信息加载失败，不影响主要功能", e)
                 // 章节信息加载失败，不影响书籍信息显示
             }
         }
@@ -177,7 +177,7 @@ class BookDetailViewModel @Inject constructor(
         val currentData = _uiState.value.data
         val newExpanded = !currentData.isDescriptionExpanded
         
-        Log.d(TAG, "切换简介展开状态: $newExpanded")
+        TimberLogger.d(TAG, "切换简介展开状态: $newExpanded")
         
         _uiState.value = _uiState.value.copy(
             data = currentData.copy(
@@ -195,7 +195,7 @@ class BookDetailViewModel @Inject constructor(
      * @return 模拟的用户评价列表
      */
     private fun generateMockReviews(): List<BookDetailUiState.BookReview> {
-        Log.d(TAG, "生成模拟用户评价数据")
+        TimberLogger.d(TAG, "生成模拟用户评价数据")
         
         return listOf(
             BookDetailUiState.BookReview(

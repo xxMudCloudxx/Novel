@@ -1,6 +1,6 @@
 package com.novel.page.book.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -24,7 +24,7 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
     
     // 空数据保护
     if (bookInfo == null) {
-        Log.w(TAG, "BookInfo为空，跳过渲染")
+        TimberLogger.w(TAG, "BookInfo为空，跳过渲染")
         return
     }
     
@@ -59,7 +59,7 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
                 )
             },
             onClick = { 
-                Log.d(TAG, "点击关注作者: ${bookInfo.authorName}")
+                TimberLogger.d(TAG, "点击关注作者: ${bookInfo.authorName}")
                 // TODO: 实现关注功能 
             },
             round = 18.wdp,

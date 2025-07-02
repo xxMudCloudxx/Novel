@@ -1,6 +1,6 @@
 package com.novel.utils.rn
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
@@ -30,10 +30,10 @@ class NavigationPackage : ReactPackage {
      * @return 原生模块列表，包含NavigationUtilModule
      */
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        Log.d(TAG, "创建导航原生模块")
+        TimberLogger.d(TAG, "创建导航原生模块")
         
         return listOf(NavigationUtilModule(reactContext)).also { modules ->
-            Log.d(TAG, "导航模块创建完成，包含${modules.size}个模块")
+            TimberLogger.d(TAG, "导航模块创建完成，包含${modules.size}个模块")
         }
     }
 
@@ -44,7 +44,7 @@ class NavigationPackage : ReactPackage {
      * @return 空列表，本包不提供自定义ViewManager
      */
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-        Log.v(TAG, "导航包无自定义ViewManager")
+        TimberLogger.v(TAG, "导航包无自定义ViewManager")
         return emptyList()
     }
 }

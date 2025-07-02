@@ -1,6 +1,6 @@
 package com.novel.page.search.usecase
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.search.viewmodel.CategoryFilter
 import com.novel.utils.network.api.front.BookService
 import javax.inject.Inject
@@ -44,11 +44,11 @@ class GetCategoryFiltersUseCase @Inject constructor(
      */
     suspend fun execute(): Result<List<CategoryFilter>> {
         return try {
-            Log.d(TAG, "开始获取书籍分类...")
+            TimberLogger.d(TAG, "开始获取书籍分类...")
             
             val response = bookService.getBookCategoriesBlocking(0)
             if (response.code == "0" && response.data != null) {
-                Log.d(TAG, "API获取分类成功，共${response.data.size}个分类")
+                TimberLogger.d(TAG, "API获取分类成功，共${response.data.size}个分类")
                 
                 val categories = mutableListOf<CategoryFilter>()
                 
@@ -65,15 +65,15 @@ class GetCategoryFiltersUseCase @Inject constructor(
                     )
                 }
                 
-                Log.d(TAG, "分类数据处理完成，共${categories.size}个选项")
+                TimberLogger.d(TAG, "分类数据处理完成，共${categories.size}个选项")
                 Result.success(categories)
             } else {
-                Log.w(TAG, "API返回失败，使用默认分类: ${response.code}")
+                TimberLogger.w(TAG, "API返回失败，使用默认分类: ${response.code}")
                 // 如果API失败，返回默认分类
                 Result.success(getDefaultCategories())
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取分类异常，使用默认分类", e)
+            TimberLogger.e(TAG, "获取分类异常，使用默认分类", e)
             // 异常时返回默认分类
             Result.success(getDefaultCategories())
         }
@@ -86,7 +86,7 @@ class GetCategoryFiltersUseCase @Inject constructor(
      * @return 预设的分类筛选器列表
      */
     private fun getDefaultCategories(): List<CategoryFilter> {
-        Log.d(TAG, "使用默认分类列表")
+        TimberLogger.d(TAG, "使用默认分类列表")
         return listOf(
             CategoryFilter(id = -1, name = "所有"),
             CategoryFilter(id = 1, name = "武侠玄幻"),

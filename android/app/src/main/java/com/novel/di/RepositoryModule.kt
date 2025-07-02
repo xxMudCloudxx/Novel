@@ -1,6 +1,6 @@
 package com.novel.di
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
@@ -48,7 +48,7 @@ object RepositoryModule {
         searchService: SearchService,
         cacheManager: NetworkCacheManager
     ): CachedBookRepository {
-        Log.d(TAG, "创建带缓存的书籍数据仓库")
+        TimberLogger.d(TAG, "创建带缓存的书籍数据仓库")
         return CachedBookRepository(bookService, searchService, cacheManager)
     }
 } 

@@ -1,6 +1,6 @@
 package com.novel.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -41,16 +41,16 @@ class RCTDeviceEventEmitter {
         ) {
             reactContext?.let { context ->
                 try {
-                    Log.d(TAG, "发送RN事件: $eventName")
+                    TimberLogger.d(TAG, "发送RN事件: $eventName")
                     context
                         .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                         ?.emit(eventName, params)
-                    Log.d(TAG, "RN事件发送成功: $eventName")
+                    TimberLogger.d(TAG, "RN事件发送成功: $eventName")
                 } catch (e: Exception) {
-                    Log.e(TAG, "RN事件发送失败: $eventName", e)
+                    TimberLogger.e(TAG, "RN事件发送失败: $eventName", e)
                 }
             } ?: run {
-                Log.w(TAG, "ReactContext为空，无法发送事件: $eventName")
+                TimberLogger.w(TAG, "ReactContext为空，无法发送事件: $eventName")
             }
         }
     }

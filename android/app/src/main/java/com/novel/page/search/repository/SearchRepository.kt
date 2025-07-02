@@ -1,6 +1,6 @@
 package com.novel.page.search.repository
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.google.gson.Gson
@@ -110,7 +110,7 @@ class SearchRepository @Inject constructor(
                 emptyList()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取搜索历史失败", e)
+            TimberLogger.e(TAG, "获取搜索历史失败", e)
             emptyList()
         }
     }
@@ -135,9 +135,9 @@ class SearchRepository @Inject constructor(
             
             val historyJson = gson.toJson(currentHistory)
             userDefaults.setString(SEARCH_HISTORY_KEY, historyJson)
-            Log.d(TAG, "搜索历史已保存: $keyword")
+            TimberLogger.d(TAG, "搜索历史已保存: $keyword")
         } catch (e: Exception) {
-            Log.e(TAG, "保存搜索历史失败", e)
+            TimberLogger.e(TAG, "保存搜索历史失败", e)
         }
     }
     
@@ -147,9 +147,9 @@ class SearchRepository @Inject constructor(
     fun clearSearchHistory() {
         try {
             userDefaults.remove(SEARCH_HISTORY_KEY)
-            Log.d(TAG, "搜索历史已清空")
+            TimberLogger.d(TAG, "搜索历史已清空")
         } catch (e: Exception) {
-            Log.e(TAG, "清空搜索历史失败", e)
+            TimberLogger.e(TAG, "清空搜索历史失败", e)
         }
     }
     
@@ -160,7 +160,7 @@ class SearchRepository @Inject constructor(
         return try {
             userDefaults.getString(HISTORY_EXPANDED_KEY)?.toBoolean() ?: false
         } catch (e: Exception) {
-            Log.e(TAG, "获取历史展开状态失败", e)
+            TimberLogger.e(TAG, "获取历史展开状态失败", e)
             false
         }
     }
@@ -171,9 +171,9 @@ class SearchRepository @Inject constructor(
     fun saveHistoryExpansionState(isExpanded: Boolean) {
         try {
             userDefaults.setString(HISTORY_EXPANDED_KEY, isExpanded.toString())
-            Log.d(TAG, "历史展开状态已保存: $isExpanded")
+            TimberLogger.d(TAG, "历史展开状态已保存: $isExpanded")
         } catch (e: Exception) {
-            Log.e(TAG, "保存历史展开状态失败", e)
+            TimberLogger.e(TAG, "保存历史展开状态失败", e)
         }
     }
     
@@ -186,7 +186,7 @@ class SearchRepository @Inject constructor(
      */
     private suspend fun getNovelRanking(): List<SearchRankingItem> {
         return try {
-            Log.d(TAG, "获取推荐榜单数据")
+            TimberLogger.d(TAG, "获取推荐榜单数据")
             val rankBooks = cachedBookRepository.getVisitRankBooks(CacheStrategy.CACHE_FIRST)
             
             val realData = rankBooks.mapIndexed { index, book ->
@@ -218,7 +218,7 @@ class SearchRepository @Inject constructor(
                 realData
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取推荐榜单失败", e)
+            TimberLogger.e(TAG, "获取推荐榜单失败", e)
             // 返回测试数据
             (1..20).map { i ->
                 SearchRankingItem(
@@ -236,7 +236,7 @@ class SearchRepository @Inject constructor(
      */
     private suspend fun getDramaRanking(): List<SearchRankingItem> {
         return try {
-            Log.d(TAG, "获取热搜短剧榜数据")
+            TimberLogger.d(TAG, "获取热搜短剧榜数据")
             val rankBooks = cachedBookRepository.getUpdateRankBooks(CacheStrategy.CACHE_FIRST)
             
             val realData = rankBooks.mapIndexed { index, book ->
@@ -268,7 +268,7 @@ class SearchRepository @Inject constructor(
                 realData
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取热搜短剧榜失败", e)
+            TimberLogger.e(TAG, "获取热搜短剧榜失败", e)
             // 返回测试数据
             (1..20).map { i ->
                 SearchRankingItem(
@@ -286,7 +286,7 @@ class SearchRepository @Inject constructor(
      */
     private suspend fun getNewBookRanking(): List<SearchRankingItem> {
         return try {
-            Log.d(TAG, "获取新书榜单数据")
+            TimberLogger.d(TAG, "获取新书榜单数据")
             val rankBooks = cachedBookRepository.getNewestRankBooks(CacheStrategy.CACHE_FIRST)
             
             val realData = rankBooks.mapIndexed { index, book ->
@@ -318,7 +318,7 @@ class SearchRepository @Inject constructor(
                 realData
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取新书榜单失败", e)
+            TimberLogger.e(TAG, "获取新书榜单失败", e)
             // 返回测试数据
             (1..20).map { i ->
                 SearchRankingItem(
@@ -347,7 +347,7 @@ class SearchRepository @Inject constructor(
                 newBookRanking = newBookRanking
             )
         } catch (e: Exception) {
-            Log.e(TAG, "获取所有榜单数据失败", e)
+            TimberLogger.e(TAG, "获取所有榜单数据失败", e)
             RankingData()
         }
     }
@@ -389,12 +389,12 @@ class SearchRepository @Inject constructor(
                 cacheManager = cacheManager,
                 strategy = strategy,
                 onCacheUpdate = {
-                    Log.d(TAG, "搜索结果缓存已更新: keyword=$keyword")
+                    TimberLogger.d(TAG, "搜索结果缓存已更新: keyword=$keyword")
                 }
             ).onSuccess { _, fromCache ->
-                Log.d(TAG, "搜索成功，来源: ${if (fromCache) "缓存" else "网络"}，关键词: $keyword")
+                TimberLogger.d(TAG, "搜索成功，来源: ${if (fromCache) "缓存" else "网络"}，关键词: $keyword")
             }.onError { error, _ ->
-                Log.e(TAG, "搜索失败，关键词: $keyword", error)
+                TimberLogger.e(TAG, "搜索失败，关键词: $keyword", error)
             }.let { result ->
                 when (result) {
                     is com.novel.utils.network.cache.CacheResult.Success -> result.data
@@ -402,7 +402,7 @@ class SearchRepository @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "搜索异常，关键词: $keyword", e)
+            TimberLogger.e(TAG, "搜索异常，关键词: $keyword", e)
             null
         }
     }
@@ -414,9 +414,9 @@ class SearchRepository @Inject constructor(
         try {
             // 清理搜索相关缓存（需要遍历所有可能的缓存键）
             // 这里可以根据需要实现更精确的缓存清理逻辑
-            Log.d(TAG, "搜索缓存已清理")
+            TimberLogger.d(TAG, "搜索缓存已清理")
         } catch (e: Exception) {
-            Log.e(TAG, "清理搜索缓存失败", e)
+            TimberLogger.e(TAG, "清理搜索缓存失败", e)
         }
     }
     
@@ -461,7 +461,7 @@ class SearchRepository @Inject constructor(
             val paramsHash = keyword.hashCode().toString()
             cacheManager.isCacheExists("search_books_$paramsHash")
         } catch (e: Exception) {
-            Log.e(TAG, "检查搜索缓存状态失败", e)
+            TimberLogger.e(TAG, "检查搜索缓存状态失败", e)
             false
         }
     }

@@ -1,6 +1,6 @@
 package com.novel.page.read.viewmodel
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.viewModelScope
 import com.novel.page.component.BaseViewModel
 import com.novel.page.read.usecase.*
@@ -57,10 +57,10 @@ class ReaderViewModel @Inject constructor(
     private var lastFlipTime = 0L
 
     init {
-        Log.d(TAG, "ReaderViewModel初始化")
+        TimberLogger.d(TAG, "ReaderViewModel初始化")
         observePaginationProgressUseCase.execute()
             .onEach { state ->
-                Log.d(TAG, "分页进度更新: 章节 ${state.calculatedChapters}/${state.totalChapters}, 估算总页=${state.estimatedTotalPages}")
+                TimberLogger.d(TAG, "分页进度更新: 章节 ${state.calculatedChapters}/${state.totalChapters}, 估算总页=${state.estimatedTotalPages}")
                 _uiState.value = _uiState.value.copy(paginationState = state)
 
                 // 当渐进计算完成且尚未写入页数缓存时，主动查询并更新
@@ -78,16 +78,16 @@ class ReaderViewModel @Inject constructor(
                                 )
                                 if (cache != null) {
                                     _uiState.value = _uiState.value.copy(pageCountCache = cache)
-                                    Log.d(TAG, "分页完成后写入页数缓存: 总页数=${cache.totalPages}")
+                                    TimberLogger.d(TAG, "分页完成后写入页数缓存: 总页数=${cache.totalPages}")
                                     cacheFound = true
                                     break
                                 } else {
-                                    Log.d(TAG, "页数缓存暂未生成，等待重试(${attempt + 1}/3)")
+                                    TimberLogger.d(TAG, "页数缓存暂未生成，等待重试(${attempt + 1}/3)")
                                     delay(500)
                                 }
                             }
                             if (!cacheFound) {
-                                Log.w(TAG, "多次尝试仍未获取到页数缓存，放弃更新")
+                                TimberLogger.w(TAG, "多次尝试仍未获取到页数缓存，放弃更新")
                             }
                         }
                     }
@@ -101,35 +101,35 @@ class ReaderViewModel @Inject constructor(
      * 在页面初始化时调用，确保背景色等设置能立即应用
      */
     fun loadInitialSettings() {
-        Log.d(TAG, "开始加载初始设置")
+        TimberLogger.d(TAG, "开始加载初始设置")
         viewModelScope.launch {
             try {
-                Log.d(TAG, "调用SettingsService加载设置")
+                TimberLogger.d(TAG, "调用SettingsService加载设置")
                 val loadedSettings = settingsService.loadSettings()
 
-                Log.d(TAG, "设置加载成功，更新UI状态")
-                Log.d(TAG, "加载的设置详情:")
-                Log.d(TAG, "  - 字体大小: ${loadedSettings.fontSize}sp")
-                Log.d(TAG, "  - 亮度: ${(loadedSettings.brightness * 100).toInt()}%")
-                Log.d(TAG, "  - 背景颜色: ${colorToHex(loadedSettings.backgroundColor)}")
-                Log.d(TAG, "  - 文字颜色: ${colorToHex(loadedSettings.textColor)}")
-                Log.d(TAG, "  - 翻页效果: ${loadedSettings.pageFlipEffect}")
+                TimberLogger.d(TAG, "设置加载成功，更新UI状态")
+                TimberLogger.d(TAG, "加载的设置详情:")
+                TimberLogger.d(TAG, "  - 字体大小: ${loadedSettings.fontSize}sp")
+                TimberLogger.d(TAG, "  - 亮度: ${(loadedSettings.brightness * 100).toInt()}%")
+                TimberLogger.d(TAG, "  - 背景颜色: ${colorToHex(loadedSettings.backgroundColor)}")
+                TimberLogger.d(TAG, "  - 文字颜色: ${colorToHex(loadedSettings.textColor)}")
+                TimberLogger.d(TAG, "  - 翻页效果: ${loadedSettings.pageFlipEffect}")
 
                 val oldSettings = _uiState.value.readerSettings
-                Log.d(TAG, "更新前的设置:")
-                Log.d(TAG, "  - 字体大小: ${oldSettings.fontSize}sp")
-                Log.d(TAG, "  - 背景颜色: ${colorToHex(oldSettings.backgroundColor)}")
-                Log.d(TAG, "  - 文字颜色: ${colorToHex(oldSettings.textColor)}")
-                Log.d(TAG, "  - 翻页效果: ${oldSettings.pageFlipEffect}")
+                TimberLogger.d(TAG, "更新前的设置:")
+                TimberLogger.d(TAG, "  - 字体大小: ${oldSettings.fontSize}sp")
+                TimberLogger.d(TAG, "  - 背景颜色: ${colorToHex(oldSettings.backgroundColor)}")
+                TimberLogger.d(TAG, "  - 文字颜色: ${colorToHex(oldSettings.textColor)}")
+                TimberLogger.d(TAG, "  - 翻页效果: ${oldSettings.pageFlipEffect}")
 
                 _uiState.value = _uiState.value.copy(readerSettings = loadedSettings)
 
-                Log.d(TAG, "UI状态更新完成，当前背景颜色: ${colorToHex(_uiState.value.readerSettings.backgroundColor)}")
+                TimberLogger.d(TAG, "UI状态更新完成，当前背景颜色: ${colorToHex(_uiState.value.readerSettings.backgroundColor)}")
 
             } catch (e: Exception) {
-                Log.e(TAG, "初始设置加载失败", e)
+                TimberLogger.e(TAG, "初始设置加载失败", e)
                 val defaultSettings = com.novel.page.read.components.ReaderSettings.getDefault()
-                Log.d(TAG, "使用默认设置: 背景颜色=${colorToHex(defaultSettings.backgroundColor)}")
+                TimberLogger.d(TAG, "使用默认设置: 背景颜色=${colorToHex(defaultSettings.backgroundColor)}")
                 _uiState.value = _uiState.value.copy(readerSettings = defaultSettings)
             }
         }
@@ -151,7 +151,7 @@ class ReaderViewModel @Inject constructor(
      * 统一的用户操作入口点
      */
     fun onIntent(intent: ReaderIntent) {
-        Log.d(TAG, "处理用户意图: ${intent::class.simpleName}")
+        TimberLogger.d(TAG, "处理用户意图: ${intent::class.simpleName}")
 
         viewModelScope.launch {
             // 除了初始化外，其他操作都先保存进度
@@ -181,7 +181,7 @@ class ReaderViewModel @Inject constructor(
      * 章节切换 - 兼容UI调用
      */
     fun onChapterChange(direction: FlipDirection) {
-        Log.d(TAG, "章节切换: $direction")
+        TimberLogger.d(TAG, "章节切换: $direction")
         onIntent(ReaderIntent.PageFlip(direction))
     }
 
@@ -190,7 +190,7 @@ class ReaderViewModel @Inject constructor(
      */
     fun navigateToContent() {
         if (_uiState.value.currentPageIndex == -1) {
-            Log.d(TAG, "从书籍详情页导航到内容页")
+            TimberLogger.d(TAG, "从书籍详情页导航到内容页")
             onIntent(ReaderIntent.PageFlip(FlipDirection.NEXT))
         }
     }
@@ -200,7 +200,7 @@ class ReaderViewModel @Inject constructor(
      */
     fun updateCurrentPageFromScroll(page: Int) {
         if (page != _uiState.value.currentPageIndex) {
-            Log.d(TAG, "滚动更新页面索引: ${_uiState.value.currentPageIndex} -> $page")
+            TimberLogger.d(TAG, "滚动更新页面索引: ${_uiState.value.currentPageIndex} -> $page")
             _uiState.value = _uiState.value.copy(currentPageIndex = page)
 
             // 页面变化后更新进度并保存
@@ -215,7 +215,7 @@ class ReaderViewModel @Inject constructor(
      * 保存当前阅读进度 - 兼容UI调用
      */
     fun saveCurrentReadingProgress() {
-        Log.d(TAG, "手动保存阅读进度")
+        TimberLogger.d(TAG, "手动保存阅读进度")
         viewModelScope.launch {
             saveProgressUseCase.execute(_uiState.value)
         }
@@ -230,11 +230,11 @@ class ReaderViewModel @Inject constructor(
         val virtualPages = state.virtualPages
 
         if (newIndex !in virtualPages.indices || newIndex == state.virtualPageIndex) {
-            Log.d(TAG, "滑动翻页索引无效或未变化: $newIndex")
+            TimberLogger.d(TAG, "滑动翻页索引无效或未变化: $newIndex")
             return
         }
 
-        Log.d(TAG, "更新滑动翻页索引: ${state.virtualPageIndex} -> $newIndex")
+        TimberLogger.d(TAG, "更新滑动翻页索引: ${state.virtualPageIndex} -> $newIndex")
 
         val newVirtualPage = virtualPages[newIndex]
         var updatedState = state.copy(virtualPageIndex = newIndex)
@@ -247,7 +247,7 @@ class ReaderViewModel @Inject constructor(
                 if (newVirtualPage.chapterId != state.currentChapter?.id) {
                     val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
                     if (newChapterIndex != -1) {
-                        Log.d(TAG, "滑动翻页切换章节: ${state.currentChapter?.chapterName} -> ${state.chapterList[newChapterIndex].chapterName}")
+                        TimberLogger.d(TAG, "滑动翻页切换章节: ${state.currentChapter?.chapterName} -> ${state.chapterList[newChapterIndex].chapterName}")
                         updatedState = updatedState.copy(
                             currentChapterIndex = newChapterIndex,
                             currentChapter = state.chapterList[newChapterIndex]
@@ -256,11 +256,11 @@ class ReaderViewModel @Inject constructor(
                 }
             }
             is VirtualPage.BookDetailPage -> {
-                Log.d(TAG, "滑动翻页到书籍详情页")
+                TimberLogger.d(TAG, "滑动翻页到书籍详情页")
                 updatedState = updatedState.copy(currentPageIndex = -1)
             }
             is VirtualPage.ChapterSection -> {
-                Log.d(TAG, "滑动翻页到章节区域")
+                TimberLogger.d(TAG, "滑动翻页到章节区域")
                 // 处理章节区域逻辑
             }
         }
@@ -294,7 +294,7 @@ class ReaderViewModel @Inject constructor(
                 if (chapterRange != null) {
                     val globalPage = chapterRange.startPage + pageIndex
                     val newProgress = globalPage.toFloat() / pageCountCache.totalPages.toFloat()
-                    Log.d(TAG, "更新阅读进度: 全局页面=$globalPage/${pageCountCache.totalPages}, 进度=${(newProgress * 100).toInt()}%")
+                    TimberLogger.d(TAG, "更新阅读进度: 全局页面=$globalPage/${pageCountCache.totalPages}, 进度=${(newProgress * 100).toInt()}%")
                     _uiState.value = _uiState.value.copy(readingProgress = newProgress.coerceIn(0f, 1f))
                 }
             }
@@ -308,7 +308,7 @@ class ReaderViewModel @Inject constructor(
         restoreProgress: Float? = null,
         preserveVirtualIndex: Boolean = false
     ) {
-        Log.d(TAG, "开始分割内容并构建虚拟页面: restoreProgress=$restoreProgress, preserve=$preserveVirtualIndex")
+        TimberLogger.d(TAG, "开始分割内容并构建虚拟页面: restoreProgress=$restoreProgress, preserve=$preserveVirtualIndex")
 
         val state = _uiState.value
 
@@ -321,7 +321,7 @@ class ReaderViewModel @Inject constructor(
 
         when (splitResult) {
             is SplitContentUseCase.SplitResult.Success -> {
-                Log.d(TAG, "内容分割成功: 页数=${splitResult.pageData.pages.size}, 安全页面索引=${splitResult.safePageIndex}")
+                TimberLogger.d(TAG, "内容分割成功: 页数=${splitResult.pageData.pages.size}, 安全页面索引=${splitResult.safePageIndex}")
                 _uiState.value = _uiState.value.copy(
                     currentPageData = splitResult.pageData,
                     currentPageIndex = splitResult.safePageIndex,
@@ -334,7 +334,7 @@ class ReaderViewModel @Inject constructor(
                 // 若仍未开始全书分页，启动后台任务
                 val st = _uiState.value
                 if (st.pageCountCache == null && st.containerSize != IntSize.Zero && st.density != null) {
-                    Log.d(TAG, "未检测到页数缓存，启动后台全书分页计算")
+                    TimberLogger.d(TAG, "未检测到页数缓存，启动后台全书分页计算")
                     paginationService.fetchAllBookContentAndPaginateInBackground(
                         bookId = st.bookId,
                         chapterList = st.chapterList,
@@ -353,19 +353,19 @@ class ReaderViewModel @Inject constructor(
                         )
                         if (cache != null) {
                             _uiState.value = _uiState.value.copy(pageCountCache = cache)
-                            Log.d(TAG, "后台分页完成写入页数缓存: 总页数=${cache.totalPages}")
+                            TimberLogger.d(TAG, "后台分页完成写入页数缓存: 总页数=${cache.totalPages}")
                             cacheFound = true
                             break
                         }
                         delay(500)
                     }
                     if (!cacheFound) {
-                        Log.w(TAG, "后台分页完成后仍未获取到页数缓存，放弃轮询")
+                        TimberLogger.w(TAG, "后台分页完成后仍未获取到页数缓存，放弃轮询")
                     }
                 }
             }
             is SplitContentUseCase.SplitResult.Failure -> {
-                Log.e(TAG, "内容分割失败", splitResult.error)
+                TimberLogger.e(TAG, "内容分割失败", splitResult.error)
                 _uiState.value = _uiState.value.copy(
                     hasError = true,
                     error = splitResult.error.message ?: "内容分割失败",
@@ -379,7 +379,7 @@ class ReaderViewModel @Inject constructor(
      * 使用BuildVirtualPagesUseCase构建虚拟页面
      */
     private suspend fun buildVirtualPages(preserveCurrentIndex: Boolean = true) {
-        Log.d(TAG, "构建虚拟页面: preserve=$preserveCurrentIndex")
+        TimberLogger.d(TAG, "构建虚拟页面: preserve=$preserveCurrentIndex")
 
         val buildResult = buildVirtualPagesUseCase.execute(
             state = _uiState.value,
@@ -388,7 +388,7 @@ class ReaderViewModel @Inject constructor(
 
         when (buildResult) {
             is BuildVirtualPagesUseCase.BuildResult.Success -> {
-                Log.d(TAG, "虚拟页面构建成功: 总页数=${buildResult.virtualPages.size}, 当前索引=${buildResult.newVirtualPageIndex}")
+                TimberLogger.d(TAG, "虚拟页面构建成功: 总页数=${buildResult.virtualPages.size}, 当前索引=${buildResult.newVirtualPageIndex}")
                     _uiState.value = _uiState.value.copy(
                     virtualPages = buildResult.virtualPages,
                     virtualPageIndex = buildResult.newVirtualPageIndex,
@@ -396,7 +396,7 @@ class ReaderViewModel @Inject constructor(
                 )
             }
             is BuildVirtualPagesUseCase.BuildResult.Failure -> {
-                Log.e(TAG, "虚拟页面构建失败", buildResult.error)
+                TimberLogger.e(TAG, "虚拟页面构建失败", buildResult.error)
                 // 不中断整个操作，只记录错误
             }
         }
@@ -411,7 +411,7 @@ class ReaderViewModel @Inject constructor(
         val currentContentPage = state.virtualPages.getOrNull(currentVirtualIndex) as? VirtualPage.ContentPage
 
         if (currentContentPage == null) {
-            Log.d(TAG, "预加载检查: 非内容页面，跳过")
+            TimberLogger.d(TAG, "预加载检查: 非内容页面，跳过")
             return
         }
 
@@ -419,14 +419,14 @@ class ReaderViewModel @Inject constructor(
         val currentChapterIndex = chapterList.indexOfFirst { it.id == currentContentPage.chapterId }
 
         if (currentChapterIndex < 0) {
-            Log.w(TAG, "预加载检查: 章节索引未找到")
+            TimberLogger.w(TAG, "预加载检查: 章节索引未找到")
             return
         }
 
-        Log.d(TAG, "预加载检查: 章节=${currentContentPage.chapterId}, 页面=${currentContentPage.pageIndex}")
+        TimberLogger.d(TAG, "预加载检查: 章节=${currentContentPage.chapterId}, 页面=${currentContentPage.pageIndex}")
 
         // 执行预加载检查
-        Log.d(TAG, "触发预加载检查")
+        TimberLogger.d(TAG, "触发预加载检查")
         preloadChaptersUseCase.execute(
             viewModelScope,
             chapterList,
@@ -445,7 +445,7 @@ class ReaderViewModel @Inject constructor(
      */
     private suspend fun checkAndRebuildVirtualPagesIfNeeded(currentChapterIndex: Int) {
         // 简化版本：直接重建虚拟页面
-        Log.d(TAG, "检查虚拟页面重建需求")
+        TimberLogger.d(TAG, "检查虚拟页面重建需求")
         buildVirtualPages(preserveCurrentIndex = true)
     }
 
@@ -457,12 +457,12 @@ class ReaderViewModel @Inject constructor(
         // 防重复触发检查
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastFlipTime < FLIP_COOLDOWN_MS) {
-            Log.d(TAG, "章节翻页防抖: 忽略重复操作")
+            TimberLogger.d(TAG, "章节翻页防抖: 忽略重复操作")
             return
         }
         lastFlipTime = currentTime
 
-        Log.d(TAG, "处理章节翻页: $direction")
+        TimberLogger.d(TAG, "处理章节翻页: $direction")
 
         _uiState.value = _uiState.value.copy(isSwitchingChapter = true)
 
@@ -477,13 +477,13 @@ class ReaderViewModel @Inject constructor(
 
         if (targetIndex in chapterList.indices) {
             val targetChapter = chapterList[targetIndex]
-            Log.d(TAG, "切换到章节: ${targetChapter.chapterName} (索引=$targetIndex)")
+            TimberLogger.d(TAG, "切换到章节: ${targetChapter.chapterName} (索引=$targetIndex)")
 
             // 使用SwitchChapterUseCase进行章节切换
             val result = switchChapterUseCase.execute(state, targetChapter.id, viewModelScope, direction)
             when (result) {
                 is SwitchChapterUseCase.SwitchResult.Success -> {
-                    Log.d(TAG, "章节切换成功")
+                    TimberLogger.d(TAG, "章节切换成功")
                     _uiState.value = _uiState.value.copy(
                         currentChapter = chapterList[result.newChapterIndex],
                         currentChapterIndex = result.newChapterIndex,
@@ -498,7 +498,7 @@ class ReaderViewModel @Inject constructor(
                     buildVirtualPages(preserveCurrentIndex = false)
                 }
                 is SwitchChapterUseCase.SwitchResult.Failure -> {
-                    Log.e(TAG, "章节切换失败", result.error)
+                    TimberLogger.e(TAG, "章节切换失败", result.error)
                     _uiState.value = _uiState.value.copy(
                         hasError = true,
                         error = result.error.message ?: "章节切换失败",
@@ -506,12 +506,12 @@ class ReaderViewModel @Inject constructor(
                     )
                 }
                 is SwitchChapterUseCase.SwitchResult.NoOp -> {
-                    Log.d(TAG, "章节切换无操作")
+                    TimberLogger.d(TAG, "章节切换无操作")
                     _uiState.value = _uiState.value.copy(isSwitchingChapter = false)
                 }
             }
         } else {
-            Log.d(TAG, "到达书籍边界: 无法继续翻页")
+            TimberLogger.d(TAG, "到达书籍边界: 无法继续翻页")
             _uiState.value = _uiState.value.copy(isSwitchingChapter = false)
         }
     }
@@ -532,7 +532,7 @@ class ReaderViewModel @Inject constructor(
                     else -> chapterRange.startPage + currentPageIndex
                 }
                 val newProgress = globalPage.toFloat() / pageCountCache.totalPages.toFloat()
-                Log.d(TAG, "更新状态阅读进度: 全局页面=$globalPage/${pageCountCache.totalPages}, 进度=${(newProgress * 100).toInt()}%")
+                TimberLogger.d(TAG, "更新状态阅读进度: 全局页面=$globalPage/${pageCountCache.totalPages}, 进度=${(newProgress * 100).toInt()}%")
                 return state.copy(readingProgress = newProgress.coerceIn(0f, 1f))
             }
         }
@@ -543,7 +543,7 @@ class ReaderViewModel @Inject constructor(
     // ======================= Intent处理方法 =======================
 
     private suspend fun handleInitReader(intent: ReaderIntent.InitReader) {
-        Log.d(TAG, "初始化阅读器: bookId=${intent.bookId}, chapterId=${intent.chapterId}")
+        TimberLogger.d(TAG, "初始化阅读器: bookId=${intent.bookId}, chapterId=${intent.chapterId}")
 
         _uiState.value = _uiState.value.copy(isLoading = true, bookId = intent.bookId)
 
@@ -553,7 +553,7 @@ class ReaderViewModel @Inject constructor(
             initialState = _uiState.value,
             scope = viewModelScope
         ).onSuccess { result ->
-            Log.d(TAG, "阅读器初始化成功: 章节=${result.initialChapter.chapterName}, 页面=${result.initialPageIndex}")
+            TimberLogger.d(TAG, "阅读器初始化成功: 章节=${result.initialChapter.chapterName}, 页面=${result.initialPageIndex}")
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 hasError = false,
@@ -575,12 +575,12 @@ class ReaderViewModel @Inject constructor(
             if (currentData != null && currentData.pages.size == 1 &&
                 _uiState.value.containerSize != androidx.compose.ui.unit.IntSize.Zero &&
                 _uiState.value.density != null) {
-                Log.d(TAG, "检测到初始分页为单页，容器信息已就绪，触发重新分页")
+                TimberLogger.d(TAG, "检测到初始分页为单页，容器信息已就绪，触发重新分页")
                 // 使用完整流程重新分割内容并重建虚拟页面
                 splitContentAndBuildVirtualPages(preserveVirtualIndex = false)
             }
         }.onFailure { error ->
-            Log.e(TAG, "阅读器初始化失败", error)
+            TimberLogger.e(TAG, "阅读器初始化失败", error)
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 hasError = true,
@@ -600,12 +600,12 @@ class ReaderViewModel @Inject constructor(
      * 6. 虚拟页面重建触发
      */
     private suspend fun handleFlipPage(intent: ReaderIntent.PageFlip) {
-        Log.d(TAG, "处理翻页操作: ${intent.direction}")
+        TimberLogger.d(TAG, "处理翻页操作: ${intent.direction}")
 
         val result = flipPageUseCase.execute(_uiState.value, intent.direction, viewModelScope)
         when (result) {
             is FlipPageUseCase.FlipResult.VirtualPageChanged -> {
-                Log.d(TAG, "虚拟页面翻页: 索引=${result.newVirtualPageIndex}, 页面类型=${result.newVirtualPage::class.simpleName}")
+                TimberLogger.d(TAG, "虚拟页面翻页: 索引=${result.newVirtualPageIndex}, 页面类型=${result.newVirtualPage::class.simpleName}")
 
                 // 检查是否为平移模式，如果是则需要特殊处理以避免循环更新
                 val isSlideMode = _uiState.value.readerSettings.pageFlipEffect == com.novel.page.read.components.PageFlipEffect.SLIDE
@@ -627,10 +627,10 @@ class ReaderViewModel @Inject constructor(
             }
 
             is FlipPageUseCase.FlipResult.ChapterChanged -> {
-                Log.d(TAG, "翻页触发章节切换")
+                TimberLogger.d(TAG, "翻页触发章节切换")
                 when (val switchResult = result.switchResult) {
                     is SwitchChapterUseCase.SwitchResult.Success -> {
-                        Log.d(TAG, "翻页触发章节切换成功")
+                        TimberLogger.d(TAG, "翻页触发章节切换成功")
                         _uiState.value = _uiState.value.copy(
                             currentChapter = _uiState.value.chapterList[switchResult.newChapterIndex],
                             currentChapterIndex = switchResult.newChapterIndex,
@@ -644,20 +644,20 @@ class ReaderViewModel @Inject constructor(
                         buildVirtualPages(preserveCurrentIndex = false)
                     }
                     is SwitchChapterUseCase.SwitchResult.Failure -> {
-                        Log.e(TAG, "翻页触发章节切换失败", switchResult.error)
+                        TimberLogger.e(TAG, "翻页触发章节切换失败", switchResult.error)
                         _uiState.value = _uiState.value.copy(
                             hasError = true,
                             error = switchResult.error.message ?: "翻页失败"
                         )
                     }
                     is SwitchChapterUseCase.SwitchResult.NoOp -> {
-                        Log.d(TAG, "翻页章节切换无操作")
+                        TimberLogger.d(TAG, "翻页章节切换无操作")
                     }
                 }
             }
 
             is FlipPageUseCase.FlipResult.NeedsVirtualPageRebuild -> {
-                Log.d(TAG, "检测到新的相邻章节已加载，处理翻页并重建虚拟页面")
+                TimberLogger.d(TAG, "检测到新的相邻章节已加载，处理翻页并重建虚拟页面")
 
                 // 首先，像处理普通翻页一样更新状态
                 val isSlideMode = _uiState.value.readerSettings.pageFlipEffect == com.novel.page.read.components.PageFlipEffect.SLIDE
@@ -678,7 +678,7 @@ class ReaderViewModel @Inject constructor(
             }
 
             is FlipPageUseCase.FlipResult.Failure -> {
-                Log.e(TAG, "翻页失败", result.error)
+                TimberLogger.e(TAG, "翻页失败", result.error)
                 _uiState.value = _uiState.value.copy(
                     hasError = true,
                     error = result.error.message ?: "翻页失败"
@@ -686,7 +686,7 @@ class ReaderViewModel @Inject constructor(
             }
 
             is FlipPageUseCase.FlipResult.NoOp -> {
-                Log.d(TAG, "翻页无操作")
+                TimberLogger.d(TAG, "翻页无操作")
             }
         }
     }
@@ -696,7 +696,7 @@ class ReaderViewModel @Inject constructor(
      * 根据old.txt中的updateSlideFlipState逻辑实现
      */
     private fun updateSlideFlipState(newVirtualPage: com.novel.page.read.viewmodel.VirtualPage, newVirtualIndex: Int) {
-        Log.d(TAG, "更新平移模式状态: 索引=$newVirtualIndex, 页面=${newVirtualPage::class.simpleName}")
+        TimberLogger.d(TAG, "更新平移模式状态: 索引=$newVirtualIndex, 页面=${newVirtualPage::class.simpleName}")
 
         when (newVirtualPage) {
             is com.novel.page.read.viewmodel.VirtualPage.ContentPage -> {
@@ -709,7 +709,7 @@ class ReaderViewModel @Inject constructor(
                         val newChapter = state.chapterList.getOrNull(newChapterIndex)
 
                         if (newChapter != null) {
-                            Log.d(TAG, "平移模式章节切换: ${state.currentChapter?.chapterName} -> ${newChapter.chapterName}")
+                            TimberLogger.d(TAG, "平移模式章节切换: ${state.currentChapter?.chapterName} -> ${newChapter.chapterName}")
                             var updatedState = _uiState.value.copy(
                                 currentChapter = newChapter,
                                 currentChapterIndex = newChapterIndex,
@@ -733,9 +733,9 @@ class ReaderViewModel @Inject constructor(
                         val newChapterIndex = state.chapterList.indexOfFirst { it.id == newVirtualPage.chapterId }
                         val newChapter = state.chapterList.getOrNull(newChapterIndex)
                         if (newChapter == null) {
-                            Log.e(TAG, "目标章节未在章节列表中: ${newVirtualPage.chapterId}")
+                            TimberLogger.e(TAG, "目标章节未在章节列表中: ${newVirtualPage.chapterId}")
                         } else {
-                            Log.d(TAG, "章节数据未预加载，主动加载章节: ${newChapter.chapterName}")
+                            TimberLogger.d(TAG, "章节数据未预加载，主动加载章节: ${newChapter.chapterName}")
                             viewModelScope.launch {
                                 val switchResult = switchChapterUseCase.execute(_uiState.value, newVirtualPage.chapterId, this, null)
                                 when (switchResult) {
@@ -753,7 +753,7 @@ class ReaderViewModel @Inject constructor(
                                         // 重新构建虚拟页面，确保后续滑动正确
                                         buildVirtualPages(preserveCurrentIndex = true)
                                     }
-                                    is SwitchChapterUseCase.SwitchResult.Failure -> Log.e(TAG, "主动切换章节失败", switchResult.error)
+                                    is SwitchChapterUseCase.SwitchResult.Failure -> TimberLogger.e(TAG, "主动切换章节失败", switchResult.error)
                                     else -> {}
                                 }
                             }
@@ -761,7 +761,7 @@ class ReaderViewModel @Inject constructor(
                     }
                 } else {
                     // 同章节内翻页
-                    Log.d(TAG, "平移模式同章节翻页: 页面${state.currentPageIndex} -> ${newVirtualPage.pageIndex}")
+                    TimberLogger.d(TAG, "平移模式同章节翻页: 页面${state.currentPageIndex} -> ${newVirtualPage.pageIndex}")
                     var updatedState = _uiState.value.copy(
                         currentPageIndex = newVirtualPage.pageIndex,
                         virtualPageIndex = newVirtualIndex
@@ -773,7 +773,7 @@ class ReaderViewModel @Inject constructor(
                 }
             }
             is com.novel.page.read.viewmodel.VirtualPage.BookDetailPage -> {
-                Log.d(TAG, "平移模式切换到书籍详情页")
+                TimberLogger.d(TAG, "平移模式切换到书籍详情页")
                 var updatedState = _uiState.value.copy(
                     currentPageIndex = -1,
                     virtualPageIndex = newVirtualIndex
@@ -784,7 +784,7 @@ class ReaderViewModel @Inject constructor(
                 _uiState.value = updatedState
             }
             is com.novel.page.read.viewmodel.VirtualPage.ChapterSection -> {
-                Log.d(TAG, "平移模式切换到章节区域")
+                TimberLogger.d(TAG, "平移模式切换到章节区域")
                 _uiState.value = _uiState.value.copy(virtualPageIndex = newVirtualIndex)
             }
         }
@@ -795,7 +795,7 @@ class ReaderViewModel @Inject constructor(
      * 根据old.txt中的updatePageFlipState逻辑实现
      */
     private fun updatePageFlipState(newVirtualPage: com.novel.page.read.viewmodel.VirtualPage) {
-        Log.d(TAG, "更新翻页状态: 页面=${newVirtualPage::class.simpleName}")
+        TimberLogger.d(TAG, "更新翻页状态: 页面=${newVirtualPage::class.simpleName}")
 
         when (newVirtualPage) {
             is com.novel.page.read.viewmodel.VirtualPage.ContentPage -> {
@@ -808,7 +808,7 @@ class ReaderViewModel @Inject constructor(
                         val newChapter = state.chapterList.getOrNull(newChapterIndex)
 
                         if (newChapter != null) {
-                            Log.d(TAG, "翻页模式章节切换: ${state.currentChapter?.chapterName} -> ${newChapter.chapterName}")
+                            TimberLogger.d(TAG, "翻页模式章节切换: ${state.currentChapter?.chapterName} -> ${newChapter.chapterName}")
                             var updatedState = _uiState.value.copy(
                                 currentChapter = newChapter,
                                 currentChapterIndex = newChapterIndex,
@@ -830,7 +830,7 @@ class ReaderViewModel @Inject constructor(
                     }
                 } else {
                     // 同章节内翻页
-                    Log.d(TAG, "翻页模式同章节翻页: 页面${state.currentPageIndex} -> ${newVirtualPage.pageIndex}")
+                    TimberLogger.d(TAG, "翻页模式同章节翻页: 页面${state.currentPageIndex} -> ${newVirtualPage.pageIndex}")
                     var updatedState = _uiState.value.copy(currentPageIndex = newVirtualPage.pageIndex)
 
                     // 更新阅读进度
@@ -845,7 +845,7 @@ class ReaderViewModel @Inject constructor(
 
             }
             is com.novel.page.read.viewmodel.VirtualPage.BookDetailPage -> {
-                Log.d(TAG, "翻页模式切换到书籍详情页")
+                TimberLogger.d(TAG, "翻页模式切换到书籍详情页")
                 var updatedState = _uiState.value.copy(currentPageIndex = -1)
 
                 // 更新阅读进度
@@ -858,20 +858,20 @@ class ReaderViewModel @Inject constructor(
                 }
             }
             is com.novel.page.read.viewmodel.VirtualPage.ChapterSection -> {
-                Log.d(TAG, "翻页模式章节区域（暂不支持）")
+                TimberLogger.d(TAG, "翻页模式章节区域（暂不支持）")
                 // 章节模式暂不支持
             }
         }
     }
 
     private suspend fun handleSwitchToChapter(intent: ReaderIntent.SwitchToChapter) {
-        Log.d(TAG, "切换到指定章节: ${intent.chapterId}")
+        TimberLogger.d(TAG, "切换到指定章节: ${intent.chapterId}")
 
         _uiState.value = _uiState.value.copy(isSwitchingChapter = true)
         val result = switchChapterUseCase.execute(_uiState.value, intent.chapterId, viewModelScope)
         when (result) {
             is SwitchChapterUseCase.SwitchResult.Success -> {
-                Log.d(TAG, "章节切换成功")
+                TimberLogger.d(TAG, "章节切换成功")
                 _uiState.value = _uiState.value.copy(
                     isSwitchingChapter = false,
                     currentChapterIndex = result.newChapterIndex,
@@ -886,7 +886,7 @@ class ReaderViewModel @Inject constructor(
                 buildVirtualPages(preserveCurrentIndex = false)
             }
             is SwitchChapterUseCase.SwitchResult.Failure -> {
-                Log.e(TAG, "章节切换失败", result.error)
+                TimberLogger.e(TAG, "章节切换失败", result.error)
                 _uiState.value = _uiState.value.copy(
                     isSwitchingChapter = false,
                     hasError = true,
@@ -894,66 +894,66 @@ class ReaderViewModel @Inject constructor(
                 )
             }
             is SwitchChapterUseCase.SwitchResult.NoOp -> {
-                Log.d(TAG, "章节切换无操作")
+                TimberLogger.d(TAG, "章节切换无操作")
                 _uiState.value = _uiState.value.copy(isSwitchingChapter = false)
             }
         }
     }
 
     private suspend fun handleUpdateSettings(intent: ReaderIntent.UpdateSettings) {
-        Log.d(TAG, "开始更新阅读器设置")
-        Log.d(TAG, "新设置详情:")
-        Log.d(TAG, "  - 字体大小: ${intent.settings.fontSize}sp")
-        Log.d(TAG, "  - 亮度: ${(intent.settings.brightness * 100).toInt()}%")
-        Log.d(TAG, "  - 背景颜色: ${colorToHex(intent.settings.backgroundColor)}")
-        Log.d(TAG, "  - 文字颜色: ${colorToHex(intent.settings.textColor)}")
-        Log.d(TAG, "  - 翻页效果: ${intent.settings.pageFlipEffect}")
+        TimberLogger.d(TAG, "开始更新阅读器设置")
+        TimberLogger.d(TAG, "新设置详情:")
+        TimberLogger.d(TAG, "  - 字体大小: ${intent.settings.fontSize}sp")
+        TimberLogger.d(TAG, "  - 亮度: ${(intent.settings.brightness * 100).toInt()}%")
+        TimberLogger.d(TAG, "  - 背景颜色: ${colorToHex(intent.settings.backgroundColor)}")
+        TimberLogger.d(TAG, "  - 文字颜色: ${colorToHex(intent.settings.textColor)}")
+        TimberLogger.d(TAG, "  - 翻页效果: ${intent.settings.pageFlipEffect}")
 
         val oldSettings = _uiState.value.readerSettings
-        Log.d(TAG, "当前设置:")
-        Log.d(TAG, "  - 字体大小: ${oldSettings.fontSize}sp")
-        Log.d(TAG, "  - 背景颜色: ${colorToHex(oldSettings.backgroundColor)}")
-        Log.d(TAG, "  - 翻页效果: ${oldSettings.pageFlipEffect}")
+        TimberLogger.d(TAG, "当前设置:")
+        TimberLogger.d(TAG, "  - 字体大小: ${oldSettings.fontSize}sp")
+        TimberLogger.d(TAG, "  - 背景颜色: ${colorToHex(oldSettings.backgroundColor)}")
+        TimberLogger.d(TAG, "  - 翻页效果: ${oldSettings.pageFlipEffect}")
 
         val result = updateSettingsUseCase.execute(intent.settings, _uiState.value)
         when (result) {
             is UpdateSettingsUseCase.UpdateResult.Success -> {
-                Log.d(TAG, "设置更新成功")
-                Log.d(TAG, "是否需要重新分页: ${result.newPageData != null}")
+                TimberLogger.d(TAG, "设置更新成功")
+                TimberLogger.d(TAG, "是否需要重新分页: ${result.newPageData != null}")
 
                 val updatedState = result.newPageData?.let {
-                    Log.d(TAG, "应用新的分页数据: 页数=${it.pages.size}, 新页面索引=${result.newPageIndex}")
+                    TimberLogger.d(TAG, "应用新的分页数据: 页数=${it.pages.size}, 新页面索引=${result.newPageIndex}")
                     _uiState.value.copy(
                         readerSettings = intent.settings,
                         currentPageData = it,
                         currentPageIndex = result.newPageIndex
                     )
                 } ?: run {
-                    Log.d(TAG, "只更新设置，无需重新分页")
+                    TimberLogger.d(TAG, "只更新设置，无需重新分页")
                     _uiState.value.copy(readerSettings = intent.settings)
                 }
 
                 _uiState.value = updatedState
-                Log.d(TAG, "UI状态更新完成，当前背景颜色: ${colorToHex(_uiState.value.readerSettings.backgroundColor)}")
+                TimberLogger.d(TAG, "UI状态更新完成，当前背景颜色: ${colorToHex(_uiState.value.readerSettings.backgroundColor)}")
 
                 // 如果内容重新分页，重建虚拟页面
                 if (result.newPageData != null) {
-                    Log.d(TAG, "重新分页后重建虚拟页面")
+                    TimberLogger.d(TAG, "重新分页后重建虚拟页面")
                     buildVirtualPages(preserveCurrentIndex = true)
                 } else {
-                    Log.d(TAG, "设置更新完成，无需重建虚拟页面")
+                    TimberLogger.d(TAG, "设置更新完成，无需重建虚拟页面")
                 }
             }
         }
     }
 
     private suspend fun handleSeekToProgress(intent: ReaderIntent.SeekToProgress) {
-        Log.d(TAG, "跳转到进度: ${(intent.progress * 100).toInt()}%")
+        TimberLogger.d(TAG, "跳转到进度: ${(intent.progress * 100).toInt()}%")
 
         val result = seekProgressUseCase.execute(intent.progress, _uiState.value)
         when (result) {
             is SeekProgressUseCase.SeekResult.Success -> {
-                Log.d(TAG, "进度跳转成功")
+                TimberLogger.d(TAG, "进度跳转成功")
                 _uiState.value = _uiState.value.copy(
                     currentChapterIndex = result.newChapterIndex,
                     currentPageData = result.newPageData,
@@ -965,14 +965,14 @@ class ReaderViewModel @Inject constructor(
                 buildVirtualPages(preserveCurrentIndex = false)
             }
             is SeekProgressUseCase.SeekResult.Failure -> {
-                Log.e(TAG, "进度跳转失败", result.error)
+                TimberLogger.e(TAG, "进度跳转失败", result.error)
                 _uiState.value = _uiState.value.copy(
                     hasError = true,
                     error = result.error.message ?: "进度跳转失败"
                 )
             }
             is SeekProgressUseCase.SeekResult.NoOp -> {
-                Log.d(TAG, "进度跳转无操作")
+                TimberLogger.d(TAG, "进度跳转无操作")
             }
         }
     }
@@ -981,11 +981,11 @@ class ReaderViewModel @Inject constructor(
         val oldState = _uiState.value
         if (intent.size.width == 0 || intent.size.height == 0 ||
             (oldState.containerSize == intent.size && oldState.density == intent.density)) {
-            Log.d(TAG, "容器尺寸无变化，跳过更新")
+            TimberLogger.d(TAG, "容器尺寸无变化，跳过更新")
             return
         }
 
-        Log.d(TAG, "更新容器尺寸: ${oldState.containerSize} -> ${intent.size}")
+        TimberLogger.d(TAG, "更新容器尺寸: ${oldState.containerSize} -> ${intent.size}")
         _uiState.value = _uiState.value.copy(containerSize = intent.size, density = intent.density)
 
         if (oldState.isSuccess) {
@@ -1013,7 +1013,7 @@ class ReaderViewModel @Inject constructor(
                     )
                     if (pageCountCache != null) {
                         _uiState.value = _uiState.value.copy(pageCountCache = pageCountCache)
-                        Log.d(TAG, "页数缓存更新: 总页数=${pageCountCache.totalPages}")
+                        TimberLogger.d(TAG, "页数缓存更新: 总页数=${pageCountCache.totalPages}")
                     }
                 }
             }
@@ -1021,7 +1021,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     private fun handleRetry() {
-        Log.d(TAG, "重试初始化")
+        TimberLogger.d(TAG, "重试初始化")
         val bookId = _uiState.value.bookId
         val chapterId = _uiState.value.currentChapter?.id
         _uiState.value = ReaderUiState() // 重置状态
@@ -1030,7 +1030,7 @@ class ReaderViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        Log.d(TAG, "ReaderViewModel销毁，保存进度并清理资源")
+        TimberLogger.d(TAG, "ReaderViewModel销毁，保存进度并清理资源")
         viewModelScope.launch {
             saveProgressUseCase.execute(_uiState.value)
         }

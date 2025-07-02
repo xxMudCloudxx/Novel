@@ -2,7 +2,7 @@
 
 package com.novel.page.component.pagecurl.page
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector4D
 import androidx.compose.animation.core.VectorConverter
@@ -65,7 +65,7 @@ internal suspend fun PointerInputScope.detectCurlGestures(
     var config: DragConfig? = null
     var startOffset: Offset = Offset.Zero
 
-    Log.d(TAG, "开始监听卷曲手势")
+    TimberLogger.d(TAG, "开始监听卷曲手势")
 
     detectCustomDragGestures(
         onDragStart = { start, end ->
@@ -74,7 +74,7 @@ internal suspend fun PointerInputScope.detectCurlGestures(
             val hasConfig = config != null
             
             if (hasConfig) {
-                Log.v(TAG, "开始拖拽 - 起始位置: $start")
+                TimberLogger.v(TAG, "开始拖拽 - 起始位置: $start")
             }
             
             hasConfig
@@ -97,7 +97,7 @@ internal suspend fun PointerInputScope.detectCurlGestures(
                 }
 
                 val isSuccessful = complete && isDragSucceed(startOffset, flingEndOffset)
-                Log.d(TAG, "拖拽结束 - 成功: $isSuccessful, 完成: $complete")
+                TimberLogger.d(TAG, "拖拽结束 - 成功: $isSuccessful, 完成: $complete")
 
                 scope.launch {
                     if (isSuccessful) {
@@ -122,7 +122,7 @@ internal suspend fun PointerInputScope.detectCurlGestures(
         onDrag = { change, _ ->
             config?.apply {
                 if (!isEnabled()) {
-                    Log.w(TAG, "拖拽被禁用，取消手势")
+                    TimberLogger.w(TAG, "拖拽被禁用，取消手势")
                     throw CancellationException()
                 }
 

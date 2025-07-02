@@ -1,7 +1,7 @@
 package com.novel.page.component
 
 import android.annotation.SuppressLint
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -126,7 +126,7 @@ fun NovelImageView(
         when {
             isLoading -> {
                 // 添加日志：加载中状态
-                Log.d("NovelImageView", "显示加载中状态")
+                TimberLogger.d("NovelImageView", "显示加载中状态")
                 // 加载中状态
                 Box(
                     modifier = imgModifier,
@@ -138,7 +138,7 @@ fun NovelImageView(
 
             error != null -> {
                 // 添加日志：错误状态
-                Log.e("NovelImageView", "显示错误状态: $error")
+                TimberLogger.e("NovelImageView", "显示错误状态: $error")
                 // 错误状态
                 Box(
                     modifier = imgModifier,
@@ -150,7 +150,7 @@ fun NovelImageView(
 
             processedImageUrl == null -> {
                 // 添加日志：空URL状态
-                Log.w("NovelImageView", "图片URL为空，显示错误占位")
+                TimberLogger.w("NovelImageView", "图片URL为空，显示错误占位")
                 // 空 URL 显示错误占位
                 Box(
                     modifier = imgModifier,
@@ -182,12 +182,12 @@ fun NovelImageView(
                     when (painter.state) {
                         is AsyncImagePainter.State.Loading -> {
                             // 添加日志：图片加载中
-                            Log.v("NovelImageView", "图片加载中: $processedImageUrl")
+                            TimberLogger.v("NovelImageView", "图片加载中: $processedImageUrl")
                             placeholderContent()
                         }
                         is AsyncImagePainter.State.Error -> {
                             // 添加日志：图片加载失败
-                            Log.e("NovelImageView", "图片加载失败: $processedImageUrl")
+                            TimberLogger.e("NovelImageView", "图片加载失败: $processedImageUrl")
                             // 图片加载失败，显示错误占位
                             errorContent(onRetry)
                         }

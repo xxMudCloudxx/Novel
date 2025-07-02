@@ -1,6 +1,6 @@
 package com.novel.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChain
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChainType
@@ -54,11 +54,11 @@ class AuthViewModel @Inject constructor(
                 
                 val isValid = token != null && currentTime < expiresAt
                 
-                Log.d(TAG, "Token验证结果: $isValid (Token存在: ${token != null}, 过期时间: $expiresAt, 当前时间: $currentTime)")
+                TimberLogger.d(TAG, "Token验证结果: $isValid (Token存在: ${token != null}, 过期时间: $expiresAt, 当前时间: $currentTime)")
                 
                 isValid
             } catch (e: Exception) {
-                Log.e(TAG, "Token验证失败", e)
+                TimberLogger.e(TAG, "Token验证失败", e)
                 false
             }
         }

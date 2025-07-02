@@ -1,6 +1,6 @@
 package com.novel.page.search.usecase
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.SearchRepository
 import javax.inject.Inject
 
@@ -24,9 +24,9 @@ class GetSearchHistoryUseCase @Inject constructor(
      * @return 搜索历史字符串列表
      */
     operator fun invoke(): List<String> {
-        Log.d(TAG, "获取搜索历史")
+        TimberLogger.d(TAG, "获取搜索历史")
         val history = searchRepository.getSearchHistory()
-        Log.d(TAG, "搜索历史数量: ${history.size}")
+        TimberLogger.d(TAG, "搜索历史数量: ${history.size}")
         return history
     }
 } 

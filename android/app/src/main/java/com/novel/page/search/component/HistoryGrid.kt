@@ -1,6 +1,6 @@
 package com.novel.page.search.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -38,7 +38,7 @@ fun SearchHistorySection(
     val TAG = "SearchHistorySection"
     
     // 记录历史记录状态
-    Log.d(TAG, "渲染搜索历史: 总数=${history.size}, 展开状态=$isExpanded")
+    TimberLogger.d(TAG, "渲染搜索历史: 总数=${history.size}, 展开状态=$isExpanded")
     
     Column(
         modifier = Modifier
@@ -64,7 +64,7 @@ fun SearchHistorySection(
                     NovelText(
                         modifier = Modifier.debounceClickable(
                             onClick = { 
-                                Log.d(TAG, "切换历史展开状态: $isExpanded -> ${!isExpanded}")
+                                TimberLogger.d(TAG, "切换历史展开状态: $isExpanded -> ${!isExpanded}")
                                 onToggleExpansion() 
                             }
                         ),
@@ -79,7 +79,7 @@ fun SearchHistorySection(
                     modifier = Modifier
                         .debounceClickable(
                             onClick = {
-                                Log.d(TAG, "清空所有搜索历史")
+                                TimberLogger.d(TAG, "清空所有搜索历史")
                                 onHistoryClick("")
                             }
                         )
@@ -119,7 +119,7 @@ fun HistoryGrid(
     val TAG = "HistoryGrid"
     
     // 记录网格渲染信息
-    Log.v(TAG, "渲染历史网格: ${history.size}条记录")
+    TimberLogger.v(TAG, "渲染历史网格: ${history.size}条记录")
     
     // 将历史记录按两列分组
     val chunkedHistory = history.chunked(2)
@@ -138,7 +138,7 @@ fun HistoryGrid(
                     HistoryItem(
                         text = rowItems[0],
                         onClick = { 
-                            Log.d(TAG, "点击历史记录: ${rowItems[0]}")
+                            TimberLogger.d(TAG, "点击历史记录: ${rowItems[0]}")
                             onItemClick(rowItems[0]) 
                         },
                         modifier = Modifier.weight(1f)
@@ -152,7 +152,7 @@ fun HistoryGrid(
                     HistoryItem(
                         text = rowItems[1],
                         onClick = { 
-                            Log.d(TAG, "点击历史记录: ${rowItems[1]}")
+                            TimberLogger.d(TAG, "点击历史记录: ${rowItems[1]}")
                             onItemClick(rowItems[1]) 
                         },
                         modifier = Modifier.weight(1f)

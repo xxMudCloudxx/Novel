@@ -1,6 +1,6 @@
 package com.novel.page.search.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -83,7 +83,7 @@ object SearchUtils {
      * 记录搜索事件
      */
     fun logSearchEvent(query: String, resultCount: Int) {
-        Log.d(TAG, "搜索事件: 关键词='$query', 结果数量=$resultCount")
+        TimberLogger.d(TAG, "搜索事件: 关键词='$query', 结果数量=$resultCount")
     }
     
     fun formatWordCount(wordCount: Int): String {

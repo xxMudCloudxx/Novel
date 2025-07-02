@@ -1,6 +1,6 @@
 package com.novel.page.search.usecase
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.SearchRepository
 import com.novel.page.search.repository.PageRespDtoBookInfoRespDto
 import com.novel.page.search.viewmodel.FilterState
@@ -45,7 +45,7 @@ class SearchBooksUseCase @Inject constructor(
         pageSize: Int = 20
     ): Result<PageRespDtoBookInfoRespDto> {
         return try {
-            Log.d(TAG, "开始搜索书籍: keyword='$keyword', page=$pageNum")
+            TimberLogger.d(TAG, "开始搜索书籍: keyword='$keyword', page=$pageNum")
             
             val response = searchRepository.searchBooks(
                 keyword = keyword,
@@ -62,7 +62,7 @@ class SearchBooksUseCase @Inject constructor(
             )
             
             if (response?.ok == true && response.data != null) {
-                Log.d(TAG, "搜索成功: 共${response.data.total}条结果")
+                TimberLogger.d(TAG, "搜索成功: 共${response.data.total}条结果")
                 
                 // 转换SearchService的响应数据为期望的类型
                 val pageResp = PageRespDtoBookInfoRespDto(
@@ -96,11 +96,11 @@ class SearchBooksUseCase @Inject constructor(
                 Result.success(pageResp)
             } else {
                 val errorMsg = response?.message ?: "搜索失败"
-                Log.w(TAG, "搜索失败: $errorMsg")
+                TimberLogger.w(TAG, "搜索失败: $errorMsg")
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "搜索异常", e)
+            TimberLogger.e(TAG, "搜索异常", e)
             Result.failure(e)
         }
     }

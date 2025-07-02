@@ -1,6 +1,6 @@
 package com.novel.utils.rn
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.facebook.react.bridge.*
 import android.os.Handler
 import android.os.Looper
@@ -45,18 +45,18 @@ class NavigationUtilModule(
             settingsUtilsField.get(application) as? SettingsUtils
                 ?: throw IllegalStateException("SettingsUtils not found in MainApplication")
         } catch (e: Exception) {
-            Log.e(TAG, "获取SettingsUtils失败", e)
+            TimberLogger.e(TAG, "获取SettingsUtils失败", e)
             throw e
         }
     }
 
     /** 全局主题管理器实例 */
     private val themeManager by lazy { 
-        Log.d(TAG, "初始化ThemeManager")
+        TimberLogger.d(TAG, "初始化ThemeManager")
         val manager = ThemeManager.getInstance(reactContext.applicationContext)
         // 设置系统主题变化回调
         manager.setSystemThemeChangeCallback { actualTheme ->
-            Log.d(TAG, "系统主题变化回调: $actualTheme")
+            TimberLogger.d(TAG, "系统主题变化回调: $actualTheme")
             sendThemeChangeEvent(actualTheme)
         }
         manager
@@ -70,7 +70,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun goToLogin() {
-        Log.d(TAG, "导航到登录页面")
+        TimberLogger.d(TAG, "导航到登录页面")
         // 确保在主线程执行导航
         Handler(Looper.getMainLooper()).post {
             NavViewModelHolder.navController.value?.navigate("login")
@@ -82,7 +82,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun navigateToSettings() {
-        Log.d(TAG, "导航到设置页面")
+        TimberLogger.d(TAG, "导航到设置页面")
         Handler(Looper.getMainLooper()).post {
             NavViewModelHolder.navController.value?.navigate("settings")
         }
@@ -94,15 +94,15 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun navigateBack(componentName: String?) {
-        Log.d(TAG, "返回上一页, 准备销毁的组件: $componentName")
+        TimberLogger.d(TAG, "返回上一页, 准备销毁的组件: $componentName")
         
         // 如果提供了组件名，则清理其缓存
         if (!componentName.isNullOrEmpty()) {
             try {
                 (reactContext.applicationContext as? MainApplication)?.clearReactRootViewCache(componentName)
-                Log.d(TAG, "已清理 $componentName 的缓存")
+                TimberLogger.d(TAG, "已清理 $componentName 的缓存")
             } catch (e: Exception) {
-                Log.e(TAG, "清理 $componentName 的缓存失败", e)
+                TimberLogger.e(TAG, "清理 $componentName 的缓存失败", e)
             }
         }
         
@@ -120,14 +120,14 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun clearAllCache(callback: Callback) {
-        Log.d(TAG, "开始清除所有缓存")
+        TimberLogger.d(TAG, "开始清除所有缓存")
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val result = settingsUtils.clearAllCache()
-                Log.d(TAG, "缓存清除完成: $result")
+                TimberLogger.d(TAG, "缓存清除完成: $result")
                 callback.invoke(null, result)
             } catch (e: Exception) {
-                Log.e(TAG, "清除缓存失败", e)
+                TimberLogger.e(TAG, "清除缓存失败", e)
                 callback.invoke(e.message, null)
             }
         }
@@ -141,17 +141,17 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun calculateCacheSize(callback: Callback) {
-        Log.d(TAG, "开始计算缓存大小")
+        TimberLogger.d(TAG, "开始计算缓存大小")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val size = settingsUtils.calculateCacheSize()
                 val formattedSize = settingsUtils.formatCacheSize(size)
-                Log.d(TAG, "缓存大小计算完成: $formattedSize")
+                TimberLogger.d(TAG, "缓存大小计算完成: $formattedSize")
                 Handler(Looper.getMainLooper()).post {
                     callback.invoke(null, formattedSize)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "计算缓存大小失败", e)
+                TimberLogger.e(TAG, "计算缓存大小失败", e)
                 Handler(Looper.getMainLooper()).post {
                     callback.invoke(e.message, null)
                 }
@@ -168,7 +168,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun toggleNightMode(callback: Callback) {
-        Log.d(TAG, "切换夜间模式")
+        TimberLogger.d(TAG, "切换夜间模式")
         try {
             val currentMode = themeManager.getCurrentThemeMode()
             val newMode = when (currentMode) {
@@ -189,13 +189,13 @@ class NavigationUtilModule(
             
             // 发送实际主题到RN端
             val actualTheme = themeManager.getCurrentActualThemeMode()
-            Log.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $newMode)")
+            TimberLogger.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $newMode)")
             sendThemeChangeEvent(actualTheme)
             
-            Log.d(TAG, "夜间模式切换完成: $currentMode -> $newMode")
+            TimberLogger.d(TAG, "夜间模式切换完成: $currentMode -> $newMode")
             callback.invoke(null, "已切换到${if (newMode == "dark") "深色" else "浅色"}模式")
         } catch (e: Exception) {
-            Log.e(TAG, "切换夜间模式失败", e)
+            TimberLogger.e(TAG, "切换夜间模式失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -208,7 +208,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun setNightMode(mode: String, callback: Callback) {
-        Log.d(TAG, "设置夜间模式: $mode")
+        TimberLogger.d(TAG, "设置夜间模式: $mode")
         try {
             settingsUtils.setNightMode(mode)
             
@@ -217,12 +217,12 @@ class NavigationUtilModule(
             
             // 发送实际主题到RN端
             val actualTheme = themeManager.getCurrentActualThemeMode()
-            Log.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $mode)")
+            TimberLogger.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $mode)")
             sendThemeChangeEvent(actualTheme)
             
             callback.invoke(null, "夜间模式已设置为: $mode")
         } catch (e: Exception) {
-            Log.e(TAG, "设置夜间模式失败", e)
+            TimberLogger.e(TAG, "设置夜间模式失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -236,7 +236,7 @@ class NavigationUtilModule(
             val mode = themeManager.getCurrentThemeMode()
             callback.invoke(null, mode)
         } catch (e: Exception) {
-            Log.w(TAG, "获取当前夜间模式失败", e)
+            TimberLogger.e(TAG, "获取当前夜间模式失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -248,7 +248,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun setFollowSystemTheme(follow: Boolean, callback: Callback) {
-        Log.d(TAG, "设置跟随系统主题: $follow")
+        TimberLogger.d(TAG, "设置跟随系统主题: $follow")
         try {
             settingsUtils.setFollowSystemTheme(follow)
             
@@ -258,13 +258,13 @@ class NavigationUtilModule(
                 
                 // 立即发送当前的实际主题状态到RN端
                 val actualTheme = themeManager.getCurrentActualThemeMode()
-                Log.d(TAG, "开启跟随系统主题，当前实际主题: $actualTheme")
+                TimberLogger.d(TAG, "开启跟随系统主题，当前实际主题: $actualTheme")
                 sendThemeChangeEvent(actualTheme)
             }
             
             callback.invoke(null, "跟随系统主题已设置为: $follow")
         } catch (e: Exception) {
-            Log.e(TAG, "设置跟随系统主题失败", e)
+            TimberLogger.e(TAG, "设置跟随系统主题失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -278,7 +278,7 @@ class NavigationUtilModule(
             val follow = settingsUtils.isFollowSystemTheme()
             callback.invoke(null, follow)
         } catch (e: Exception) {
-            Log.w(TAG, "获取跟随系统主题状态失败", e)
+            TimberLogger.e(TAG, "获取跟随系统主题状态失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -290,12 +290,12 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun setAutoNightMode(enabled: Boolean, callback: Callback) {
-        Log.d(TAG, "设置自动切换夜间模式: $enabled")
+        TimberLogger.d(TAG, "设置自动切换夜间模式: $enabled")
         try {
             settingsUtils.setAutoNightMode(enabled)
             callback.invoke(null, "自动切换夜间模式已设置为: $enabled")
         } catch (e: Exception) {
-            Log.e(TAG, "设置自动切换夜间模式失败", e)
+            TimberLogger.e(TAG, "设置自动切换夜间模式失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -309,7 +309,7 @@ class NavigationUtilModule(
             val enabled = settingsUtils.isAutoNightModeEnabled()
             callback.invoke(null, enabled)
         } catch (e: Exception) {
-            Log.w(TAG, "获取自动切换夜间模式状态失败", e)
+            TimberLogger.e(TAG, "获取自动切换夜间模式状态失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -321,10 +321,10 @@ class NavigationUtilModule(
     fun getCurrentActualTheme(callback: Callback) {
         try {
             val actualTheme = themeManager.getCurrentActualThemeMode()
-            Log.d(TAG, "获取当前实际主题: $actualTheme")
+            TimberLogger.d(TAG, "获取当前实际主题: $actualTheme")
             callback.invoke(null, actualTheme)
         } catch (e: Exception) {
-            Log.e(TAG, "获取当前实际主题失败", e)
+            TimberLogger.e(TAG, "获取当前实际主题失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -336,14 +336,14 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun changeTheme(theme: String, promise: Promise) {
-        Log.d(TAG, "统一主题切换: $theme")
+        TimberLogger.d(TAG, "统一主题切换: $theme")
         try {
             // 使用全局主题管理器来切换主题
             themeManager.setThemeMode(theme)
             
             // 发送实际主题到RN端（而不是设置的主题模式）
             val actualTheme = themeManager.getCurrentActualThemeMode()
-            Log.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $theme)")
+            TimberLogger.d(TAG, "发送实际主题到RN: $actualTheme (设置的模式: $theme)")
             sendThemeChangeEvent(actualTheme)
             
             promise.resolve("主题已切换到: $theme")
@@ -357,21 +357,21 @@ class NavigationUtilModule(
      */
     private fun sendThemeChangeEvent(theme: String) {
         try {
-            Log.d(TAG, "准备发送主题变更事件到RN: $theme")
+            TimberLogger.d(TAG, "准备发送主题变更事件到RN: $theme")
             
             val params = Arguments.createMap().apply {
                 putString("colorScheme", theme)
             }
             
-            Log.d(TAG, "创建事件参数: colorScheme = $theme")
+            TimberLogger.d(TAG, "创建事件参数: colorScheme = $theme")
             
             reactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit("ThemeChanged", params)
                 
-            Log.d(TAG, "✅ 主题变更事件已发送到RN: $theme")
+            TimberLogger.d(TAG, "✅ 主题变更事件已发送到RN: $theme")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 发送主题变更事件失败: $theme", e)
+            TimberLogger.e(TAG, "❌ 发送主题变更事件失败: $theme", e)
         }
     }
 
@@ -383,12 +383,12 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun setNightModeTime(startTime: String, endTime: String, callback: Callback) {
-        Log.d(TAG, "设置夜间模式时间段: $startTime - $endTime")
+        TimberLogger.d(TAG, "设置夜间模式时间段: $startTime - $endTime")
         try {
             settingsUtils.setNightModeTime(startTime, endTime)
             callback.invoke(null, "夜间模式时间已设置为: $startTime - $endTime")
         } catch (e: Exception) {
-            Log.e(TAG, "设置夜间模式时间失败", e)
+            TimberLogger.e(TAG, "设置夜间模式时间失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -402,7 +402,7 @@ class NavigationUtilModule(
             val startTime = settingsUtils.getNightModeStartTime()
             callback.invoke(null, startTime)
         } catch (e: Exception) {
-            Log.w(TAG, "获取夜间模式开始时间失败", e)
+            TimberLogger.e(TAG, "获取夜间模式开始时间失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -416,7 +416,7 @@ class NavigationUtilModule(
             val endTime = settingsUtils.getNightModeEndTime()
             callback.invoke(null, endTime)
         } catch (e: Exception) {
-            Log.w(TAG, "获取夜间模式结束时间失败", e)
+            TimberLogger.e(TAG, "获取夜间模式结束时间失败", e)
             callback.invoke(e.message, null)
         }
     }
@@ -426,7 +426,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun navigateToTimedSwitch() {
-        Log.d(TAG, "导航到定时切换页面")
+        TimberLogger.d(TAG, "导航到定时切换页面")
         Handler(Looper.getMainLooper()).post {
             NavViewModelHolder.navController.value?.navigate("timed_switch")
         }
@@ -437,7 +437,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun navigateToHelpSupport(){
-        Log.d(TAG, "导航到帮助与支持页面")
+        TimberLogger.d(TAG, "导航到帮助与支持页面")
         Handler(Looper.getMainLooper()).post {
             NavViewModelHolder.navController.value?.navigate("help_support")
         }
@@ -448,7 +448,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun navigateToPrivacyPolicy(){
-        Log.d(TAG, "导航到隐私政策页面")
+        TimberLogger.d(TAG, "导航到隐私政策页面")
         Handler(Looper.getMainLooper()).post {
             NavViewModelHolder.navController.value?.navigate("privacy_policy")
         }
@@ -460,7 +460,7 @@ class NavigationUtilModule(
      */
     @ReactMethod
     fun checkCurrentTimeTheme(callback: Callback) {
-        Log.d(TAG, "检查当前时间的主题状态")
+        TimberLogger.d(TAG, "检查当前时间的主题状态")
         try {
             // 如果启用了自动切换且不跟随系统主题，则进行检查
             if (settingsUtils.isAutoNightModeEnabled() && !settingsUtils.isFollowSystemTheme()) {
@@ -469,7 +469,7 @@ class NavigationUtilModule(
                 
                 // 获取当前应该的主题状态
                 val currentMode = themeManager.getCurrentActualThemeMode()
-                Log.d(TAG, "当前时间主题检查完成，当前主题: $currentMode")
+                TimberLogger.d(TAG, "当前时间主题检查完成，当前主题: $currentMode")
                 
                 // 发送主题变更事件到RN端，确保UI同步
                 sendThemeChangeEvent(currentMode)
@@ -481,11 +481,11 @@ class NavigationUtilModule(
                     settingsUtils.isFollowSystemTheme() -> "正在跟随系统主题"
                     else -> "未知原因"
                 }
-                Log.d(TAG, "跳过主题检查: $reason")
+                TimberLogger.d(TAG, "跳过主题检查: $reason")
                 callback.invoke(null, "跳过主题检查: $reason")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "检查当前时间主题失败", e)
+            TimberLogger.e(TAG, "检查当前时间主题失败", e)
             callback.invoke(e.message, null)
         }
     }

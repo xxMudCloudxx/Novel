@@ -1,6 +1,6 @@
 package com.novel.page.read.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +51,7 @@ fun PageCurlFlipContainer(
     val virtualPageIndex = uiState.virtualPageIndex
     val loadedChapters = uiState.loadedChapterData
 
-    Log.d("PageCurlFlipContainer", "virtualPages: $virtualPages, virtualPageIndex: $virtualPageIndex")
+    TimberLogger.d("PageCurlFlipContainer", "virtualPages: $virtualPages, virtualPageIndex: $virtualPageIndex")
 
     if (virtualPages.isEmpty()) {
         // 如果虚拟页面为空（例如，初始加载时），显示一个空白或加载指示器
@@ -144,12 +144,12 @@ fun PageCurlFlipContainer(
 
     // 添加背景颜色和翻页设置的详细日志
     LaunchedEffect(readerSettings) {
-        Log.d("PageCurlFlipContainer", "PageCurlFlipContainer设置更新")
-        Log.d("PageCurlFlipContainer", "背景颜色: ${String.format("#%08X", readerSettings.backgroundColor.value.toInt())}")
-        Log.d("PageCurlFlipContainer", "文字颜色: ${String.format("#%08X", readerSettings.textColor.value.toInt())}")
-        Log.d("PageCurlFlipContainer", "字体大小: ${readerSettings.fontSize}sp")
-        Log.d("PageCurlFlipContainer", "翻页效果: ${readerSettings.pageFlipEffect}")
-        Log.d("PageCurlFlipContainer", "背景亮度: ${readerSettings.backgroundColor.luminance()}")
+        TimberLogger.d("PageCurlFlipContainer", "PageCurlFlipContainer设置更新")
+        TimberLogger.d("PageCurlFlipContainer", "背景颜色: ${String.format("#%08X", readerSettings.backgroundColor.value.toInt())}")
+        TimberLogger.d("PageCurlFlipContainer", "文字颜色: ${String.format("#%08X", readerSettings.textColor.value.toInt())}")
+        TimberLogger.d("PageCurlFlipContainer", "字体大小: ${readerSettings.fontSize}sp")
+        TimberLogger.d("PageCurlFlipContainer", "翻页效果: ${readerSettings.pageFlipEffect}")
+        TimberLogger.d("PageCurlFlipContainer", "背景亮度: ${readerSettings.backgroundColor.luminance()}")
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

@@ -1,7 +1,7 @@
 package com.novel.page.search.component
 
 import android.annotation.SuppressLint
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -57,7 +57,7 @@ fun SearchFilterBottomSheet(
     val TAG = "SearchFilterBottomSheet"
     
     // 记录弹窗显示
-    Log.d(TAG, "显示搜索筛选弹窗: $filters")
+    TimberLogger.d(TAG, "显示搜索筛选弹窗: $filters")
     
     var currentFilters by remember(filters) { mutableStateOf(filters) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
@@ -65,7 +65,7 @@ fun SearchFilterBottomSheet(
 
     Dialog(
         onDismissRequest = {
-            Log.d(TAG, "弹窗被取消")
+            TimberLogger.d(TAG, "弹窗被取消")
             onDismiss()
         },
         properties = DialogProperties(
@@ -79,7 +79,7 @@ fun SearchFilterBottomSheet(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.4f))
                 .debounceClickable(onClick = {
-                    Log.d(TAG, "点击外部区域关闭弹窗")
+                    TimberLogger.d(TAG, "点击外部区域关闭弹窗")
                     onDismiss()
                 })
         ) {
@@ -96,10 +96,10 @@ fun SearchFilterBottomSheet(
                             detectDragGestures(
                                 onDragEnd = {
                                     if (dragOffset > dismissThresholdPx) {
-                                        Log.d(TAG, "拖拽关闭弹窗: offset=$dragOffset")
+                                        TimberLogger.d(TAG, "拖拽关闭弹窗: offset=$dragOffset")
                                         onDismiss()
                                     } else {
-                                        Log.v(TAG, "拖拽未达到关闭阈值，回弹")
+                                        TimberLogger.v(TAG, "拖拽未达到关闭阈值，回弹")
                                         dragOffset = 0f
                                     }
                                 }
@@ -135,7 +135,7 @@ fun SearchFilterBottomSheet(
                                 modifier = Modifier
                                     .size(40.wdp)
                                     .debounceClickable(onClick = {
-                                        Log.d(TAG, "点击关闭按钮")
+                                        TimberLogger.d(TAG, "点击关闭按钮")
                                         onDismiss()
                                     })
                                     .align(Alignment.CenterStart)
@@ -155,7 +155,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.updateStatus,
                                     defaultItem = UpdateStatus.ALL,
                                     onItemSelected = {
-                                        Log.d(TAG, "更新状态筛选变更: ${currentFilters.updateStatus} -> $it")
+                                        TimberLogger.d(TAG, "更新状态筛选变更: ${currentFilters.updateStatus} -> $it")
                                         currentFilters = currentFilters.copy(updateStatus = it)
                                     },
                                     itemDisplayName = { it.displayName }
@@ -168,7 +168,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.isVip,
                                     defaultItem = VipStatus.ALL,
                                     onItemSelected = {
-                                        Log.d(TAG, "VIP状态筛选变更: ${currentFilters.isVip} -> $it")
+                                        TimberLogger.d(TAG, "VIP状态筛选变更: ${currentFilters.isVip} -> $it")
                                         currentFilters = currentFilters.copy(isVip = it)
                                     },
                                     itemDisplayName = { it.displayName }
@@ -181,7 +181,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.wordCountRange,
                                     defaultItem = WordCountRange.ALL,
                                     onItemSelected = {
-                                        Log.d(TAG, "字数筛选变更: ${currentFilters.wordCountRange} -> $it")
+                                        TimberLogger.d(TAG, "字数筛选变更: ${currentFilters.wordCountRange} -> $it")
                                         currentFilters =
                                             currentFilters.copy(wordCountRange = it)
                                     },
@@ -195,7 +195,7 @@ fun SearchFilterBottomSheet(
                                     selectedItem = currentFilters.sortBy,
                                     defaultItem = SortBy.NULL,
                                     onItemSelected = {
-                                        Log.d(TAG, "排序方式变更: ${currentFilters.sortBy} -> $it")
+                                        TimberLogger.d(TAG, "排序方式变更: ${currentFilters.sortBy} -> $it")
                                         currentFilters = currentFilters.copy(sortBy = it)
                                     },
                                     itemDisplayName = { it.displayName }
@@ -211,7 +211,7 @@ fun SearchFilterBottomSheet(
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    Log.d(TAG, "清空所有筛选条件")
+                                    TimberLogger.d(TAG, "清空所有筛选条件")
                                     currentFilters = FilterState()
                                     onClear()
                                 },
@@ -233,7 +233,7 @@ fun SearchFilterBottomSheet(
 
                             Button(
                                 onClick = {
-                                    Log.d(TAG, "应用筛选条件: $currentFilters")
+                                    TimberLogger.d(TAG, "应用筛选条件: $currentFilters")
                                     onFiltersChange(currentFilters)
                                     onApply()
                                 },
@@ -296,7 +296,7 @@ private fun <T> ThreeColumnFilterGrid(
                         selected = selected,
                         onClick = {
                             val newSelection = if (selected) defaultItem else item
-                            Log.v(TAG, "筛选项点击: ${itemDisplayName(item)}, 选中状态: $selected -> ${!selected}")
+                            TimberLogger.v(TAG, "筛选项点击: ${itemDisplayName(item)}, 选中状态: $selected -> ${!selected}")
                             onItemSelected(newSelection)
                         },
                         modifier = Modifier.weight(1f)

@@ -1,6 +1,6 @@
 package com.novel.page.read.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.collection.LruCache
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
@@ -86,7 +86,7 @@ class PageSplitter private constructor() {
 
             // -------- 1. 参数校验 --------
             if (content.isBlank() || containerSize.width <= 0 || containerSize.height <= 0) {
-                Log.w(TAG, "参数无效，返回原始内容")
+                TimberLogger.w(TAG, "参数无效，返回原始内容")
                 return listOf(content)
             }
 
@@ -187,7 +187,7 @@ class PageSplitter private constructor() {
             }
 
             val t1 = System.nanoTime()
-            Log.d(TAG, "分页完成：${pages.size}页，用时${(t1 - t0) / 1_000_000}ms")
+            TimberLogger.d(TAG, "分页完成：${pages.size}页，用时${(t1 - t0) / 1_000_000}ms")
 
             return if (pages.isEmpty()) listOf(plain) else pages
         }

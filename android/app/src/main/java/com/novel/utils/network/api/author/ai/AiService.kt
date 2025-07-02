@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.author.ai
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_AI
 import com.google.gson.Gson
@@ -51,7 +51,7 @@ class AiService @Inject constructor() {
         text: String,
         callback: (AiResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AiService", "开始 polishText()，文本长度：${text.length}")
+        TimberLogger.d("AiService", "开始 polishText()，文本长度：${text.length}")
         
         val params = mapOf("text" to text)
         
@@ -78,7 +78,7 @@ class AiService @Inject constructor() {
         ratio: Double,
         callback: (AiResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AiService", "开始 expandText()，文本长度：${text.length}，扩写比例：$ratio")
+        TimberLogger.d("AiService", "开始 expandText()，文本长度：${text.length}，扩写比例：$ratio")
         
         val params = mapOf(
             "text" to text,
@@ -108,7 +108,7 @@ class AiService @Inject constructor() {
         length: Int,
         callback: (AiResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AiService", "开始 continueText()，文本长度：${text.length}，续写长度：$length")
+        TimberLogger.d("AiService", "开始 continueText()，文本长度：${text.length}，续写长度：$length")
         
         val params = mapOf(
             "text" to text,
@@ -138,7 +138,7 @@ class AiService @Inject constructor() {
         ratio: Int,
         callback: (AiResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AiService", "开始 condenseText()，文本长度：${text.length}，缩写比例：$ratio")
+        TimberLogger.d("AiService", "开始 condenseText()，文本长度：${text.length}，缩写比例：$ratio")
         
         val params = mapOf(
             "text" to text,
@@ -284,21 +284,21 @@ class AiService @Inject constructor() {
     ) {
         when {
             error != null -> {
-                Log.e("AiService", "请求失败", error)
+                TimberLogger.e("AiService", "请求失败", error)
                 callback(null, error)
             }
             response != null -> {
                 try {
                     val result = Gson().fromJson(response, clazz)
-                    Log.d("AiService", "请求成功，响应：$response")
+                    TimberLogger.d("AiService", "请求成功，响应：$response")
                     callback(result, null)
                 } catch (e: Exception) {
-                    Log.e("AiService", "解析响应失败", e)
+                    TimberLogger.e("AiService", "解析响应失败", e)
                     callback(null, e)
                 }
             }
             else -> {
-                Log.e("AiService", "响应为空")
+                TimberLogger.e("AiService", "响应为空")
                 callback(null, Exception("Response is null"))
             }
         }

@@ -1,6 +1,6 @@
 package com.novel.page.read.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -67,7 +67,7 @@ fun ChapterListPanel(
     LaunchedEffect(currentChapterId, chapters) {
         val currentIndex = chapters.indexOfFirst { it.id == currentChapterId }
         if (currentIndex >= 0) {
-            Log.d(TAG, "自动滚动到章节: $currentIndex")
+            TimberLogger.d(TAG, "自动滚动到章节: $currentIndex")
             listState.scrollToItem(currentIndex)
         }
     }
@@ -101,7 +101,7 @@ fun ChapterListPanel(
                 
                 IconButton(
                     onClick = {
-                        Log.d(TAG, "关闭章节列表面板")
+                        TimberLogger.d(TAG, "关闭章节列表面板")
                         onDismiss()
                     },
                     modifier = Modifier.size(24.wdp)
@@ -130,7 +130,7 @@ fun ChapterListPanel(
                         chapter = chapter,
                         isSelected = chapter.id == currentChapterId,
                         onClick = { 
-                            Log.d(TAG, "选择章节: ${chapter.chapterName}")
+                            TimberLogger.d(TAG, "选择章节: ${chapter.chapterName}")
                             onChapterSelected(chapter) 
                         }
                     )

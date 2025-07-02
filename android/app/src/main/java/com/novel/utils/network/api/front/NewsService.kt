@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.front
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
@@ -61,7 +61,7 @@ class NewsService @Inject constructor() {
         newsId: Long,
         callback: (NewsInfoResponse?, Throwable?) -> Unit
     ) {
-        Log.d("NewsService", "开始 getNewsById()，参数：$newsId")
+        TimberLogger.d("NewsService", "开始 getNewsById()，参数：$newsId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -78,7 +78,7 @@ class NewsService @Inject constructor() {
     private fun getLatestNews(
         callback: (NewsListResponse?, Throwable?) -> Unit
     ) {
-        Log.d("NewsService", "开始 getLatestNews()")
+        TimberLogger.d("NewsService", "开始 getLatestNews()")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,

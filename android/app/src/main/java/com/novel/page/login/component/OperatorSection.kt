@@ -1,6 +1,6 @@
 package com.novel.page.login.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -23,7 +23,7 @@ fun OperatorSection(name: String) {
     val TAG = "OperatorSection"
     
     // 记录运营商信息渲染
-    Log.d(TAG, "渲染运营商信息: $name")
+    TimberLogger.d(TAG, "渲染运营商信息: $name")
     
     NovelText(
         text = name,

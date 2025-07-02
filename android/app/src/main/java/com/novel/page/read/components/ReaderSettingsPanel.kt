@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.novel.utils.wdp
 import kotlin.math.roundToInt
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.ui.graphics.toArgb
 
 /**
@@ -63,12 +63,12 @@ data class ReaderSettings(
                 pageFlipEffect = PageFlipEffect.PAGECURL  // 仿真翻页，增强沉浸感
             )
             
-            Log.d("ReaderSettings", "创建默认设置:")
-            Log.d("ReaderSettings", "  - 字体大小: ${defaultSettings.fontSize}sp")
-            Log.d("ReaderSettings", "  - 亮度: ${(defaultSettings.brightness * 100).toInt()}%")
-            Log.d("ReaderSettings", "  - 背景颜色: ${String.format("#%08X", defaultSettings.backgroundColor.toArgb())}")
-            Log.d("ReaderSettings", "  - 文字颜色: ${String.format("#%08X", defaultSettings.textColor.toArgb())}")
-            Log.d("ReaderSettings", "  - 翻页效果: ${defaultSettings.pageFlipEffect}")
+            TimberLogger.d("ReaderSettings", "创建默认设置:")
+            TimberLogger.d("ReaderSettings", "  - 字体大小: ${defaultSettings.fontSize}sp")
+            TimberLogger.d("ReaderSettings", "  - 亮度: ${(defaultSettings.brightness * 100).toInt()}%")
+            TimberLogger.d("ReaderSettings", "  - 背景颜色: ${String.format("#%08X", defaultSettings.backgroundColor.toArgb())}")
+            TimberLogger.d("ReaderSettings", "  - 文字颜色: ${String.format("#%08X", defaultSettings.textColor.toArgb())}")
+            TimberLogger.d("ReaderSettings", "  - 翻页效果: ${defaultSettings.pageFlipEffect}")
             
             return defaultSettings
         }

@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.author
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_AUTHOR
 import com.google.gson.Gson
@@ -135,7 +135,7 @@ class AuthorService @Inject constructor() {
         request: AuthorRegisterRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 registerAuthor()，参数：$request")
+        TimberLogger.d("AuthorService", "开始 registerAuthor()，参数：$request")
         
         val requestBody = mapOf(
             "penName" to request.penName,
@@ -164,7 +164,7 @@ class AuthorService @Inject constructor() {
     private fun getAuthorStatus(
         callback: (AuthorStatusResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 getAuthorStatus()")
+        TimberLogger.d("AuthorService", "开始 getAuthorStatus()")
         
         ApiService.get(
             baseUrl = BASE_URL_AUTHOR,
@@ -182,7 +182,7 @@ class AuthorService @Inject constructor() {
         request: BookAddRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 publishBook()，参数：$request")
+        TimberLogger.d("AuthorService", "开始 publishBook()，参数：$request")
         
         val requestBody = mapOf(
             "workDirection" to request.workDirection.toString(),
@@ -215,7 +215,7 @@ class AuthorService @Inject constructor() {
         pageSize: Int = 10,
         callback: (BookListResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 getAuthorBooks()，参数：pageNum=$pageNum, pageSize=$pageSize")
+        TimberLogger.d("AuthorService", "开始 getAuthorBooks()，参数：pageNum=$pageNum, pageSize=$pageSize")
         
         val params = mapOf(
             "pageNum" to pageNum.toString(),
@@ -240,7 +240,7 @@ class AuthorService @Inject constructor() {
         request: ChapterAddRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 publishChapter()，bookId=$bookId，参数：$request")
+        TimberLogger.d("AuthorService", "开始 publishChapter()，bookId=$bookId，参数：$request")
         
         val requestBody = mapOf(
             "bookId" to request.bookId.toString(),
@@ -271,7 +271,7 @@ class AuthorService @Inject constructor() {
         pageSize: Int = 10,
         callback: (ChapterListResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 getBookChapters()，bookId=$bookId，pageNum=$pageNum, pageSize=$pageSize")
+        TimberLogger.d("AuthorService", "开始 getBookChapters()，bookId=$bookId，pageNum=$pageNum, pageSize=$pageSize")
         
         val params = mapOf(
             "pageNum" to pageNum.toString(),
@@ -295,7 +295,7 @@ class AuthorService @Inject constructor() {
         chapterId: Long,
         callback: (ChapterContentResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 getChapter()，chapterId=$chapterId")
+        TimberLogger.d("AuthorService", "开始 getChapter()，chapterId=$chapterId")
         
         ApiService.get(
             baseUrl = BASE_URL_AUTHOR,
@@ -314,7 +314,7 @@ class AuthorService @Inject constructor() {
         request: ChapterUpdateRequest,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 updateChapter()，chapterId=$chapterId，参数：$request")
+        TimberLogger.d("AuthorService", "开始 updateChapter()，chapterId=$chapterId，参数：$request")
         
         val json = Gson().toJson(request)
         val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
@@ -339,7 +339,7 @@ class AuthorService @Inject constructor() {
         chapterId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("AuthorService", "开始 deleteChapter()，chapterId=$chapterId")
+        TimberLogger.d("AuthorService", "开始 deleteChapter()，chapterId=$chapterId")
         
         ApiService.delete(
             baseUrl = BASE_URL_AUTHOR,

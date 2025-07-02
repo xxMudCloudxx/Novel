@@ -2,7 +2,7 @@ package com.novel.page.login.utils
 
 import android.content.Context
 import android.util.Base64
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.api.front.resource.ResourceService
 import com.novel.utils.security.SecurityConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,7 +45,7 @@ class CaptchaService @Inject constructor(
      * @return 是否加载成功
      */
     suspend fun loadCaptcha(): Boolean = withContext(Dispatchers.IO) {
-        Log.d(TAG, "开始加载验证码")
+        TimberLogger.d(TAG, "开始加载验证码")
         
         // 设置加载状态
         _captchaState.value = _captchaState.value.copy(
@@ -81,10 +81,10 @@ class CaptchaService @Inject constructor(
                     error = null
                 )
                 
-                Log.d(TAG, "验证码加载成功: sessionId=${securityConfig.sanitizeForLog(data.sessionId)}")
+                TimberLogger.d(TAG, "验证码加载成功: sessionId=${securityConfig.sanitizeForLog(data.sessionId)}")
                 true
             } ?: run {
-                Log.e(TAG, "验证码数据为空")
+                TimberLogger.e(TAG, "验证码数据为空")
                 _captchaState.value = _captchaState.value.copy(
                     isLoading = false,
                     error = "验证码数据为空"
@@ -92,7 +92,7 @@ class CaptchaService @Inject constructor(
                 false
             }
         }.getOrElse { exception ->
-            Log.e(TAG, "验证码加载失败", exception)
+            TimberLogger.e(TAG, "验证码加载失败", exception)
             _captchaState.value = _captchaState.value.copy(
                 isLoading = false,
                 error = exception.localizedMessage ?: "验证码加载失败"
@@ -109,7 +109,7 @@ class CaptchaService @Inject constructor(
      * @return 是否刷新成功
      */
     suspend fun refreshCaptcha(): Boolean {
-        Log.d(TAG, "刷新验证码")
+        TimberLogger.d(TAG, "刷新验证码")
         // 先清理旧的验证码文件
         clearCurrentCaptcha()
         // 重新加载
@@ -125,7 +125,7 @@ class CaptchaService @Inject constructor(
         val currentState = _captchaState.value
         if (currentState.imagePath.isNotEmpty()) {
             val deleted = File(currentState.imagePath).delete()
-            Log.d(TAG, "清理当前验证码文件: ${if (deleted) "成功" else "失败"}")
+            TimberLogger.d(TAG, "清理当前验证码文件: ${if (deleted) "成功" else "失败"}")
         }
         
         _captchaState.value = CaptchaState()
@@ -143,17 +143,17 @@ class CaptchaService @Inject constructor(
                 ?.filter { securityConfig.isCaptchaFile(it.name) }
                 ?.count { file ->
                     if (file.delete()) {
-                        Log.v(TAG, "已删除验证码文件: ${file.name}")
+                        TimberLogger.v(TAG, "已删除验证码文件: ${file.name}")
                         true
                     } else {
-                        Log.w(TAG, "删除验证码文件失败: ${file.name}")
+                        TimberLogger.w(TAG, "删除验证码文件失败: ${file.name}")
                         false
                     }
                 } ?: 0
                 
-            Log.d(TAG, "已清理 $deletedCount 个验证码文件")
+            TimberLogger.d(TAG, "已清理 $deletedCount 个验证码文件")
         } catch (e: Exception) {
-            Log.e(TAG, "清理验证码文件失败", e)
+            TimberLogger.e(TAG, "清理验证码文件失败", e)
         }
     }
     
@@ -184,7 +184,7 @@ class CaptchaService @Inject constructor(
             val fileName = securityConfig.generateCaptchaFileName(sessionId)
             val file = File(context.cacheDir, fileName)
             file.writeBytes(imageBytes)
-            Log.v(TAG, "创建验证码临时文件: ${file.name}")
+            TimberLogger.v(TAG, "创建验证码临时文件: ${file.name}")
             file
         }
     
@@ -207,7 +207,7 @@ class CaptchaService @Inject constructor(
             sessionId.length <= 64 && // 限制会话ID长度
             sessionId.matches(Regex("^[a-zA-Z0-9\\-_]+$")) // 只允许安全字符
         } catch (e: Exception) {
-            Log.w(TAG, "验证码数据验证失败", e)
+            TimberLogger.e(TAG, "验证码数据验证失败", e)
             false
         }
     }
@@ -224,7 +224,7 @@ class CaptchaService @Inject constructor(
         val fileSizeMB = fileBytes.size / (1024 * 1024)
         val isValid = fileSizeMB <= SecurityConfig.MAX_CACHE_FILE_SIZE_MB
         if (!isValid) {
-            Log.w(TAG, "验证码文件大小超限: ${fileSizeMB}MB")
+            TimberLogger.w(TAG, "验证码文件大小超限: ${fileSizeMB}MB")
         }
         return isValid
     }
@@ -245,12 +245,12 @@ class CaptchaService @Inject constructor(
                 ?.count { it.delete() } ?: 0
                 
             if (cleanedCount > 0) {
-                Log.d(TAG, "清理了 $cleanedCount 个过期验证码文件")
+                TimberLogger.d(TAG, "清理了 $cleanedCount 个过期验证码文件")
             }else{
-                Log.d(TAG, "没有过期验证码文件需要清理")
+                TimberLogger.d(TAG, "没有过期验证码文件需要清理")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "清理过期文件失败", e)
+            TimberLogger.e(TAG, "清理过期文件失败", e)
         }
     }
 }

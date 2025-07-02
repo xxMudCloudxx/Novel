@@ -1,6 +1,6 @@
 package com.novel.page.search
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -265,7 +265,7 @@ private fun CategoryFilterRow(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.wdp)
         ) {
-            Log.d("CategoryFilterRow", "categories: $categories")
+            TimberLogger.d("CategoryFilterRow", "categories: $categories")
             categories.forEach { category ->
                 CategoryFilterChip(
                     modifier = Modifier.align(Alignment.CenterVertically),

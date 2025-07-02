@@ -1,7 +1,7 @@
 package com.novel.di
 
 import android.content.Context
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.read.repository.BookCacheManager
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
@@ -50,7 +50,7 @@ object NetworkModule {
     fun provideBookCacheManager(
         @ApplicationContext context: Context
     ): BookCacheManager {
-        Log.d(TAG, "创建书籍缓存管理器")
+        TimberLogger.d(TAG, "创建书籍缓存管理器")
         return BookCacheManager(context)
     }
 
@@ -72,7 +72,7 @@ object NetworkModule {
         @ApplicationContext context: Context,
         gson: Gson
     ): NetworkCacheManager {
-        Log.d(TAG, "创建网络缓存管理器")
+        TimberLogger.d(TAG, "创建网络缓存管理器")
         return NetworkCacheManager(context, gson)
     }
 
@@ -84,7 +84,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideBookService(): BookService {
-        Log.d(TAG, "创建书籍服务")
+        TimberLogger.d(TAG, "创建书籍服务")
         return BookService()
     }
     
@@ -96,7 +96,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideSearchService(): SearchService {
-        Log.d(TAG, "创建搜索服务")
+        TimberLogger.d(TAG, "创建搜索服务")
         return SearchService()
     }
     
@@ -108,7 +108,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideHomeService(): HomeService {
-        Log.d(TAG, "创建首页服务")
+        TimberLogger.d(TAG, "创建首页服务")
         return HomeService()
     }
     
@@ -120,7 +120,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideNewsService(): NewsService {
-        Log.d(TAG, "创建资讯服务")
+        TimberLogger.d(TAG, "创建资讯服务")
         return NewsService()
     }
     
@@ -132,7 +132,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideUserService(): UserService {
-        Log.d(TAG, "创建用户服务")
+        TimberLogger.d(TAG, "创建用户服务")
         return UserService()
     }
     
@@ -149,7 +149,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideGson(): Gson {
-        Log.d(TAG, "创建Gson序列化工具")
+        TimberLogger.d(TAG, "创建Gson序列化工具")
         return Gson()
     }
 } 

@@ -1,6 +1,6 @@
 package com.novel.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 
 /**
  * HTML文本处理工具类
@@ -76,7 +76,7 @@ object HtmlTextUtil {
             return input
         }
         
-        Log.d(TAG, "开始移除HTML标签，原始长度: ${input.length}")
+        TimberLogger.d(TAG, "开始移除HTML标签，原始长度: ${input.length}")
         
         val result = input
             // 使用正则移除HTML标签
@@ -92,7 +92,7 @@ object HtmlTextUtil {
             .replace(Regex("\\s+"), " ")
             .trim()
         
-        Log.d(TAG, "HTML标签移除完成，处理后长度: ${result.length}")
+        TimberLogger.d(TAG, "HTML标签移除完成，处理后长度: ${result.length}")
         return result
     }
 }

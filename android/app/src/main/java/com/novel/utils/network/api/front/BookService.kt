@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.front
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
@@ -181,7 +181,7 @@ class BookService @Inject constructor() {
         bookId: Long,
         callback: (BookInfoResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getBookById()，参数：$bookId")
+        TimberLogger.d("BookService", "开始 getBookById()，参数：$bookId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -198,7 +198,7 @@ class BookService @Inject constructor() {
     private fun getVisitRankBooks(
         callback: (BookRankResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getVisitRankBooks()")
+        TimberLogger.d("BookService", "开始 getVisitRankBooks()")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -215,7 +215,7 @@ class BookService @Inject constructor() {
     private fun getUpdateRankBooks(
         callback: (BookRankResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getUpdateRankBooks()")
+        TimberLogger.d("BookService", "开始 getUpdateRankBooks()")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -232,7 +232,7 @@ class BookService @Inject constructor() {
     private fun getNewestRankBooks(
         callback: (BookRankResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getNewestRankBooks()")
+        TimberLogger.d("BookService", "开始 getNewestRankBooks()")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -250,7 +250,7 @@ class BookService @Inject constructor() {
         bookId: Long,
         callback: (BookListResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getRecommendBooks()，参数：$bookId")
+        TimberLogger.d("BookService", "开始 getRecommendBooks()，参数：$bookId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -269,7 +269,7 @@ class BookService @Inject constructor() {
         bookId: Long,
         callback: (BookChapterResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getBookChapters()，参数：$bookId")
+        TimberLogger.d("BookService", "开始 getBookChapters()，参数：$bookId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -288,7 +288,7 @@ class BookService @Inject constructor() {
         chapterId: Long,
         callback: (BookContentResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getBookContent()，参数：$chapterId")
+        TimberLogger.d("BookService", "开始 getBookContent()，参数：$chapterId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -306,7 +306,7 @@ class BookService @Inject constructor() {
         bookId: Long,
         callback: (BookCommentResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getNewestComments()，参数：$bookId")
+        TimberLogger.d("BookService", "开始 getNewestComments()，参数：$bookId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -325,7 +325,7 @@ class BookService @Inject constructor() {
         workDirection: Int,
         callback: (BookCategoryResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getBookCategories()，参数：$workDirection")
+        TimberLogger.d("BookService", "开始 getBookCategories()，参数：$workDirection")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -344,7 +344,7 @@ class BookService @Inject constructor() {
         chapterId: Long,
         callback: (ChapterIdResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getPreChapterId()，参数：$chapterId")
+        TimberLogger.d("BookService", "开始 getPreChapterId()，参数：$chapterId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -362,7 +362,7 @@ class BookService @Inject constructor() {
         chapterId: Long,
         callback: (ChapterIdResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getNextChapterId()，参数：$chapterId")
+        TimberLogger.d("BookService", "开始 getNextChapterId()，参数：$chapterId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -380,7 +380,7 @@ class BookService @Inject constructor() {
         bookId: Long,
         callback: (BookChapterAboutResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 getLastChapterAbout()，参数：$bookId")
+        TimberLogger.d("BookService", "开始 getLastChapterAbout()，参数：$bookId")
         
         ApiService.get(
             baseUrl = BASE_URL_FRONT,
@@ -399,7 +399,7 @@ class BookService @Inject constructor() {
         bookId: Long,
         callback: (BaseResponse?, Throwable?) -> Unit
     ) {
-        Log.d("BookService", "开始 addVisitCount()，参数：$bookId")
+        TimberLogger.d("BookService", "开始 addVisitCount()，参数：$bookId")
         
         ApiService.post(
             baseUrl = BASE_URL_FRONT,

@@ -6,7 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.core.content.PermissionChecker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +53,7 @@ class PhoneInfoUtil @Inject constructor(
      */
     @SuppressLint("HardwareIds")
     suspend fun fetch(): PhoneInfo = withContext(Dispatchers.IO) {
-        Log.d(TAG, "开始获取手机信息...")
+        TimberLogger.d(TAG, "开始获取手机信息...")
         
         // 初始化系统服务
         val subMgr = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
@@ -66,10 +66,10 @@ class PhoneInfoUtil @Inject constructor(
                 == PermissionChecker.PERMISSION_GRANTED
             ) {
                 val phoneNumber = subMgr.getPhoneNumber(SubscriptionManager.getDefaultSubscriptionId())
-                Log.d(TAG, "Android 13+ 获取手机号: ${phoneNumber.take(3)}***")
+                TimberLogger.d(TAG, "Android 13+ 获取手机号: ${phoneNumber.take(3)}***")
                 phoneNumber
             } else {
-                Log.w(TAG, "缺少READ_PHONE_NUMBERS权限")
+                TimberLogger.w(TAG, "缺少READ_PHONE_NUMBERS权限")
                 "权限不足"
             }
         } else {
@@ -79,10 +79,10 @@ class PhoneInfoUtil @Inject constructor(
             ) {
                 val num = tm.createForSubscriptionId(SubscriptionManager.getDefaultSubscriptionId())
                     .line1Number.orEmpty()
-                Log.d(TAG, "旧版本获取手机号: ${num.take(3)}***")
+                TimberLogger.d(TAG, "旧版本获取手机号: ${num.take(3)}***")
                 num
             } else {
-                Log.w(TAG, "缺少READ_PHONE_STATE权限")
+                TimberLogger.w(TAG, "缺少READ_PHONE_STATE权限")
                 "权限不足"
             }
         }
@@ -92,10 +92,10 @@ class PhoneInfoUtil @Inject constructor(
             ?: tm.networkOperatorName.takeIf(String::isNotBlank)
             ?: "未知运营商"
         
-        Log.d(TAG, "运营商信息: $operator")
+        TimberLogger.d(TAG, "运营商信息: $operator")
         
         val result = PhoneInfo(rawNum, operator)
-        Log.d(TAG, "手机信息获取完成")
+        TimberLogger.d(TAG, "手机信息获取完成")
         result
     }
 }

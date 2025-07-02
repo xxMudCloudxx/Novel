@@ -1,6 +1,6 @@
 package com.novel.page.read
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -119,23 +119,23 @@ fun ReaderPage(
 
     // 在组件初始化时预先加载设置，确保背景色能立即应用
     LaunchedEffect(Unit) {
-        Log.d("ReaderPage", "ReaderPage开始初始化，预加载设置")
+        TimberLogger.d("ReaderPage", "ReaderPage开始初始化，预加载设置")
         viewModel.loadInitialSettings()
     }
 
     LaunchedEffect(bookId, chapterId) {
-        Log.d("ReaderPage", "ReaderPage参数变化: bookId=$bookId, chapterId=$chapterId")
+        TimberLogger.d("ReaderPage", "ReaderPage参数变化: bookId=$bookId, chapterId=$chapterId")
         if (bookId.isNotBlank() && chapterId?.isNotBlank() == true) {
-            Log.d("ReaderPage", "开始加载书籍和章节内容")
+            TimberLogger.d("ReaderPage", "开始加载书籍和章节内容")
             viewModel.onIntent(ReaderIntent.InitReader(bookId, chapterId))
         } else {
-            Log.w("ReaderPage", "书籍ID或章节ID为空，跳过加载")
+            TimberLogger.w("ReaderPage", "书籍ID或章节ID为空，跳过加载")
         }
     }
 
     LaunchedEffect(uiState.readerSettings) {
-        Log.d("ReaderPage", "设置状态变化监听触发")
-        Log.d(
+        TimberLogger.d("ReaderPage", "设置状态变化监听触发")
+        TimberLogger.d(
             "ReaderPage",
             "当前背景颜色: ${
                 String.format(
@@ -144,17 +144,17 @@ fun ReaderPage(
                 )
             }"
         )
-        Log.d(
+        TimberLogger.d(
             "ReaderPage",
             "当前文字颜色: ${String.format("#%08X", uiState.readerSettings.textColor.toArgb())}"
         )
-        Log.d("ReaderPage", "当前字体大小: ${uiState.readerSettings.fontSize}sp")
-        Log.d("ReaderPage", "当前翻页效果: ${uiState.readerSettings.pageFlipEffect}")
+        TimberLogger.d("ReaderPage", "当前字体大小: ${uiState.readerSettings.fontSize}sp")
+        TimberLogger.d("ReaderPage", "当前翻页效果: ${uiState.readerSettings.pageFlipEffect}")
 
         // 强制触发更新容器尺寸，确保页数正确刷新
         if (uiState.containerSize != IntSize.Zero) {
             viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
-            Log.d("ReaderPage", "强制触发容器尺寸更新以刷新页数: ${uiState.containerSize}")
+            TimberLogger.d("ReaderPage", "强制触发容器尺寸更新以刷新页数: ${uiState.containerSize}")
         }
     }
 
@@ -228,7 +228,7 @@ fun ReaderPage(
 
     // 左滑进入阅读器的回调函数
     val handleLeftSwipeToReader: () -> Unit = {
-        Log.d("BookDetailPage", "左滑进入阅读器: bookId=$bookId")
+        TimberLogger.d("BookDetailPage", "左滑进入阅读器: bookId=$bookId")
         // 把当前的 FlipBookAnimationController 暂存到全局
         NavViewModel.setFlipBookController(activeController)
     }

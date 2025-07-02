@@ -2,7 +2,7 @@ package com.novel.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.ui.theme.ThemeManager
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -73,7 +73,7 @@ class SettingsUtils @Inject constructor(
      */
     suspend fun clearAllCache(): String = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "开始清理缓存...")
+            TimberLogger.d(TAG, "开始清理缓存...")
             var totalSize = 0L
             
             // 计算缓存大小
@@ -86,11 +86,11 @@ class SettingsUtils @Inject constructor(
             clearImageCache()
             
             val result = "已清理 ${formatCacheSize(totalSize)} 缓存"
-            Log.d(TAG, "缓存清理完成: $result")
+            TimberLogger.d(TAG, "缓存清理完成: $result")
             result
         } catch (e: Exception) {
             val errorMsg = "清理缓存失败: ${e.message}"
-            Log.e(TAG, errorMsg, e)
+            TimberLogger.e(TAG, errorMsg, e)
             errorMsg
         }
     }
@@ -109,10 +109,10 @@ class SettingsUtils @Inject constructor(
             totalSize += getDirSize(cacheDir)
             externalCacheDir?.let { totalSize += getDirSize(it) }
             
-            Log.d(TAG, "缓存大小计算完成: ${formatCacheSize(totalSize)}")
+            TimberLogger.d(TAG, "缓存大小计算完成: ${formatCacheSize(totalSize)}")
             totalSize
         } catch (e: Exception) {
-            Log.e(TAG, "计算缓存大小失败", e)
+            TimberLogger.e(TAG, "计算缓存大小失败", e)
             0L
         }
     }
@@ -147,11 +147,11 @@ class SettingsUtils @Inject constructor(
             
             setNightMode(newMode)
             val result = "已切换至${getNightModeDisplayName(newMode)}模式"
-            Log.d(TAG, "主题切换: $currentMode -> $newMode")
+            TimberLogger.d(TAG, "主题切换: $currentMode -> $newMode")
             result
         } catch (e: Exception) {
             val errorMsg = "切换夜间模式失败: ${e.message}"
-            Log.e(TAG, errorMsg, e)
+            TimberLogger.e(TAG, errorMsg, e)
             errorMsg
         }
     }
@@ -162,7 +162,7 @@ class SettingsUtils @Inject constructor(
      * @param mode 主题模式（light/dark/auto）
      */
     fun setNightMode(mode: String) {
-        Log.d(TAG, "设置主题模式: $mode")
+        TimberLogger.d(TAG, "设置主题模式: $mode")
         novelUserDefaults.setString(PREF_NIGHT_MODE, mode)
         
         // 使用全局主题管理器统一管理
@@ -209,7 +209,7 @@ class SettingsUtils @Inject constructor(
      * 设置自动切换夜间模式
      */
     fun setAutoNightMode(enabled: Boolean) {
-        Log.d(TAG, "设置自动切换夜间模式: $enabled")
+        TimberLogger.d(TAG, "设置自动切换夜间模式: $enabled")
         novelUserDefaults.setString(PREF_AUTO_NIGHT_MODE, enabled.toString())
         
         if (enabled) {
@@ -232,7 +232,7 @@ class SettingsUtils @Inject constructor(
      * @param endTime 结束时间 格式：HH:mm (如 "06:00")
      */
     fun setNightModeTime(startTime: String, endTime: String) {
-        Log.d(TAG, "设置夜间模式时间: $startTime - $endTime")
+        TimberLogger.d(TAG, "设置夜间模式时间: $startTime - $endTime")
         novelUserDefaults.setString(PREF_NIGHT_START_TIME, startTime)
         novelUserDefaults.setString(PREF_NIGHT_END_TIME, endTime)
         
@@ -260,11 +260,11 @@ class SettingsUtils @Inject constructor(
      * 启动基于时间的主题检查
      */
     fun startTimeBasedThemeCheck() {
-        Log.d(TAG, "启动基于时间的主题检查")
+        TimberLogger.d(TAG, "启动基于时间的主题检查")
         
         // 如果已经在跟随系统主题，不启动定时切换
         if (isFollowSystemTheme()) {
-            Log.d(TAG, "当前跟随系统主题，跳过定时切换")
+            TimberLogger.d(TAG, "当前跟随系统主题，跳过定时切换")
             return
         }
         
@@ -274,7 +274,7 @@ class SettingsUtils @Inject constructor(
         try {
             checkAndSwitchThemeBasedOnTime()
         } catch (e: Exception) {
-            Log.e(TAG, "立即检查主题失败", e)
+            TimberLogger.e(TAG, "立即检查主题失败", e)
         }
         
         timeCheckRunnable = object : Runnable {
@@ -282,13 +282,13 @@ class SettingsUtils @Inject constructor(
                 try {
                     checkAndSwitchThemeBasedOnTime()
                 } catch (e: Exception) {
-                    Log.e(TAG, "检查时间切换主题失败", e)
+                    TimberLogger.e(TAG, "检查时间切换主题失败", e)
                 }
                 
                 // 继续下一次检查，使用智能间隔
                 val nextInterval = calculateNextCheckInterval()
                 handler.postDelayed(this, nextInterval)
-                Log.v(TAG, "已安排下次检查，间隔: ${nextInterval}ms")
+                TimberLogger.v(TAG, "已安排下次检查，间隔: ${nextInterval}ms")
             }
         }
         
@@ -297,14 +297,14 @@ class SettingsUtils @Inject constructor(
         timeCheckRunnable?.let { handler.postDelayed(it, firstInterval) }
         isTimeCheckingStarted = true
         
-        Log.d(TAG, "定时主题检查已启动，首次间隔: ${firstInterval}ms")
+        TimberLogger.d(TAG, "定时主题检查已启动，首次间隔: ${firstInterval}ms")
     }
 
     /**
      * 停止基于时间的主题检查
      */
     fun stopTimeBasedThemeCheck() {
-        Log.d(TAG, "停止基于时间的主题检查")
+        TimberLogger.d(TAG, "停止基于时间的主题检查")
         timeCheckRunnable?.let { handler.removeCallbacks(it) }
         timeCheckRunnable = null
         isTimeCheckingStarted = false
@@ -315,7 +315,7 @@ class SettingsUtils @Inject constructor(
      */
     private fun checkAndSwitchThemeBasedOnTime() {
         if (!isAutoNightModeEnabled() || isFollowSystemTheme()) {
-            Log.v(TAG, "自动切换未启用或正在跟随系统主题，跳过时间检查")
+            TimberLogger.v(TAG, "自动切换未启用或正在跟随系统主题，跳过时间检查")
             return
         }
         
@@ -341,18 +341,18 @@ class SettingsUtils @Inject constructor(
         val currentMode = getCurrentNightMode()
         val expectedMode = if (shouldBeNightMode) "dark" else "light"
         
-        Log.v(TAG, "时间检查: 当前时间=${String.format("%02d:%02d", currentHour, currentMinute)}, " +
+        TimberLogger.v(TAG, "时间检查: 当前时间=${String.format("%02d:%02d", currentHour, currentMinute)}, " +
                 "夜间时段=${startTime}-${endTime}, 应为夜间模式=${shouldBeNightMode}, " +
                 "当前模式=${currentMode}, 期望模式=${expectedMode}")
         
         if (currentMode != expectedMode) {
-            Log.d(TAG, "时间切换主题: $currentMode -> $expectedMode")
+            TimberLogger.d(TAG, "时间切换主题: $currentMode -> $expectedMode")
             setNightMode(expectedMode)
             
             // 立即通知RN端主题已切换
             val actualTheme = themeManager.getCurrentActualThemeMode()
             themeManager.notifyThemeChangedToRN(actualTheme)
-            Log.d(TAG, "✅ 主题切换完成并已通知RN端: $actualTheme")
+            TimberLogger.d(TAG, "✅ 主题切换完成并已通知RN端: $actualTheme")
         }
     }
 
@@ -394,19 +394,19 @@ class SettingsUtils @Inject constructor(
         
         return when {
             minutesToNext <= THRESHOLD_URGENT -> {
-                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用1分钟检查间隔")
+                TimberLogger.v(TAG, "距离切换时间${minutesToNext}分钟，使用1分钟检查间隔")
                 CHECK_INTERVAL_MINUTE
             }
             minutesToNext <= THRESHOLD_NEAR -> {
-                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用15分钟检查间隔")
+                TimberLogger.v(TAG, "距离切换时间${minutesToNext}分钟，使用15分钟检查间隔")
                 CHECK_INTERVAL_QUARTER
             }
             minutesToNext <= THRESHOLD_FAR -> {
-                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用1小时检查间隔")
+                TimberLogger.v(TAG, "距离切换时间${minutesToNext}分钟，使用1小时检查间隔")
                 CHECK_INTERVAL_HOUR
             }
             else -> {
-                Log.v(TAG, "距离切换时间${minutesToNext}分钟，使用1小时检查间隔")
+                TimberLogger.v(TAG, "距离切换时间${minutesToNext}分钟，使用1小时检查间隔")
                 CHECK_INTERVAL_HOUR
             }
         }
@@ -425,11 +425,11 @@ class SettingsUtils @Inject constructor(
                 val minute = parts[1].toInt()
                 hour * 60 + minute
             } else {
-                Log.w(TAG, "时间格式错误: $timeStr，使用默认值")
+                TimberLogger.w(TAG, "时间格式错误: $timeStr，使用默认值")
                 22 * 60 // 默认22:00
             }
         } catch (e: Exception) {
-            Log.e(TAG, "解析时间失败: $timeStr", e)
+            TimberLogger.e(TAG, "解析时间失败: $timeStr", e)
             22 * 60 // 默认22:00
         }
     }
@@ -438,7 +438,7 @@ class SettingsUtils @Inject constructor(
      * 初始化定时切换（在应用启动时调用）
      */
     fun initializeAutoThemeSwitch() {
-        Log.d(TAG, "初始化自动主题切换")
+        TimberLogger.d(TAG, "初始化自动主题切换")
         if (isAutoNightModeEnabled() && !isFollowSystemTheme()) {
             startTimeBasedThemeCheck()
         }
@@ -448,7 +448,7 @@ class SettingsUtils @Inject constructor(
      * 清理资源（在应用退出时调用）
      */
     fun cleanup() {
-        Log.d(TAG, "清理定时器资源")
+        TimberLogger.d(TAG, "清理定时器资源")
         stopTimeBasedThemeCheck()
     }
 

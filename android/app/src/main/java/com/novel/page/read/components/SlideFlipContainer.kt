@@ -1,6 +1,6 @@
 package com.novel.page.read.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -59,13 +59,13 @@ fun SlideFlipContainer(
     var shouldSyncFromViewModel by remember { mutableStateOf(false) }
 
     // 调试日志
-    Log.d("SlideFlipContainer", "State - virtualPageIndex: $virtualPageIndex, pagerPage: ${pagerState.currentPage}, lastKnown: $lastKnownVirtualPageIndex")
+    TimberLogger.d("SlideFlipContainer", "State - virtualPageIndex: $virtualPageIndex, pagerPage: ${pagerState.currentPage}, lastKnown: $lastKnownVirtualPageIndex")
 
     // 检测 ViewModel 中的 virtualPageIndex 变化（非用户手势触发）
     LaunchedEffect(virtualPageIndex) {
         if (virtualPageIndex != lastKnownVirtualPageIndex && !isUserScrolling) {
             // ViewModel 状态发生了变化，且不是用户滚动触发的
-            Log.d("SlideFlipContainer", "Syncing from ViewModel: $lastKnownVirtualPageIndex -> $virtualPageIndex")
+            TimberLogger.d("SlideFlipContainer", "Syncing from ViewModel: $lastKnownVirtualPageIndex -> $virtualPageIndex")
             shouldSyncFromViewModel = true
             pagerState.scrollToPage(virtualPageIndex)
             lastKnownVirtualPageIndex = virtualPageIndex
@@ -80,12 +80,12 @@ fun SlideFlipContainer(
                 if (isScrolling && !shouldSyncFromViewModel) {
                     // 用户开始滚动，且不是 ViewModel 同步触发的
                     if (!isUserScrolling) {
-                        Log.d("SlideFlipContainer", "User started scrolling")
+                        TimberLogger.d("SlideFlipContainer", "User started scrolling")
                         isUserScrolling = true
                     }
                 } else if (!isScrolling && isUserScrolling) {
                     // 用户滚动结束
-                    Log.d("SlideFlipContainer", "User finished scrolling")
+                    TimberLogger.d("SlideFlipContainer", "User finished scrolling")
                     isUserScrolling = false
                 }
             }
@@ -97,7 +97,7 @@ fun SlideFlipContainer(
             .distinctUntilChanged()
             .collect { currentPage ->
                 if (currentPage != lastKnownVirtualPageIndex && isUserScrolling && !shouldSyncFromViewModel) {
-                    Log.d("SlideFlipContainer", "User flipped page: $lastKnownVirtualPageIndex -> $currentPage")
+                    TimberLogger.d("SlideFlipContainer", "User flipped page: $lastKnownVirtualPageIndex -> $currentPage")
                     
                     val previousPage = lastKnownVirtualPageIndex
                     lastKnownVirtualPageIndex = currentPage
@@ -127,7 +127,7 @@ fun SlideFlipContainer(
             onLeftSwipeToReader = {
                 // 左滑进入阅读器：使用专用回调更新索引，避免循环
                 val nextIndex = virtualPageIndex + 1
-                Log.d("SlideFlipContainer", "Left swipe to reader: $virtualPageIndex -> $nextIndex")
+                TimberLogger.d("SlideFlipContainer", "Left swipe to reader: $virtualPageIndex -> $nextIndex")
                 if (nextIndex < virtualPages.size) {
                     onSlideIndexChange?.invoke(nextIndex) ?: onPageChange(FlipDirection.NEXT)
                 }

@@ -1,6 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
@@ -44,7 +44,7 @@ fun PageCurl(
         val internalState by rememberUpdatedState(state.internalState ?: return@BoxWithConstraints)
         val updatedConfig by rememberUpdatedState(config)
 
-        Log.d("PageCurl", "渲染页面 $updatedCurrent/$count")
+        TimberLogger.d("PageCurl", "渲染页面 $updatedCurrent/$count")
 
         // 根据配置选择拖拽手势类型
         val dragGestureModifier = when (val interaction = updatedConfig.dragInteraction) {
@@ -57,7 +57,7 @@ fun PageCurl(
                         enabledBackward = updatedConfig.dragBackwardEnabled && updatedCurrent > 0,
                         scope = scope,
                         onChange = { 
-                            Log.d("PageCurl", "页面变化: ${updatedCurrent} -> ${updatedCurrent + it}")
+                            TimberLogger.d("PageCurl", "页面变化: ${updatedCurrent} -> ${updatedCurrent + it}")
                             state.current = updatedCurrent + it 
                         }
                     )
@@ -71,7 +71,7 @@ fun PageCurl(
                         enabledBackward = updatedConfig.dragBackwardEnabled && updatedCurrent > 0,
                         scope = scope,
                         onChange = { 
-                            Log.d("PageCurl", "页面变化: ${updatedCurrent} -> ${updatedCurrent + it}")
+                            TimberLogger.d("PageCurl", "页面变化: ${updatedCurrent} -> ${updatedCurrent + it}")
                             state.current = updatedCurrent + it 
                         }
                     )

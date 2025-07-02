@@ -1,6 +1,6 @@
 package com.novel.page.read.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
@@ -63,7 +63,7 @@ fun BrightnessControl(
                 
                 // 只有当值真正改变时才触发回调和日志
                 if (kotlin.math.abs(finalValue - brightness) > 0.01f) {
-                    Log.d(TAG, "亮度调节: $brightness -> $finalValue (档位: ${(finalValue * STEP_COUNT).toInt()})")
+                    TimberLogger.d(TAG, "亮度调节: $brightness -> $finalValue (档位: ${(finalValue * STEP_COUNT).toInt()})")
                     onBrightnessChange(finalValue)
                 }
             },

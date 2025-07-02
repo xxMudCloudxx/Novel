@@ -1,6 +1,6 @@
 package com.novel.page.search.service
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
@@ -40,7 +40,7 @@ class SearchService @Inject constructor(
      */
     suspend fun getHotNovelRanking(): List<SearchRankingItem> {
         return try {
-            Log.d(TAG, "开始获取热门小说榜单")
+            TimberLogger.d(TAG, "开始获取热门小说榜单")
             val rankBooks = cachedBookRepository.getVisitRankBooks(CacheStrategy.CACHE_FIRST)
             
             val result = rankBooks.mapIndexed { index, book ->
@@ -52,10 +52,10 @@ class SearchService @Inject constructor(
                 )
             }
             
-            Log.d(TAG, "热门小说榜单获取成功，共${result.size}本书")
+            TimberLogger.d(TAG, "热门小说榜单获取成功，共${result.size}本书")
             result
         } catch (e: Exception) {
-            Log.e(TAG, "获取热门小说榜单失败", e)
+            TimberLogger.e(TAG, "获取热门小说榜单失败", e)
             emptyList()
         }
     }
@@ -68,7 +68,7 @@ class SearchService @Inject constructor(
      */
     suspend fun getHotDramaRanking(): List<SearchRankingItem> {
         return try {
-            Log.d(TAG, "开始获取热门短剧榜单")
+            TimberLogger.d(TAG, "开始获取热门短剧榜单")
             val rankBooks = cachedBookRepository.getUpdateRankBooks(CacheStrategy.CACHE_FIRST)
             
             val result = rankBooks.mapIndexed { index, book ->
@@ -80,10 +80,10 @@ class SearchService @Inject constructor(
                 )
             }
             
-            Log.d(TAG, "热门短剧榜单获取成功，共${result.size}本书")
+            TimberLogger.d(TAG, "热门短剧榜单获取成功，共${result.size}本书")
             result
         } catch (e: Exception) {
-            Log.e(TAG, "获取热门短剧榜单失败", e)
+            TimberLogger.e(TAG, "获取热门短剧榜单失败", e)
             emptyList()
         }
     }
@@ -96,7 +96,7 @@ class SearchService @Inject constructor(
      */
     suspend fun getNewBookRanking(): List<SearchRankingItem> {
         return try {
-            Log.d(TAG, "开始获取新书榜单")
+            TimberLogger.d(TAG, "开始获取新书榜单")
             val rankBooks = cachedBookRepository.getNewestRankBooks(CacheStrategy.CACHE_FIRST)
             
             val result = rankBooks.mapIndexed { index, book ->
@@ -108,10 +108,10 @@ class SearchService @Inject constructor(
                 )
             }
             
-            Log.d(TAG, "新书榜单获取成功，共${result.size}本书")
+            TimberLogger.d(TAG, "新书榜单获取成功，共${result.size}本书")
             result
         } catch (e: Exception) {
-            Log.e(TAG, "获取新书榜单失败", e)
+            TimberLogger.e(TAG, "获取新书榜单失败", e)
             emptyList()
         }
     }

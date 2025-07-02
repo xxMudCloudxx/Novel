@@ -1,6 +1,6 @@
 package com.novel.utils.network.api.front
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
@@ -72,7 +72,7 @@ class SearchService @Inject constructor() {
         request: SearchRequest,
         callback: (BookSearchResponse?, Throwable?) -> Unit
     ) {
-        Log.d("SearchService", "开始 searchBooks()，参数：$request")
+        TimberLogger.d("SearchService", "开始 searchBooks()，参数：$request")
         
         val params = mutableMapOf<String, String>()
         request.keyword?.let { params["keyword"] = it }

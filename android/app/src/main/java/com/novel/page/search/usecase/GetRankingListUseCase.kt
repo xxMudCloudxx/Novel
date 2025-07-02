@@ -1,6 +1,6 @@
 package com.novel.page.search.usecase
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.RankingData
 import com.novel.page.search.service.SearchService
 import kotlinx.coroutines.async
@@ -45,19 +45,19 @@ class GetRankingListUseCase @Inject constructor(
      */
     suspend operator fun invoke(): RankingData {
         return coroutineScope {
-            Log.d(TAG, "开始获取榜单数据...")
+            TimberLogger.d(TAG, "开始获取榜单数据...")
             
             // 并行获取三个榜单数据
             val novelRankingDeferred = async { 
-                Log.d(TAG, "请求热门小说榜...")
+                TimberLogger.d(TAG, "请求热门小说榜...")
                 searchService.getHotNovelRanking() 
             }
             val dramaRankingDeferred = async { 
-                Log.d(TAG, "请求热门剧本榜...")
+                TimberLogger.d(TAG, "请求热门剧本榜...")
                 searchService.getHotDramaRanking() 
             }
             val newBookRankingDeferred = async { 
-                Log.d(TAG, "请求新书榜...")
+                TimberLogger.d(TAG, "请求新书榜...")
                 searchService.getNewBookRanking() 
             }
             
@@ -68,7 +68,7 @@ class GetRankingListUseCase @Inject constructor(
                 newBookRanking = newBookRankingDeferred.await()
             )
             
-            Log.d(TAG, "所有榜单数据获取完成")
+            TimberLogger.d(TAG, "所有榜单数据获取完成")
             result
         }
     }

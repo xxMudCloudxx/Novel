@@ -1,6 +1,6 @@
 package com.novel.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import dagger.hilt.android.scopes.ActivityRetainedScoped
 import java.time.Clock
 import java.time.LocalDateTime
@@ -59,7 +59,7 @@ class NovelDateFormatter
      * @return 格式化后的时间字符串，出错返回空串
      */
     fun parseNewsDate(dateString: String): String = runCatching {
-        Log.d(TAG, "格式化日期: $dateString")
+        TimberLogger.d(TAG, "格式化日期: $dateString")
         
         // 1. 解析输入时间字符串
         val localDateTime = try {
@@ -98,10 +98,10 @@ class NovelDateFormatter
             }
         }
         
-        Log.d(TAG, "格式化完成: $dateString -> $result")
+        TimberLogger.d(TAG, "格式化完成: $dateString -> $result")
         result
     }.getOrElse { exception ->
-        Log.e(TAG, "日期格式化失败: $dateString", exception)
+        TimberLogger.e(TAG, "日期格式化失败: $dateString", exception)
         ""                                                                 // 异常时返回空串
     }
 }

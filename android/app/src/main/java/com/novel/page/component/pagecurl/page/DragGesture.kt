@@ -1,6 +1,6 @@
 package com.novel.page.component.pagecurl.page
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -35,18 +35,18 @@ internal fun Modifier.dragGesture(
     val isEnabledForward = rememberUpdatedState(enabledForward)
     val isEnabledBackward = rememberUpdatedState(enabledBackward)
 
-    Log.d("DragGesture", "配置拖拽手势 - 向前: $enabledForward, 向后: $enabledBackward")
+    TimberLogger.d("DragGesture", "配置拖拽手势 - 向前: $enabledForward, 向后: $enabledBackward")
 
     pointerInput(state) {
         // 计算目标区域的实际像素坐标
         val forwardTargetRect by lazy { 
             val rect = dragInteraction.forward.target.multiply(size)
-            Log.v("DragGesture", "向前拖拽区域: $rect")
+            TimberLogger.v("DragGesture", "向前拖拽区域: $rect")
             rect
         }
         val backwardTargetRect by lazy { 
             val rect = dragInteraction.backward.target.multiply(size)
-            Log.v("DragGesture", "向后拖拽区域: $rect")
+            TimberLogger.v("DragGesture", "向后拖拽区域: $rect")
             rect
         }
 
@@ -58,7 +58,7 @@ internal fun Modifier.dragGesture(
             isEnabled = { isEnabledForward.value },
             isDragSucceed = { start, end -> end.x < start.x }, // 向左拖拽
             onChange = { 
-                Log.d("DragGesture", "向前翻页")
+                TimberLogger.d("DragGesture", "向前翻页")
                 onChange(+1) 
             }
         )
@@ -71,7 +71,7 @@ internal fun Modifier.dragGesture(
             isEnabled = { isEnabledBackward.value },
             isDragSucceed = { start, end -> end.x > start.x }, // 向右拖拽
             onChange = { 
-                Log.d("DragGesture", "向后翻页")
+                TimberLogger.d("DragGesture", "向后翻页")
                 onChange(-1) 
             }
         )
@@ -85,10 +85,10 @@ internal fun Modifier.dragGesture(
             },
             getConfig = { start, end ->
                 val config = if (forwardTargetRect.contains(start) && end.x < start.x) {
-                    Log.v("DragGesture", "检测到向前拖拽手势")
+                    TimberLogger.v("DragGesture", "检测到向前拖拽手势")
                     forwardConfig
                 } else if (backwardTargetRect.contains(start) && end.x > start.x) {
-                    Log.v("DragGesture", "检测到向后拖拽手势")
+                    TimberLogger.v("DragGesture", "检测到向后拖拽手势")
                     backwardConfig
                 } else {
                     null

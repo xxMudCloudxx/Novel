@@ -25,7 +25,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import com.facebook.react.uimanager.PixelUtil.dpToPx
 import kotlinx.coroutines.coroutineScope
 import com.novel.utils.NavViewModel
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.read.ReaderPage
 
 /**
@@ -83,7 +83,7 @@ class FlipBookAnimationController {
         screenWidth: Float = 1080f,
         screenHeight: Float = 2400f
     ) {
-        Log.d("FlipBookController", "开始放大透明动画: bookId=$bookId")
+        TimberLogger.d("FlipBookController", "开始放大透明动画: bookId=$bookId")
         
         // 计算目标缩放比例
         val horScale = screenWidth / originalSize.width
@@ -321,7 +321,7 @@ class FlipBookAnimationController {
                         var lastAlpha = -1f
 
                         while (scaleAnimatable.isRunning || alphaAnimatable.isRunning) {
-                            Log.d("Animation", "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}")
+                            TimberLogger.d("Animation", "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}")
                             val currentScale = scaleAnimatable.value
                             val currentAlpha = alphaAnimatable.value
 
@@ -340,7 +340,7 @@ class FlipBookAnimationController {
                             delay(16)
                         }
                     }
-                    Log.d("Animation", "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}")
+                    TimberLogger.d("Animation", "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}")
 
                     scaleJob.join()
                     alphaJob.join()
@@ -425,10 +425,10 @@ class FlipBookAnimationController {
      */
     suspend fun triggerReverseAnimation() {
         if (_animationState.isAnimating && _animationState.isOpening) {
-            Log.d("FlipBookController", "开始执行倒放动画: ${_animationState.animationType}")
+            TimberLogger.d("FlipBookController", "开始执行倒放动画: ${_animationState.animationType}")
             startReverseAnimation()
         } else {
-            Log.w("FlipBookController", "无法触发倒放动画 - isAnimating: ${_animationState.isAnimating}, isOpening: ${_animationState.isOpening}")
+            TimberLogger.w("FlipBookController", "无法触发倒放动画 - isAnimating: ${_animationState.isAnimating}, isOpening: ${_animationState.isOpening}")
         }
     }
 }

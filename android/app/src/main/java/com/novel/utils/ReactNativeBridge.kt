@@ -1,7 +1,7 @@
 package com.novel.utils
 
 import android.annotation.SuppressLint
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.facebook.react.bridge.Arguments
 import com.novel.MainApplication
 import com.novel.utils.network.api.front.HomeService
@@ -53,7 +53,7 @@ object ReactNativeBridge {
         photo: String,
         sex: String? = null
     ) {
-        Log.d(TAG, "🚀 发送用户数据到RN: uid=${uid.take(8)}***, nickname=$nickname")
+        TimberLogger.d(TAG, "🚀 发送用户数据到RN: uid=${uid.take(8)}***, nickname=$nickname")
         
         val application = MainApplication.getInstance()
         val reactContext = application?.reactNativeHost?.reactInstanceManager?.currentReactContext
@@ -73,9 +73,9 @@ object ReactNativeBridge {
                 params
             )
             
-            Log.d(TAG, "✅ 用户数据已发送到RN")
+            TimberLogger.d(TAG, "✅ 用户数据已发送到RN")
         } ?: run {
-            Log.w(TAG, "❌ ReactContext为空，无法发送用户数据")
+            TimberLogger.w(TAG, "❌ ReactContext为空，无法发送用户数据")
         }
     }
     
@@ -91,7 +91,7 @@ object ReactNativeBridge {
      */
     @SuppressLint("VisibleForTests")
     private fun sendRecommendBooksToRN(books: List<HomeService.HomeBook>) {
-        Log.d(TAG, "📚 发送${books.size}本推荐书籍到RN")
+        TimberLogger.d(TAG, "📚 发送${books.size}本推荐书籍到RN")
         
         val application = MainApplication.getInstance()
         val reactContext = application?.reactNativeHost?.reactInstanceManager?.currentReactContext
@@ -123,9 +123,9 @@ object ReactNativeBridge {
                 params
             )
             
-            Log.d(TAG, "✅ ${books.size}本推荐书籍已发送到RN")
+            TimberLogger.d(TAG, "✅ ${books.size}本推荐书籍已发送到RN")
         } ?: run {
-            Log.w(TAG, "❌ ReactContext为空，无法发送推荐书籍")
+            TimberLogger.w(TAG, "❌ ReactContext为空，无法发送推荐书籍")
         }
     }
     
@@ -134,7 +134,7 @@ object ReactNativeBridge {
      * 用于开发调试和功能验证
      */
     fun sendTestUserDataToRN() {
-        Log.d(TAG, "🧪 发送测试用户数据到RN")
+        TimberLogger.d(TAG, "🧪 发送测试用户数据到RN")
         sendUserDataToRN(
             uid = "12345",
             token = "test-token-123456",
@@ -149,7 +149,7 @@ object ReactNativeBridge {
      * 包含热门小说样本数据
      */
     fun sendTestRecommendBooksToRN() {
-        Log.d(TAG, "🧪 发送测试推荐书籍到RN")
+        TimberLogger.d(TAG, "🧪 发送测试推荐书籍到RN")
         
         val testBooks = listOf(
             HomeService.HomeBook(

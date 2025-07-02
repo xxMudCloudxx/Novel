@@ -1,7 +1,7 @@
 package com.novel.utils.network.cache
 
 import android.content.Context
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -93,7 +93,7 @@ class NetworkCacheManager @Inject constructor(
     
     init {
         cacheDir.mkdirs()
-        Log.d(TAG, "网络缓存管理器初始化，缓存目录: ${cacheDir.absolutePath}")
+        TimberLogger.d(TAG, "网络缓存管理器初始化，缓存目录: ${cacheDir.absolutePath}")
         // 清理过期缓存
         cleanExpiredCaches()
     }
@@ -127,7 +127,7 @@ class NetworkCacheManager @Inject constructor(
                     return@withContext CacheResult.Success(cachedData, true)
                 } else {
                     // 缓存数据无效或不存在，同步获取网络数据
-                    Log.d(TAG, "Cache data invalid or missing for key: $key, fetching from network")
+                    TimberLogger.d(TAG, "Cache data invalid or missing for key: $key, fetching from network")
                     try {
                         val networkData = networkCall()
                         // 检查网络数据是否为有效数据（兜底检查）
@@ -135,7 +135,7 @@ class NetworkCacheManager @Inject constructor(
                             saveCacheData(key, networkData, config, typeToken)
                             return@withContext CacheResult.Success(networkData, false)
                         } else {
-                            Log.w(TAG, "Network data is invalid for key: $key, retrying...")
+                            TimberLogger.w(TAG, "Network data is invalid for key: $key, retrying...")
                             // 如果网络数据无效，稍作延迟后重试一次
                             kotlinx.coroutines.delay(1000)
                             val retryNetworkData = networkCall()
@@ -145,17 +145,17 @@ class NetworkCacheManager @Inject constructor(
                             } else {
                                 // 如果网络重试仍失败，尝试返回过期的缓存数据作为兜底
                                 if (cachedData != null) {
-                                    Log.w(TAG, "Using expired cache data as fallback for key: $key")
+                                    TimberLogger.w(TAG, "Using expired cache data as fallback for key: $key")
                                     return@withContext CacheResult.Success(cachedData, true)
                                 }
                                 return@withContext CacheResult.Error(Exception("Network data is invalid after retry"))
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Network request failed for key: $key", e)
+                        TimberLogger.e(TAG, "Network request failed for key: $key", e)
                         // 网络失败时，尝试返回缓存数据（即使可能过期）作为兜底
                         if (cachedData != null) {
-                            Log.w(TAG, "Using cached data as fallback for key: $key")
+                            TimberLogger.w(TAG, "Using cached data as fallback for key: $key")
                             return@withContext CacheResult.Error(e, cachedData)
                         }
                         return@withContext CacheResult.Error(e)
@@ -170,7 +170,7 @@ class NetworkCacheManager @Inject constructor(
                         saveCacheData(key, networkData, config, typeToken)
                         return@withContext CacheResult.Success(networkData, false)
                     } else {
-                        Log.w(TAG, "Network data is invalid for key: $key, falling back to cache")
+                        TimberLogger.w(TAG, "Network data is invalid for key: $key, falling back to cache")
                         val cachedData = getCachedDataInternal(key, typeToken = typeToken)
                         if (cachedData != null) {
                             return@withContext CacheResult.Success(cachedData, true)
@@ -179,7 +179,7 @@ class NetworkCacheManager @Inject constructor(
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Network request failed, trying cache for key: $key", e)
+                    TimberLogger.e(TAG, "Network request failed, trying cache for key: $key", e)
                     val cachedData = getCachedDataInternal(key, typeToken = typeToken)
                     if (cachedData != null) {
                         return@withContext CacheResult.Success(cachedData, true)
@@ -241,7 +241,7 @@ class NetworkCacheManager @Inject constructor(
                     // 4. 所有正常途径失败，尝试使用过期缓存
                     val expiredCachedData = getCachedDataInternal(key, allowExpired = true, typeToken = typeToken)
                     if (expiredCachedData != null) {
-                        Log.w(TAG, "Using expired cache data as final fallback for key: $key")
+                        TimberLogger.w(TAG, "Using expired cache data as final fallback for key: $key")
                         return@withContext CacheResult.Error(Exception("All data sources failed"), expiredCachedData)
                     }
                     
@@ -249,7 +249,7 @@ class NetworkCacheManager @Inject constructor(
                     return@withContext CacheResult.Error(Exception("All fallback strategies failed"))
                     
                 } catch (e: Exception) {
-                    Log.e(TAG, "Smart fallback failed for key: $key", e)
+                    TimberLogger.e(TAG, "Smart fallback failed for key: $key", e)
                     // 作为最后的兜底，尝试返回过期缓存
                     val expiredCachedData = getCachedDataInternal(key, allowExpired = true, typeToken = typeToken)
                     if (expiredCachedData != null) {
@@ -295,9 +295,9 @@ class NetworkCacheManager @Inject constructor(
                 // 回调通知缓存已更新
                 onCacheUpdate?.invoke(networkData)
                 
-                Log.d(TAG, "Cache updated for key: $key")
+                TimberLogger.d(TAG, "Cache updated for key: $key")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to update cache for key: $key", e)
+                TimberLogger.e(TAG, "Failed to update cache for key: $key", e)
             } finally {
                 // 标记更新完成
                 updateCacheState(key, false)
@@ -339,7 +339,7 @@ class NetworkCacheManager @Inject constructor(
                     try {
                         gson.fromJson<CacheEntry<T>>(cacheEntryJson, type)
                     } catch (e: ClassCastException) {
-                        Log.e(TAG, "ClassCastException during deserialization for key: $key, clearing cache", e)
+                        TimberLogger.e(TAG, "ClassCastException during deserialization for key: $key, clearing cache", e)
                         diskCacheFile.delete()
                         memoryCache.remove(key)
                         return@withContext null
@@ -352,7 +352,7 @@ class NetworkCacheManager @Inject constructor(
                     return@withContext cacheEntry.data
                 } else if (allowExpired) {
                     // 允许过期缓存时，仍然返回数据但不更新内存缓存
-                    Log.d(TAG, "Returning expired cache data for key: $key")
+                    TimberLogger.d(TAG, "Returning expired cache data for key: $key")
                     return@withContext cacheEntry.data
                 } else {
                     // 过期则删除
@@ -363,13 +363,13 @@ class NetworkCacheManager @Inject constructor(
             
             null
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get cached data for key: $key", e)
+            TimberLogger.e(TAG, "Failed to get cached data for key: $key", e)
             // 如果反序列化失败，清理相关缓存
             try {
                 File(cacheDir, "$key.json").delete()
                 memoryCache.remove(key)
             } catch (cleanupException: Exception) {
-                Log.e(TAG, "Failed to cleanup corrupted cache for key: $key", cleanupException)
+                TimberLogger.e(TAG, "Failed to cleanup corrupted cache for key: $key", cleanupException)
             }
             null
         }
@@ -414,9 +414,9 @@ class NetworkCacheManager @Inject constructor(
                 oldestKey?.let { memoryCache.remove(it) }
             }
             
-            Log.d(TAG, "Cache saved for key: $key")
+            TimberLogger.d(TAG, "Cache saved for key: $key")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save cache for key: $key", e)
+            TimberLogger.e(TAG, "Failed to save cache for key: $key", e)
         }
     }
     
@@ -469,9 +469,9 @@ class NetworkCacheManager @Inject constructor(
             
             expiredKeys.forEach { memoryCache.remove(it) }
             
-            Log.d(TAG, "Expired cache cleaned")
+            TimberLogger.d(TAG, "Expired cache cleaned")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to clean expired caches", e)
+            TimberLogger.e(TAG, "Failed to clean expired caches", e)
         }
     }
     
@@ -482,9 +482,9 @@ class NetworkCacheManager @Inject constructor(
         try {
             memoryCache.remove(key)
             File(cacheDir, "$key.json").delete()
-            Log.d(TAG, "Cache cleared for key: $key")
+            TimberLogger.d(TAG, "Cache cleared for key: $key")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to clear cache for key: $key", e)
+            TimberLogger.e(TAG, "Failed to clear cache for key: $key", e)
         }
     }
     
@@ -495,9 +495,9 @@ class NetworkCacheManager @Inject constructor(
         try {
             memoryCache.clear()
             cacheDir.listFiles()?.forEach { it.delete() }
-            Log.d(TAG, "All cache cleared")
+            TimberLogger.d(TAG, "All cache cleared")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to clear all cache", e)
+            TimberLogger.e(TAG, "Failed to clear all cache", e)
         }
     }
     
@@ -523,7 +523,7 @@ class NetworkCacheManager @Inject constructor(
             
             false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check cache existence for key: $key", e)
+            TimberLogger.e(TAG, "Failed to check cache existence for key: $key", e)
             false
         }
     }

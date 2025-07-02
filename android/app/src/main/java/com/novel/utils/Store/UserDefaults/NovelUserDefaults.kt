@@ -1,7 +1,7 @@
 package com.novel.utils.Store.UserDefaults
 
 import android.content.SharedPreferences
-import android.util.Log
+import com.novel.utils.TimberLogger
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
@@ -127,7 +127,7 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun <T> set(value: T, forKey: NovelUserDefaultsKey) {
         try {
-            Log.d(TAG, "存储配置: key=${forKey.key}, type=${value}")
+            TimberLogger.d(TAG, "存储配置: key=${forKey.key}, type=${value}")
             prefs.edit {
                 when (value) {
                     is String -> putString(forKey.key, value)
@@ -138,14 +138,14 @@ class SharedPrefsUserDefaults @Inject constructor(
                     is Set<*> -> @Suppress("UNCHECKED_CAST")
                     putStringSet(forKey.key, value as Set<String>)
                     else -> {
-//                        Log.w(TAG, "不支持的配置类型: ${value?.javaClass?.simpleName}")
+//                        TimberLogger.w(TAG, "不支持的配置类型: ${value?.javaClass?.simpleName}")
                         throw IllegalArgumentException("不支持的类型：${value}")
                     }
                 }
             } // 异步提交
-            Log.d(TAG, "配置存储成功: key=${forKey.key}")
+            TimberLogger.d(TAG, "配置存储成功: key=${forKey.key}")
         } catch (e: Exception) {
-            Log.e(TAG, "配置存储失败: key=${forKey.key}", e)
+            TimberLogger.e(TAG, "配置存储失败: key=${forKey.key}", e)
             throw e
         }
     }
@@ -160,10 +160,10 @@ class SharedPrefsUserDefaults @Inject constructor(
     override fun <T> get(key: NovelUserDefaultsKey): T? {
         return try {
             val value = prefs.all[key.key] as? T
-            Log.d(TAG, "读取配置: key=${key.key}, found=${value != null}")
+            TimberLogger.d(TAG, "读取配置: key=${key.key}, found=${value != null}")
             value
         } catch (e: Exception) {
-            Log.e(TAG, "配置读取失败: key=${key.key}", e)
+            TimberLogger.e(TAG, "配置读取失败: key=${key.key}", e)
             null
         }
     }
@@ -173,11 +173,11 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun remove(key: NovelUserDefaultsKey) {
         try {
-            Log.d(TAG, "删除配置: key=${key.key}")
+            TimberLogger.d(TAG, "删除配置: key=${key.key}")
             prefs.edit { remove(key.key) }
-            Log.d(TAG, "配置删除成功: key=${key.key}")
+            TimberLogger.d(TAG, "配置删除成功: key=${key.key}")
         } catch (e: Exception) {
-            Log.e(TAG, "配置删除失败: key=${key.key}", e)
+            TimberLogger.e(TAG, "配置删除失败: key=${key.key}", e)
         }
     }
 
@@ -186,7 +186,7 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun contains(key: NovelUserDefaultsKey): Boolean {
         val exists = prefs.contains(key.key)
-        Log.d(TAG, "检查配置存在性: key=${key.key}, exists=$exists")
+        TimberLogger.d(TAG, "检查配置存在性: key=${key.key}, exists=$exists")
         return exists
     }
 
@@ -197,13 +197,13 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun clearAll() {
         try {
-            Log.d(TAG, "开始清空所有配置")
+            TimberLogger.d(TAG, "开始清空所有配置")
             prefs.edit {
                 NovelUserDefaultsKey.entries.forEach { remove(it.key) }
             }
-            Log.d(TAG, "所有配置清空完成")
+            TimberLogger.d(TAG, "所有配置清空完成")
         } catch (e: Exception) {
-            Log.e(TAG, "配置清空失败", e)
+            TimberLogger.e(TAG, "配置清空失败", e)
         }
     }
 
@@ -212,11 +212,11 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun setString(key: String, value: String) {
         try {
-            Log.d(TAG, "存储字符串配置: key=$key")
+            TimberLogger.d(TAG, "存储字符串配置: key=$key")
             prefs.edit { putString(key, value) }
-            Log.d(TAG, "字符串配置存储成功: key=$key")
+            TimberLogger.d(TAG, "字符串配置存储成功: key=$key")
         } catch (e: Exception) {
-            Log.e(TAG, "字符串配置存储失败: key=$key", e)
+            TimberLogger.e(TAG, "字符串配置存储失败: key=$key", e)
         }
     }
 
@@ -226,10 +226,10 @@ class SharedPrefsUserDefaults @Inject constructor(
     override fun getString(key: String): String? {
         return try {
             val value = prefs.getString(key, null)
-            Log.d(TAG, "读取字符串配置: key=$key, found=${value != null}")
+            TimberLogger.d(TAG, "读取字符串配置: key=$key, found=${value != null}")
             value
         } catch (e: Exception) {
-            Log.e(TAG, "字符串配置读取失败: key=$key", e)
+            TimberLogger.e(TAG, "字符串配置读取失败: key=$key", e)
             null
         }
     }
@@ -239,11 +239,11 @@ class SharedPrefsUserDefaults @Inject constructor(
      */
     override fun remove(key: String) {
         try {
-            Log.d(TAG, "删除字符串配置: key=$key")
+            TimberLogger.d(TAG, "删除字符串配置: key=$key")
             prefs.edit { remove(key) }
-            Log.d(TAG, "字符串配置删除成功: key=$key")
+            TimberLogger.d(TAG, "字符串配置删除成功: key=$key")
         } catch (e: Exception) {
-            Log.e(TAG, "字符串配置删除失败: key=$key", e)
+            TimberLogger.e(TAG, "字符串配置删除失败: key=$key", e)
         }
     }
 }

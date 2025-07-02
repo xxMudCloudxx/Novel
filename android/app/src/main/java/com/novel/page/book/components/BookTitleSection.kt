@@ -1,6 +1,6 @@
 package com.novel.page.book.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -21,7 +21,7 @@ fun BookTitleSection(bookInfo: BookDetailUiState.BookInfo?) {
     
     // 空数据保护
     if (bookInfo == null) {
-        Log.w(TAG, "BookInfo为空，跳过渲染")
+        TimberLogger.w(TAG, "BookInfo为空，跳过渲染")
         return
     }
     
@@ -34,5 +34,5 @@ fun BookTitleSection(bookInfo: BookDetailUiState.BookInfo?) {
         modifier = Modifier.fillMaxWidth()
     )
     
-    Log.v(TAG, "渲染书籍标题: ${bookInfo.bookName}")
+    TimberLogger.v(TAG, "渲染书籍标题: ${bookInfo.bookName}")
 } 

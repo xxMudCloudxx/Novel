@@ -1,6 +1,6 @@
 package com.novel.page.home.dao
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -85,7 +85,7 @@ class HomeRepository @Inject constructor(
                     try {
                         cachedBookRepository.getNewestRankBooks(strategy)
                     } catch (e: Exception) {
-                        Log.w(TAG, "新书榜首次加载失败，清理缓存后重试: ${e.message}")
+                        TimberLogger.w(TAG, "新书榜首次加载失败，清理缓存后重试: ${e.message}")
                         // 清理新书榜缓存
                         cachedBookRepository.clearNewestRankCache()
                         // 使用网络优先策略重试
@@ -93,12 +93,12 @@ class HomeRepository @Inject constructor(
                     }
                 }
                 else -> {
-                    Log.w(TAG, "未知榜单类型: $rankType, 使用默认点击榜")
+                    TimberLogger.w(TAG, "未知榜单类型: $rankType, 使用默认点击榜")
                     cachedBookRepository.getVisitRankBooks(strategy)
                 }
             }.take(RANK_BOOK_LIMIT)
         } catch (e: Exception) {
-            Log.e(TAG, "获取榜单数据失败: $rankType", e)
+            TimberLogger.e(TAG, "获取榜单数据失败: $rankType", e)
             emptyList()
         }
     }
@@ -116,12 +116,12 @@ class HomeRepository @Inject constructor(
                 cacheManager = cacheManager,
                 strategy = strategy,
                 onCacheUpdate = {
-                    Log.d(TAG, "首页推荐数据缓存已更新")
+                    TimberLogger.d(TAG, "首页推荐数据缓存已更新")
                 }
             ).onSuccess { _, fromCache ->
                 // 首页推荐数据加载成功
             }.onError { error, _ ->
-                Log.e(TAG, "首页推荐数据加载失败", error)
+                TimberLogger.e(TAG, "首页推荐数据加载失败", error)
             }.let { result ->
                 when (result) {
                     is com.novel.utils.network.cache.CacheResult.Success -> result.data.data ?: emptyList()
@@ -129,7 +129,7 @@ class HomeRepository @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取首页推荐数据异常", e)
+            TimberLogger.e(TAG, "获取首页推荐数据异常", e)
             emptyList()
         }
     }
@@ -145,12 +145,12 @@ class HomeRepository @Inject constructor(
                 cacheManager = cacheManager,
                 strategy = strategy,
                 onCacheUpdate = {
-                    Log.d(TAG, "友情链接缓存已更新")
+                    TimberLogger.d(TAG, "友情链接缓存已更新")
                 }
             ).onSuccess { _, fromCache ->
                 // 友情链接加载成功
             }.onError { error, _ ->
-                Log.e(TAG, "友情链接加载失败", error)
+                TimberLogger.e(TAG, "友情链接加载失败", error)
             }.let { result ->
                 when (result) {
                     is com.novel.utils.network.cache.CacheResult.Success -> result.data.data ?: emptyList()
@@ -158,7 +158,7 @@ class HomeRepository @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "获取友情链接异常", e)
+            TimberLogger.e(TAG, "获取友情链接异常", e)
             emptyList()
         }
     }
@@ -209,7 +209,7 @@ class HomeRepository @Inject constructor(
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "获取书籍分类失败", e)
+            TimberLogger.e(TAG, "获取书籍分类失败", e)
             // 发射空列表作为最后的备选
             emit(emptyList())
         }
@@ -234,7 +234,7 @@ class HomeRepository @Inject constructor(
             val books = getHomeBooks(strategy)
             emit(books.filter { it.type == 0 }) // 轮播图类型
         } catch (e: Exception) {
-            Log.e(TAG, "获取轮播图书籍失败", e)
+            TimberLogger.e(TAG, "获取轮播图书籍失败", e)
             emit(emptyList())
         }
     }
@@ -248,7 +248,7 @@ class HomeRepository @Inject constructor(
             val books = getHomeBooks(strategy)
             emit(books.filter { it.type == 3 }) // 热门推荐类型
         } catch (e: Exception) {
-            Log.e(TAG, "获取热门书籍失败", e)
+            TimberLogger.e(TAG, "获取热门书籍失败", e)
             emit(emptyList())
         }
     }
@@ -262,7 +262,7 @@ class HomeRepository @Inject constructor(
             val books = getHomeBooks(strategy)
             emit(books.filter { it.type == 4 }) // 精品推荐类型
         } catch (e: Exception) {
-            Log.e(TAG, "获取最新书籍失败", e)
+            TimberLogger.e(TAG, "获取最新书籍失败", e)
             emit(emptyList())
         }
     }
@@ -276,7 +276,7 @@ class HomeRepository @Inject constructor(
             val books = getHomeBooks(strategy)
             emit(books.filter { it.type == 2 }) // 本周强推类型
         } catch (e: Exception) {
-            Log.e(TAG, "获取VIP书籍失败", e)
+            TimberLogger.e(TAG, "获取VIP书籍失败", e)
             emit(emptyList())
         }
     }
@@ -301,7 +301,7 @@ class HomeRepository @Inject constructor(
             
             Triple(homeBooks, friendLinks, categories)
         } catch (e: Exception) {
-            Log.e(TAG, "强制刷新数据失败", e)
+            TimberLogger.e(TAG, "强制刷新数据失败", e)
             Triple(emptyList(), emptyList(), emptyList())
         }
     }

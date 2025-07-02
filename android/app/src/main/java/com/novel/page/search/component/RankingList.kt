@@ -1,6 +1,6 @@
 package com.novel.page.search.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -40,7 +40,7 @@ fun RankingSection(
     val TAG = "RankingSection"
     
     // 记录榜单数据状态
-    Log.d(TAG, "渲染榜单区域 - 点击榜:${novelRanking.size}项, 推荐榜:${dramaRanking.size}项, 新书榜:${newBookRanking.size}项")
+    TimberLogger.d(TAG, "渲染榜单区域 - 点击榜:${novelRanking.size}项, 推荐榜:${dramaRanking.size}项, 新书榜:${newBookRanking.size}项")
     
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.wdp),
@@ -54,7 +54,7 @@ fun RankingSection(
                 items = novelRanking,
                 onItemClick = onRankingItemClick,
                 onViewFullRanking = { 
-                    Log.d(TAG, "查看完整点击榜")
+                    TimberLogger.d(TAG, "查看完整点击榜")
                     onViewFullRanking("点击榜") 
                 }
             )
@@ -65,7 +65,7 @@ fun RankingSection(
                 items = dramaRanking,
                 onItemClick = onRankingItemClick,
                 onViewFullRanking = { 
-                    Log.d(TAG, "查看完整推荐榜")
+                    TimberLogger.d(TAG, "查看完整推荐榜")
                     onViewFullRanking("推荐榜") 
                 }
             )
@@ -76,7 +76,7 @@ fun RankingSection(
                 items = newBookRanking,
                 onItemClick = onRankingItemClick,
                 onViewFullRanking = { 
-                    Log.d(TAG, "查看完整新书榜")
+                    TimberLogger.d(TAG, "查看完整新书榜")
                     onViewFullRanking("新书榜") 
                 }
             )
@@ -108,7 +108,7 @@ private fun RankingSectionItem(
     val TAG = "RankingSectionItem"
     
     // 记录单个榜单渲染
-    Log.v(TAG, "渲染榜单: $title, 包含${items.size}项")
+    TimberLogger.v(TAG, "渲染榜单: $title, 包含${items.size}项")
     
     Column(
         modifier = Modifier
@@ -176,7 +176,7 @@ fun RankingList(
     val TAG = "RankingList"
     
     // 记录列表渲染状态
-    Log.v(TAG, "渲染榜单列表: ${items.size}项，显示前${minOf(15, items.size)}项")
+    TimberLogger.v(TAG, "渲染榜单列表: ${items.size}项，显示前${minOf(15, items.size)}项")
     
     Column(
         modifier = modifier.padding(horizontal = 8.wdp),
@@ -186,7 +186,7 @@ fun RankingList(
             RankingListItem(
                 item = item,
                 onClick = { 
-                    Log.d(TAG, "点击榜单项: ${item.title} (ID:${item.id}, 排名:${item.rank})")
+                    TimberLogger.d(TAG, "点击榜单项: ${item.title} (ID:${item.id}, 排名:${item.rank})")
                     onItemClick(item.id) 
                 }
             )
@@ -203,7 +203,7 @@ fun RankingList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .debounceClickable(onClick = {
-                        Log.d(TAG, "点击查看完整榜单，总共${items.size}项")
+                        TimberLogger.d(TAG, "点击查看完整榜单，总共${items.size}项")
                         onViewFullRanking()
                     })
                     .padding(vertical = 8.wdp, horizontal = 4.wdp)

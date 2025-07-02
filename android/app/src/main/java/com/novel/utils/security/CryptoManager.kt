@@ -3,7 +3,7 @@ package com.novel.utils.security
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import android.util.Log
+import com.novel.utils.TimberLogger
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -40,7 +40,7 @@ class CryptoManager @Inject constructor() {
     }
     
     init {
-        Log.d(TAG, "初始化CryptoManager")
+        TimberLogger.d(TAG, "初始化CryptoManager")
         generateKey()
     }
     
@@ -56,7 +56,7 @@ class CryptoManager @Inject constructor() {
             keyStore.load(null)
             
             if (!keyStore.containsAlias(KEY_ALIAS)) {
-                Log.d(TAG, "生成新的加密密钥")
+                TimberLogger.d(TAG, "生成新的加密密钥")
                 val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
                 val keyGenParameterSpec = KeyGenParameterSpec.Builder(
                     KEY_ALIAS,
@@ -70,12 +70,12 @@ class CryptoManager @Inject constructor() {
                 
                 keyGenerator.init(keyGenParameterSpec)
                 keyGenerator.generateKey()
-                Log.d(TAG, "加密密钥生成成功")
+                TimberLogger.d(TAG, "加密密钥生成成功")
             } else {
-                Log.d(TAG, "使用现有加密密钥")
+                TimberLogger.d(TAG, "使用现有加密密钥")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "密钥生成失败", e)
+            TimberLogger.e(TAG, "密钥生成失败", e)
             throw e
         }
     }
@@ -105,10 +105,10 @@ class CryptoManager @Inject constructor() {
             System.arraycopy(cipherText, 0, combined, iv.size, cipherText.size)
             
             val result = Base64.encodeToString(combined, Base64.NO_WRAP)
-            Log.d(TAG, "数据加密成功，长度: ${plainText.length} -> ${result.length}")
+            TimberLogger.d(TAG, "数据加密成功，长度: ${plainText.length} -> ${result.length}")
             result
         } catch (e: Exception) {
-            Log.e(TAG, "数据加密失败", e)
+            TimberLogger.e(TAG, "数据加密失败", e)
             throw e
         }
     }
@@ -138,10 +138,10 @@ class CryptoManager @Inject constructor() {
             
             val plainText = cipher.doFinal(cipherText)
             val result = String(plainText, Charsets.UTF_8)
-            Log.d(TAG, "数据解密成功，长度: ${encryptedText.length} -> ${result.length}")
+            TimberLogger.d(TAG, "数据解密成功，长度: ${encryptedText.length} -> ${result.length}")
             result
         } catch (e: Exception) {
-            Log.e(TAG, "数据解密失败", e)
+            TimberLogger.e(TAG, "数据解密失败", e)
             throw e
         }
     }

@@ -15,7 +15,7 @@ import com.novel.page.read.ReaderPage
 import com.novel.page.search.SearchPage
 import com.novel.page.search.SearchResultPage
 import com.novel.page.ReactNativePage
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.page.component.FlipBookAnimationController
 import com.novel.page.search.FullRankingPage
 
@@ -24,18 +24,18 @@ import com.novel.page.search.FullRankingPage
  */
 @Composable
 fun NavigationSetup() {
-    Log.d("NavigationSetup", "NavigationSetup 重新组合")
+    TimberLogger.d("NavigationSetup", "NavigationSetup 重新组合")
 
     // 创建NavController
     val navController = rememberNavController()
 
     // 使用DisposableEffect确保在组件销毁时正确清理
     DisposableEffect(navController) {
-        Log.d("NavigationSetup", "DisposableEffect: 设置 NavController")
+        TimberLogger.d("NavigationSetup", "DisposableEffect: 设置 NavController")
         NavViewModel.navController.value = navController
 
         onDispose {
-            Log.d("NavigationSetup", "DisposableEffect: 清理 NavController")
+            TimberLogger.d("NavigationSetup", "DisposableEffect: 清理 NavController")
             // 确保在组件销毁时清理引用
             if (NavViewModel.navController.value == navController) {
                 NavViewModel.navController.value = null
@@ -172,8 +172,8 @@ object NavViewModel : ViewModel() {
      * @param query 搜索关键词（可选）
      */
     fun navigateToSearch(query: String = "") {
-        Log.d("NavViewModel", "===== 导航到搜索页面 =====")
-        Log.d("NavViewModel", "query: $query")
+        TimberLogger.d("NavViewModel", "===== 导航到搜索页面 =====")
+        TimberLogger.d("NavViewModel", "query: $query")
 
         val route = if (query.isNotBlank()) {
             "search?query=$query"
@@ -182,8 +182,8 @@ object NavViewModel : ViewModel() {
         }
 
         navController.value?.navigate(route)
-        Log.d("NavViewModel", "✅ 导航到搜索页面命令已发送")
-        Log.d("NavViewModel", "==============================")
+        TimberLogger.d("NavViewModel", "✅ 导航到搜索页面命令已发送")
+        TimberLogger.d("NavViewModel", "==============================")
     }
 
     /**
@@ -191,14 +191,14 @@ object NavViewModel : ViewModel() {
      * @param query 搜索关键词
      */
     fun navigateToSearchResult(query: String) {
-        Log.d("NavViewModel", "===== 导航到搜索结果页面 =====")
-        Log.d("NavViewModel", "query: $query")
+        TimberLogger.d("NavViewModel", "===== 导航到搜索结果页面 =====")
+        TimberLogger.d("NavViewModel", "query: $query")
 
         val route = "search_result?query=$query"
         navController.value?.navigate(route)
 
-        Log.d("NavViewModel", "✅ 导航到搜索结果页面命令已发送")
-        Log.d("NavViewModel", "==============================")
+        TimberLogger.d("NavViewModel", "✅ 导航到搜索结果页面命令已发送")
+        TimberLogger.d("NavViewModel", "==============================")
     }
 
     /**
@@ -210,16 +210,16 @@ object NavViewModel : ViewModel() {
         rankingType: String,
         rankingItems: List<com.novel.page.search.component.SearchRankingItem>
     ) {
-        Log.d("NavViewModel", "===== 导航到完整榜单页面 =====")
-        Log.d("NavViewModel", "rankingType: $rankingType")
-        Log.d("NavViewModel", "rankingItems count: ${rankingItems.size}")
+        TimberLogger.d("NavViewModel", "===== 导航到完整榜单页面 =====")
+        TimberLogger.d("NavViewModel", "rankingType: $rankingType")
+        TimberLogger.d("NavViewModel", "rankingItems count: ${rankingItems.size}")
 
         val encodedData = encodeRankingData(rankingItems)
         val route = "full_ranking/$rankingType/$encodedData"
         navController.value?.navigate(route)
 
-        Log.d("NavViewModel", "✅ 导航到完整榜单页面命令已发送")
-        Log.d("NavViewModel", "==============================")
+        TimberLogger.d("NavViewModel", "✅ 导航到完整榜单页面命令已发送")
+        TimberLogger.d("NavViewModel", "==============================")
     }
 
     /**
@@ -234,7 +234,7 @@ object NavViewModel : ViewModel() {
             )
             java.net.URLEncoder.encode(json, "UTF-8")
         } catch (e: Exception) {
-            Log.e("NavViewModel", "编码榜单数据失败", e)
+            TimberLogger.e("NavViewModel", "编码榜单数据失败", e)
             ""
         }
     }
@@ -263,7 +263,7 @@ object NavViewModel : ViewModel() {
                 } else null
             }
         } catch (e: Exception) {
-            Log.e("NavViewModel", "解码榜单数据失败", e)
+            TimberLogger.e("NavViewModel", "解码榜单数据失败", e)
             emptyList()
         }
     }
@@ -274,17 +274,17 @@ object NavViewModel : ViewModel() {
      * @param fromRank 是否来自榜单（用于识别但不影响动画，动画在HomePage处理）
      */
     fun navigateToBookDetail(bookId: String, fromRank: Boolean = false) {
-        Log.d("NavViewModel", "===== 导航到书籍详情页 =====")
-        Log.d("NavViewModel", "bookId: $bookId")
-        Log.d("NavViewModel", "fromRank: $fromRank")
+        TimberLogger.d("NavViewModel", "===== 导航到书籍详情页 =====")
+        TimberLogger.d("NavViewModel", "bookId: $bookId")
+        TimberLogger.d("NavViewModel", "fromRank: $fromRank")
 
         // 记录当前书籍信息
         currentBookInfo = bookId to fromRank
-        Log.d("NavViewModel", "保存书籍信息: $currentBookInfo")
+        TimberLogger.d("NavViewModel", "保存书籍信息: $currentBookInfo")
 
         navController.value?.navigate("book_detail/$bookId?fromRank=$fromRank")
-        Log.d("NavViewModel", "✅ 导航命令已发送")
-        Log.d("NavViewModel", "==============================")
+        TimberLogger.d("NavViewModel", "✅ 导航命令已发送")
+        TimberLogger.d("NavViewModel", "==============================")
     }
 
     /**
@@ -293,9 +293,9 @@ object NavViewModel : ViewModel() {
      * @param chapterId 章节ID（可选）
      */
     fun navigateToReader(bookId: String, chapterId: String? = null) {
-        Log.d("NavViewModel", "===== 导航到阅读器页面 =====")
-        Log.d("NavViewModel", "bookId: $bookId")
-        Log.d("NavViewModel", "chapterId: $chapterId")
+        TimberLogger.d("NavViewModel", "===== 导航到阅读器页面 =====")
+        TimberLogger.d("NavViewModel", "bookId: $bookId")
+        TimberLogger.d("NavViewModel", "chapterId: $chapterId")
 
         val route = if (chapterId != null) {
             "reader/$bookId?chapterId=$chapterId"
@@ -304,8 +304,8 @@ object NavViewModel : ViewModel() {
         }
 
         navController.value?.navigate(route)
-        Log.d("NavViewModel", "✅ 导航到阅读器命令已发送")
-        Log.d("NavViewModel", "==============================")
+        TimberLogger.d("NavViewModel", "✅ 导航到阅读器命令已发送")
+        TimberLogger.d("NavViewModel", "==============================")
     }
 
     /**

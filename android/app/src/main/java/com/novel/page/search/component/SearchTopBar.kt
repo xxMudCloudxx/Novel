@@ -1,6 +1,6 @@
 package com.novel.page.search.component
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,7 +51,7 @@ fun SearchTopBar(
         // 返回按钮
         IconButton(
             onClick = {
-                Log.d(TAG, "返回按钮被点击")
+                TimberLogger.d(TAG, "返回按钮被点击")
                 onBackClick()
             },
             modifier = Modifier.size(40.wdp)
@@ -67,7 +67,7 @@ fun SearchTopBar(
         NovelTextField(
             value = query,
             onValueChange = { newQuery ->
-                Log.v(TAG, "搜索词变更: '$newQuery'")
+                TimberLogger.v(TAG, "搜索词变更: '$newQuery'")
                 onQueryChange(newQuery)
             },
             placeText = "搜索小说或作者",
@@ -80,7 +80,7 @@ fun SearchTopBar(
         // 搜索按钮
         IconButton(
             onClick = {
-                Log.d(TAG, "搜索按钮被点击, 关键词: '$query'")
+                TimberLogger.d(TAG, "搜索按钮被点击, 关键词: '$query'")
                 onSearchClick()
             },
             modifier = Modifier.size(40.wdp)

@@ -1,6 +1,6 @@
 package com.novel.page.search.viewmodel
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.page.search.component.SearchRankingItem
@@ -158,7 +158,7 @@ class SearchViewModel @Inject constructor(
      * 并行加载搜索历史和榜单数据以提升性能
      */
     private fun loadInitialData() {
-        Log.d(TAG, "开始加载初始数据")
+        TimberLogger.d(TAG, "开始加载初始数据")
         updateState { it.copy(isLoading = true, error = null) }
         
         viewModelScope.launch {
@@ -177,10 +177,10 @@ class SearchViewModel @Inject constructor(
                     )
                 }
                 
-                Log.d(TAG, "初始数据加载完成")
+                TimberLogger.d(TAG, "初始数据加载完成")
                 
             } catch (e: Exception) {
-                Log.e(TAG, "加载初始数据失败", e)
+                TimberLogger.e(TAG, "加载初始数据失败", e)
                 updateState { 
                     it.copy(
                         isLoading = false, 
@@ -204,7 +204,7 @@ class SearchViewModel @Inject constructor(
      * 验证输入后添加历史记录并导航到结果页
      */
     private fun performSearch(query: String) {
-        Log.d(TAG, "执行搜索: $query")
+        TimberLogger.d(TAG, "执行搜索: $query")
         
         if (query.isBlank()) {
             sendEvent(SearchEvent.ShowToast("请输入搜索关键词"))
@@ -224,7 +224,7 @@ class SearchViewModel @Inject constructor(
                 sendEvent(SearchEvent.NavigateToSearchResult(query.trim()))
                 
             } catch (e: Exception) {
-                Log.e(TAG, "搜索操作失败", e)
+                TimberLogger.e(TAG, "搜索操作失败", e)
                 sendEvent(SearchEvent.ShowToast("搜索失败: ${e.message}"))
             }
         }
@@ -240,7 +240,7 @@ class SearchViewModel @Inject constructor(
                 val newState = toggleHistoryExpansionUseCase(currentState.isHistoryExpanded)
                 updateState { it.copy(isHistoryExpanded = newState) }
             } catch (e: Exception) {
-                Log.w(TAG, "切换历史记录展开状态失败", e)
+                TimberLogger.e(TAG, "切换历史记录展开状态失败", e)
                 sendEvent(SearchEvent.ShowToast("操作失败: ${e.message}"))
             }
         }
@@ -250,7 +250,7 @@ class SearchViewModel @Inject constructor(
      * 导航到书籍详情
      */
     private fun navigateToBookDetail(bookId: Long) {
-        Log.d(TAG, "导航到书籍详情: $bookId")
+        TimberLogger.d(TAG, "导航到书籍详情: $bookId")
         sendEvent(SearchEvent.NavigateToBookDetail(bookId))
     }
     
@@ -258,7 +258,7 @@ class SearchViewModel @Inject constructor(
      * 返回上一页
      */
     private fun navigateBack() {
-        Log.d(TAG, "返回上一页")
+        TimberLogger.d(TAG, "返回上一页")
         sendEvent(SearchEvent.NavigateBack)
     }
     
@@ -266,7 +266,7 @@ class SearchViewModel @Inject constructor(
      * 清除错误
      */
     private fun clearError() {
-        Log.d(TAG, "清除错误")
+        TimberLogger.d(TAG, "清除错误")
         updateState { it.copy(error = null) }
     }
 } 

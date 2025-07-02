@@ -1,6 +1,6 @@
 package com.novel.utils.network
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.interceptor.AuthInterceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
@@ -118,7 +118,7 @@ object RetrofitClient {
         authInterceptor: AuthInterceptor,
         tokenProvider: TokenProvider
     ) {
-        Log.d(TAG, "初始化RetrofitClient")
+        TimberLogger.d(TAG, "初始化RetrofitClient")
         this.authInterceptor = authInterceptor
         this.tokenProvider = tokenProvider
     }
@@ -129,7 +129,7 @@ object RetrofitClient {
      */
     private fun getRetrofit(baseUrl: String): Retrofit =
         retrofitInstances.getOrPut(baseUrl) {
-            Log.d(TAG, "创建新的Retrofit实例: $baseUrl")
+            TimberLogger.d(TAG, "创建新的Retrofit实例: $baseUrl")
             // 组装OkHttpClient
             val builder = OkHttpClient.Builder()
                 .addInterceptor(authInterceptor) // 自动加Token
@@ -195,7 +195,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d(TAG, "GET请求: $endpoint")
+        TimberLogger.d(TAG, "GET请求: $endpoint")
         getService(baseUrl).get(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }
@@ -215,7 +215,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d(TAG, "POST请求: $endpoint")
+        TimberLogger.d(TAG, "POST请求: $endpoint")
         getService(baseUrl).post(endpoint, createJsonBody(params), headers)
             .enqueue(createCallback(callback))
     }
@@ -233,7 +233,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d(TAG, "DELETE请求: $endpoint")
+        TimberLogger.d(TAG, "DELETE请求: $endpoint")
         getService(baseUrl).delete(endpoint, headers).enqueue(createCallback(callback))
     }
 
@@ -252,7 +252,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d(TAG, "PATCH请求: $endpoint")
+        TimberLogger.d(TAG, "PATCH请求: $endpoint")
         getService(baseUrl).patch(endpoint, params, headers)
             .enqueue(createCallback(callback))
     }
@@ -272,7 +272,7 @@ object ApiService {
         headers: Map<String, String> = mapOf(),
         callback: (String?, Throwable?) -> Unit
     ) {
-        Log.d(TAG, "PUT请求: $endpoint")
+        TimberLogger.d(TAG, "PUT请求: $endpoint")
         getService(baseUrl).put(endpoint, body, headers).enqueue(createCallback(callback))
     }
 
@@ -294,25 +294,25 @@ object ApiService {
                 try {
                     if (response.isSuccessful) {
                         val body = response.body()?.string()
-                        Log.d(TAG, "请求成功: ${call.request().url}")
+                        TimberLogger.d(TAG, "请求成功: ${call.request().url}")
                         if (body.isNullOrEmpty()) {
-                            Log.w(TAG, "响应为空: ${call.request().url}")
+                            TimberLogger.w(TAG, "响应为空: ${call.request().url}")
                         }
-                        Log.d(TAG, "响应数据: $body")
+                        TimberLogger.d(TAG, "响应数据: $body")
                         callback(body, null)
                     } else {
                         val errorMsg = "HTTP错误: ${response.code()}"
-                        Log.w(TAG, "$errorMsg - ${call.request().url}")
+                        TimberLogger.w(TAG, "$errorMsg - ${call.request().url}")
                         callback(null, IOException(errorMsg))
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "响应解析异常: ${call.request().url}", e)
+                    TimberLogger.e(TAG, "响应解析异常: ${call.request().url}", e)
                     callback(null, e)
                 }
             }
 
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                Log.e(TAG, "请求失败: ${call.request().url} - ${t.message}")
+                TimberLogger.e(TAG, "请求失败: ${call.request().url} - ${t.message}")
                 callback(null, t)
             }
         }

@@ -1,6 +1,6 @@
 package com.novel.page.login.utils
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import com.novel.utils.security.SecurityConfig
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,19 +48,19 @@ class ValidationService @Inject constructor(
      * @return 验证结果，null表示验证通过
      */
     fun validatePhone(phone: String): ValidationResult? {
-        Log.d(TAG, "验证手机号格式")
+        TimberLogger.d(TAG, "验证手机号格式")
         
         return when {
             phone.isBlank() -> {
-                Log.w(TAG, "手机号为空")
+                TimberLogger.w(TAG, "手机号为空")
                 ValidationResult.Error("手机号不能为空")
             }
             !phone.matches(Regex(SecurityConfig.PHONE_REGEX)) -> {
-                Log.w(TAG, "手机号格式不正确: $phone")
+                TimberLogger.w(TAG, "手机号格式不正确: $phone")
                 ValidationResult.Error("请输入有效的手机号")
             }
             else -> {
-                Log.d(TAG, "手机号验证通过")
+                TimberLogger.d(TAG, "手机号验证通过")
                 null
             }
         }
@@ -79,27 +79,27 @@ class ValidationService @Inject constructor(
      * @return 验证结果，null表示验证通过
      */
     fun validatePassword(password: String): ValidationResult? {
-        Log.d(TAG, "验证密码强度")
+        TimberLogger.d(TAG, "验证密码强度")
         
         return when {
             password.isBlank() -> {
-                Log.w(TAG, "密码为空")
+                TimberLogger.w(TAG, "密码为空")
                 ValidationResult.Error("密码不能为空")
             }
             password.length < SecurityConfig.MIN_PASSWORD_LENGTH -> {
-                Log.w(TAG, "密码长度不足: ${password.length}")
+                TimberLogger.w(TAG, "密码长度不足: ${password.length}")
                 ValidationResult.Error("密码长度需至少${SecurityConfig.MIN_PASSWORD_LENGTH}位")
             }
             password.length > SecurityConfig.MAX_PASSWORD_LENGTH -> {
-                Log.w(TAG, "密码长度超限: ${password.length}")
+                TimberLogger.w(TAG, "密码长度超限: ${password.length}")
                 ValidationResult.Error("密码长度不能超过${SecurityConfig.MAX_PASSWORD_LENGTH}位")
             }
             !password.matches(Regex(SecurityConfig.PASSWORD_REGEX)) -> {
-                Log.w(TAG, "密码包含非法字符")
+                TimberLogger.w(TAG, "密码包含非法字符")
                 ValidationResult.Error("密码包含非法字符")
             }
             else -> {
-                Log.d(TAG, "密码验证通过")
+                TimberLogger.d(TAG, "密码验证通过")
                 null
             }
         }
@@ -117,19 +117,19 @@ class ValidationService @Inject constructor(
      * @return 验证结果，null表示验证通过
      */
     fun validatePasswordConfirm(password: String, confirmPassword: String): ValidationResult? {
-        Log.d(TAG, "验证密码确认")
+        TimberLogger.d(TAG, "验证密码确认")
         
         return when {
             confirmPassword.isBlank() -> {
-                Log.w(TAG, "确认密码为空")
+                TimberLogger.w(TAG, "确认密码为空")
                 ValidationResult.Error("确认密码不能为空")
             }
             confirmPassword != password -> {
-                Log.w(TAG, "两次密码输入不一致")
+                TimberLogger.w(TAG, "两次密码输入不一致")
                 ValidationResult.Error("两次输入的密码不一致")
             }
             else -> {
-                Log.d(TAG, "密码确认验证通过")
+                TimberLogger.d(TAG, "密码确认验证通过")
                 null
             }
         }
@@ -148,23 +148,23 @@ class ValidationService @Inject constructor(
      * @return 验证结果，null表示验证通过
      */
     fun validateVerifyCode(verifyCode: String, isRequired: Boolean = true): ValidationResult? {
-        Log.d(TAG, "验证验证码，是否必填: $isRequired")
+        TimberLogger.d(TAG, "验证验证码，是否必填: $isRequired")
         
         return when {
             isRequired && verifyCode.isBlank() -> {
-                Log.w(TAG, "验证码为空且为必填项")
+                TimberLogger.w(TAG, "验证码为空且为必填项")
                 ValidationResult.Error("验证码不能为空")
             }
             isRequired && verifyCode.length < SecurityConfig.CAPTCHA_MIN_LENGTH -> {
-                Log.w(TAG, "验证码长度不足: ${verifyCode.length}")
+                TimberLogger.w(TAG, "验证码长度不足: ${verifyCode.length}")
                 ValidationResult.Error("验证码格式错误")
             }
             verifyCode.isNotBlank() && !verifyCode.matches(Regex(SecurityConfig.CAPTCHA_REGEX)) -> {
-                Log.w(TAG, "验证码格式不正确")
+                TimberLogger.w(TAG, "验证码格式不正确")
                 ValidationResult.Error("验证码格式错误")
             }
             else -> {
-                Log.d(TAG, "验证码验证通过")
+                TimberLogger.d(TAG, "验证码验证通过")
                 null
             }
         }
@@ -177,7 +177,7 @@ class ValidationService @Inject constructor(
      * @return 验证结果，null表示验证通过
      */
     fun validateUsernameLength(username: String): ValidationResult? {
-        Log.d(TAG, "验证用户名长度")
+        TimberLogger.d(TAG, "验证用户名长度")
         
         return when {
             !securityConfig.isInputLengthValid(
@@ -185,11 +185,11 @@ class ValidationService @Inject constructor(
                 SecurityConfig.MIN_USERNAME_LENGTH, 
                 SecurityConfig.MAX_USERNAME_LENGTH
             ) -> {
-                Log.w(TAG, "用户名长度不符合要求: ${username.length}")
+                TimberLogger.w(TAG, "用户名长度不符合要求: ${username.length}")
                 ValidationResult.Error("用户名长度需在${SecurityConfig.MIN_USERNAME_LENGTH}-${SecurityConfig.MAX_USERNAME_LENGTH}位之间")
             }
             else -> {
-                Log.d(TAG, "用户名长度验证通过")
+                TimberLogger.d(TAG, "用户名长度验证通过")
                 null
             }
         }
@@ -202,14 +202,14 @@ class ValidationService @Inject constructor(
      * @return 验证结果映射，包含各字段的验证结果
      */
     fun validateLoginForm(form: LoginForm): ValidationResults {
-        Log.d(TAG, "开始批量验证登录表单")
+        TimberLogger.d(TAG, "开始批量验证登录表单")
         
         val results = ValidationResults(
             phoneError = validatePhone(form.phone),
             passwordError = validatePassword(form.password)
         )
         
-        Log.d(TAG, "登录表单验证完成，是否通过: ${results.isValid}")
+        TimberLogger.d(TAG, "登录表单验证完成，是否通过: ${results.isValid}")
         return results
     }
     
@@ -220,7 +220,7 @@ class ValidationService @Inject constructor(
      * @return 验证结果映射，包含各字段的验证结果
      */
     fun validateRegisterForm(form: RegisterForm): ValidationResults {
-        Log.d(TAG, "开始批量验证注册表单")
+        TimberLogger.d(TAG, "开始批量验证注册表单")
         
         val results = ValidationResults(
             phoneError = validatePhone(form.phone),
@@ -229,7 +229,7 @@ class ValidationService @Inject constructor(
             verifyCodeError = validateVerifyCode(form.verifyCode, isRequired = true)
         )
         
-        Log.d(TAG, "注册表单验证完成，是否通过: ${results.isValid}")
+        TimberLogger.d(TAG, "注册表单验证完成，是否通过: ${results.isValid}")
         return results
     }
     
@@ -240,11 +240,11 @@ class ValidationService @Inject constructor(
      * @return 验证结果，null表示验证通过
      */
     fun validateNickname(nickname: String): ValidationResult? {
-        Log.d(TAG, "验证用户昵称")
+        TimberLogger.d(TAG, "验证用户昵称")
         
         return when {
             nickname.isBlank() -> {
-                Log.w(TAG, "昵称为空")
+                TimberLogger.w(TAG, "昵称为空")
                 ValidationResult.Error("昵称不能为空")
             }
             !securityConfig.isInputLengthValid(
@@ -252,11 +252,11 @@ class ValidationService @Inject constructor(
                 1, 
                 SecurityConfig.MAX_NICKNAME_LENGTH
             ) -> {
-                Log.w(TAG, "昵称长度超限: ${nickname.length}")
+                TimberLogger.w(TAG, "昵称长度超限: ${nickname.length}")
                 ValidationResult.Error("昵称长度不能超过${SecurityConfig.MAX_NICKNAME_LENGTH}位")
             }
             else -> {
-                Log.d(TAG, "昵称验证通过")
+                TimberLogger.d(TAG, "昵称验证通过")
                 null
             }
         }

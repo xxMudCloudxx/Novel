@@ -1,6 +1,6 @@
 package com.novel.page.book.components
 
-import android.util.Log
+import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -28,7 +28,7 @@ fun BookReviewsSection(reviews: List<BookDetailUiState.BookReview>) {
     
     // 记录书评数量
     if (reviews.isNotEmpty()) {
-        Log.d(TAG, "展示 ${reviews.size} 条书评")
+        TimberLogger.d(TAG, "展示 ${reviews.size} 条书评")
     }
     
     Column(
