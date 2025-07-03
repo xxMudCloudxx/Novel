@@ -54,6 +54,10 @@ object TimberLogger {
     fun w(tag: String, message: String) {
         Timber.tag(tag).w(message)
     }
+
+    fun w(tag: String, message: String, throwable: Throwable) {
+        Timber.tag(tag).w(throwable, message)
+    }
     
     /**
      * 错误日志
