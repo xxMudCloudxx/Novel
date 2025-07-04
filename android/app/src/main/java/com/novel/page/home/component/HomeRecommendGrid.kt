@@ -525,7 +525,7 @@ fun HomeRecommendLoadMoreIndicator(
     isLoading: Boolean,
     hasMoreData: Boolean,
     modifier: Modifier = Modifier,
-    totalDataCount: Int = 0 // 新增：当前数据总数){}
+    totalDataCount: Int = 0
 ) {
     Box(
         modifier = modifier
@@ -534,8 +534,8 @@ fun HomeRecommendLoadMoreIndicator(
         contentAlignment = Alignment.Center
     ) {
         when {
+            // 正在加载中
             isLoading -> {
-                // 显示加载中状态
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.wdp)
@@ -553,46 +553,8 @@ fun HomeRecommendLoadMoreIndicator(
                 }
             }
 
-            hasMoreData -> {
-                // 显示加载中状态
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.wdp)
-                ) {
-                    CircularProgressIndicator(
-                        color = NovelColors.NovelMain,
-                        modifier = Modifier.size(20.wdp),
-                        strokeWidth = 2.wdp
-                    )
-                    NovelText(
-                        text = "加载中...",
-                        fontSize = 14.ssp,
-                        color = NovelColors.NovelTextGray
-                    )
-                }
-            }
-
-            totalDataCount == 0 -> {
-                // 修复：当数据为空时，显示加载中状态而不是已加载全部
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.wdp)
-                ) {
-                    CircularProgressIndicator(
-                        color = NovelColors.NovelMain,
-                        modifier = Modifier.size(20.wdp),
-                        strokeWidth = 2.wdp
-                    )
-                    NovelText(
-                        text = "正在获取数据...",
-                        fontSize = 14.ssp,
-                        color = NovelColors.NovelTextGray
-                    )
-                }
-            }
-
-            else -> {
-                // 没有更多数据 - 显示已加载全部
+            // 有数据且没有更多数据了 - 显示已加载全部
+            !hasMoreData && totalDataCount > 0 -> {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.wdp)
@@ -611,6 +573,12 @@ fun HomeRecommendLoadMoreIndicator(
                         thickness = 1.wdp,
                     )
                 }
+            }
+
+            // 没有数据或有更多数据但不在加载中 - 显示等待状态或空白
+            else -> {
+                // 如果没有数据，显示空白；如果有更多数据等待加载，也显示空白
+                Spacer(modifier = Modifier.height(16.wdp))
             }
         }
     }

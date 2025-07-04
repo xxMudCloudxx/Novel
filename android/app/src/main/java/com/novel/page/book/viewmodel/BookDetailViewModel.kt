@@ -94,7 +94,7 @@ class BookDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
     /**
      * Intent处理完成后的回调
      * 在这里处理需要调用UseCase的Intent
@@ -158,7 +158,7 @@ class BookDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 TimberLogger.d(TAG, "开始加载书籍详情数据: bookId=$bookId, useCache=$useCache")
-                
+                    
                 // 调用UseCase获取书籍详情
                 val result = getBookDetailUseCase(
                     GetBookDetailUseCase.Params(bookId, useCache)
@@ -212,7 +212,7 @@ class BookDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
     /**
      * 处理添加到书架
      * 
@@ -234,7 +234,7 @@ class BookDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "添加到书架异常: bookId=$bookId", e)
                 sendEffect(BookDetailEffect.ShowToast("添加到书架失败"))
-            }
+    }
         }
     }
     
@@ -260,12 +260,12 @@ class BookDetailViewModel @Inject constructor(
                 TimberLogger.e(TAG, "从书架移除异常: bookId=$bookId", e)
                 sendEffect(BookDetailEffect.ShowToast("从书架移除失败"))
             }
-        }
     }
-    
-    /**
+}
+
+/**
      * 处理关注作者
-     * 
+ * 
      * @param authorName 作者名称
      */
     private fun handleFollowAuthor(authorName: String) {

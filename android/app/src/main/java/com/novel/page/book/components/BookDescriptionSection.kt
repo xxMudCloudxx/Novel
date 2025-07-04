@@ -149,7 +149,7 @@ fun BookDescriptionSection(
                                 if (onToggleExpanded != null) {
                                     onToggleExpanded()
                                 } else {
-                                    showBottomSheet = true
+                                showBottomSheet = true
                                 }
                             })
                         )
