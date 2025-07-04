@@ -267,30 +267,30 @@ yarn detox test
 
 ## 📈 版本历史
 
-### v1.8.1 - Service 层架构重构 (2025.07)
+### v1.8.1 - Service 层架构重构 (2025.06)
 - 🏗️ **统一异步处理** - `SafeService` 基类和 `DispatcherProvider`
 - 💾 **健壮缓存管理** - `SessionCache` 接口和 `LruSessionCache`
 - ⚙️ **配置中心化** - `ReaderServiceConfig` 集中管理配置
 - 📊 **标准化日志** - `ServiceLogger` 接口统一日志格式
 - 🔧 **服务职责分离** - `SettingsService` 拆分为 `Parser + Saver`
 
-### v1.8.0 - 设置页面完整实现 (2024.12)
+### v1.8.0 - 设置页面完整实现 (2025.06)
 - 🛠️ **混合架构设置页** - Android Compose 导航 + RN 内容区域
 - 💾 **智能缓存管理** - 缓存大小计算、格式化显示、一键清空
 - 🎨 **完整主题切换** - 浅色/深色/跟随系统 + 定时切换
 - ⚙️ **全面应用设置** - 通知管理、字体调节、网络优化
 
-### v1.7.0 - 搜索模块重大优化 (2024.12)
+### v1.7.0 - 搜索模块重大优化 (2025.06)
 - 🔍 **搜索功能完善** - 历史记录、热门榜单、高级筛选
 - 📋 **FullRankingPage** - 完整榜单页面，滚动行为优化
 - 🎯 **布局稳定性** - 筛选按钮布局重构，防止界面闪烁
 
-### v1.6.0 - 智能缓存系统 (2024.11)
+### v1.6.0 - 智能缓存系统 (2025.06)
 - 💾 **NetworkCacheManager** - 通用网络缓存管理器
 - 🔄 **Cache-First策略** - 先缓存后网络的离线优先策略
 - 📊 **Repository模式** - 封装缓存逻辑和状态管理
 
-### v1.5.0 - 全书架构重构 (2024.11)
+### v1.5.0 - 全书架构重构 (2025.06)
 - 📚 **全书内容管理** - 从单章节改为全书一次性获取
 - 📊 **智能页数统计** - 基于全书内容的页数计算和缓存
 - 🔄 **增量更新机制** - 新章节发布时只获取新增部分
@@ -313,8 +313,8 @@ yarn detox test
 - ✅ **包结构优化** - 模块职责分离，消除循环依赖
 
 ### 🎯 阶段 2 - MVI架构收敛 (3周)
-- 🔄 **统一MVI框架** - `BaseMviViewModel<Intent, State, Effect>`
-- 🔄 **UseCase层重构** - 业务逻辑封装，ViewModel瘦身
+- ✅ **统一MVI框架** - `BaseMviViewModel<Intent, State, Effect>`（BookDetail 模块完成）
+- ✅ **UseCase层重构** - 业务逻辑封装，ViewModel瘦身（BookDetail 模块完成）
 - 🔄 **Repository标准化** - 统一 `Flow<Result<T>>` 返回类型
 - 🔄 **跨端状态同步** - React Native MVI状态管理集成
 

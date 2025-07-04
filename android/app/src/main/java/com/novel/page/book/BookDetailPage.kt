@@ -4,15 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.novel.page.book.components.*
 import com.novel.page.book.viewmodel.BookDetailUiState
 import com.novel.page.book.viewmodel.BookDetailViewModel
+import com.novel.page.book.viewmodel.BookDetailEffect
 import com.novel.page.component.*
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import com.novel.utils.NavViewModel
 import com.novel.utils.TimberLogger
+import android.widget.Toast
 
 /**
  * 书籍详情页面组件
@@ -43,12 +46,48 @@ fun BookDetailPage(
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     rememberCoroutineScope()
 
     // 初始化书籍详情数据
     LaunchedEffect(bookId) {
         TimberLogger.d("BookDetailPage", "开始加载书籍详情: $bookId")
         viewModel.loadBookDetail(bookId)
+    }
+    
+    // 处理副作用Effect
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            TimberLogger.d("BookDetailPage", "处理Effect: ${effect::class.simpleName}")
+            when (effect) {
+                is BookDetailEffect.NavigateToReader -> {
+                    TimberLogger.d("BookDetailPage", "导航到阅读器: bookId=${effect.bookId}, chapterId=${effect.chapterId}")
+                    // 把当前的 FlipBookAnimationController 暂存到全局
+                    NavViewModel.setFlipBookController(flipBookController)
+                    onNavigateToReader?.invoke(effect.bookId, effect.chapterId)
+                }
+                is BookDetailEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+                is BookDetailEffect.ShareBook -> {
+                    // TODO: 实现分享功能
+                    TimberLogger.d("BookDetailPage", "分享书籍: ${effect.title}")
+                    Toast.makeText(context, "分享功能待实现", Toast.LENGTH_SHORT).show()
+                }
+                is BookDetailEffect.ShowLoadingDialog -> {
+                    // TODO: 显示加载对话框
+                    TimberLogger.d("BookDetailPage", "显示加载对话框")
+                }
+                is BookDetailEffect.HideLoadingDialog -> {
+                    // TODO: 隐藏加载对话框
+                    TimberLogger.d("BookDetailPage", "隐藏加载对话框")
+                }
+                is BookDetailEffect.TriggerHapticFeedback -> {
+                    // TODO: 触发震动反馈
+                    TimberLogger.d("BookDetailPage", "触发震动反馈")
+                }
+            }
+        }
     }
 
     // 性能优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
@@ -119,7 +158,32 @@ fun BookDetailPage(
             if (uiState.isSuccess) {
                 TimberLogger.d("BookDetailPage", "渲染书籍详情内容")
                 BookDetailContent(
-                    uiState = uiState.data
+                    uiState = uiState.data,
+                    onFollowAuthor = { authorName ->
+                        viewModel.sendIntent(
+                            com.novel.page.book.viewmodel.BookDetailIntent.FollowAuthor(authorName)
+                        )
+                    },
+                    onStartReading = { bookId, chapterId ->
+                        viewModel.sendIntent(
+                            com.novel.page.book.viewmodel.BookDetailIntent.StartReading(bookId, chapterId)
+                        )
+                    },
+                    onAddToBookshelf = { bookId ->
+                        viewModel.sendIntent(
+                            com.novel.page.book.viewmodel.BookDetailIntent.AddToBookshelf(bookId)
+                        )
+                    },
+                    onShareBook = { bookId, bookName ->
+                        viewModel.sendIntent(
+                            com.novel.page.book.viewmodel.BookDetailIntent.ShareBook(bookId, bookName)
+                        )
+                    },
+                    onToggleDescription = {
+                        viewModel.sendIntent(
+                            com.novel.page.book.viewmodel.BookDetailIntent.ToggleDescriptionExpanded
+                        )
+                    }
                 )
             }
         }
@@ -136,10 +200,20 @@ fun BookDetailPage(
  * - 简介和评价内容
  * 
  * @param uiState 书籍详情UI状态数据
+ * @param onFollowAuthor 关注作者回调
+ * @param onStartReading 开始阅读回调
+ * @param onAddToBookshelf 添加到书架回调
+ * @param onShareBook 分享书籍回调
+ * @param onToggleDescription 切换简介展开回调
  */
 @Composable
 fun BookDetailContent(
-    uiState: BookDetailUiState
+    uiState: BookDetailUiState,
+    onFollowAuthor: ((String) -> Unit)? = null,
+    onStartReading: ((String, String?) -> Unit)? = null,
+    onAddToBookshelf: ((String) -> Unit)? = null,
+    onShareBook: ((String, String) -> Unit)? = null,
+    onToggleDescription: (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -154,7 +228,10 @@ fun BookDetailContent(
         BookTitleSection(bookInfo = uiState.bookInfo)
 
         // 作者信息区域
-        AuthorSection(bookInfo = uiState.bookInfo)
+        AuthorSection(
+            bookInfo = uiState.bookInfo,
+            onFollowAuthor = onFollowAuthor
+        )
 
         // 统计数据区域（字数、阅读量、最新章节等）
         BookStatsSection(
@@ -164,7 +241,21 @@ fun BookDetailContent(
 
         // 书籍简介区域
         BookDescriptionSection(
-            description = uiState.bookInfo?.bookDesc ?: ""
+            description = uiState.bookInfo?.bookDesc ?: "",
+            isExpanded = uiState.isDescriptionExpanded,
+            onToggleExpanded = onToggleDescription
+        )
+
+        // 书籍操作区域
+        BookActionSection(
+            bookInfo = uiState.bookInfo,
+            isInBookshelf = false, // TODO: 从状态中获取
+            onStartReading = onStartReading,
+            onAddToBookshelf = onAddToBookshelf,
+            onRemoveFromBookshelf = { bookId ->
+                // TODO: 添加移除书架Intent
+            },
+            onShareBook = onShareBook
         )
 
         // 用户评价区域

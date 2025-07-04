@@ -2,123 +2,186 @@ package com.novel.page.book.viewmodel
 
 import com.novel.utils.TimberLogger
 import androidx.lifecycle.viewModelScope
-import com.novel.page.component.BaseViewModel
+import com.novel.core.mvi.BaseMviViewModel
+import com.novel.page.book.usecase.*
 import com.novel.page.component.StateHolderImpl
 import com.novel.utils.network.repository.CachedBookRepository
-import com.novel.utils.network.cache.CacheStrategy
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * 书籍详情页面视图模型
+ * 书籍详情页面视图模型 - MVI重构版本
  * 
- * 负责管理书籍详情页面的数据获取和状态管理：
+ * 采用统一的MVI架构模式：
+ * - 继承BaseMviViewModel，获得完整的MVI支持
+ * - 使用Intent处理所有用户交互和系统事件
+ * - 通过Reducer进行纯函数状态转换
+ * - 使用Effect处理一次性副作用
+ * - 业务逻辑完全委托给UseCase层
+ * 
+ * 功能特性：
  * - 书籍基本信息的加载和缓存
  * - 最新章节信息的异步获取
- * - 用户评价数据的模拟生成
+ * - 用户评价数据的展示
  * - 简介展开/收起状态管理
+ * - 书架操作和作者关注
  * - 错误处理和重试机制
- * 
- * 采用缓存优先策略，提升用户体验：
- * - 首先从本地缓存加载数据
- * - 后台异步更新网络数据
- * - 支持强制刷新机制
  */
 @HiltViewModel
 class BookDetailViewModel @Inject constructor(
-    /** 带缓存的书籍数据仓库，提供数据访问抽象 */
+    /** 带缓存的书籍数据仓库 */
     private val cachedBookRepository: CachedBookRepository
-) : BaseViewModel() {
+) : BaseMviViewModel<BookDetailIntent, BookDetailState, BookDetailEffect>() {
+    
+    // 手动创建UseCase实例，避免Hilt泛型问题
+    private val getBookDetailUseCase: GetBookDetailUseCase by lazy {
+        GetBookDetailUseCase(cachedBookRepository)
+    }
+    private val getLastChapterUseCase: GetLastChapterUseCase by lazy {
+        GetLastChapterUseCase(cachedBookRepository)
+    }
+    private val addToBookshelfUseCase: AddToBookshelfUseCase by lazy {
+        AddToBookshelfUseCase()
+    }
+    private val removeFromBookshelfUseCase: RemoveFromBookshelfUseCase by lazy {
+        RemoveFromBookshelfUseCase()
+    }
+    private val checkBookInShelfUseCase: CheckBookInShelfUseCase by lazy {
+        CheckBookInShelfUseCase()
+    }
+    private val followAuthorUseCase: FollowAuthorUseCase by lazy {
+        FollowAuthorUseCase()
+    }
     
     companion object {
         private const val TAG = "BookDetailViewModel"
     }
     
-    /** UI状态流，包装了书籍详情数据和加载状态 */
-    private val _uiState = MutableStateFlow(
-        StateHolderImpl(
-            data = BookDetailUiState(),
-            isLoading = false,
-            error = null
-        )
+    /** 兼容性属性：UI状态流，适配原有的UI层期望格式 */
+    val uiState: StateFlow<StateHolderImpl<BookDetailUiState>> = state.map { mviState ->
+        BookDetailStateAdapter.toUiState(mviState)
+    }.stateIn(
+        scope = viewModelScope,
+        started = kotlinx.coroutines.flow.SharingStarted.Lazily,
+        initialValue = BookDetailStateAdapter.toUiState(createInitialState())
     )
-    val uiState: StateFlow<StateHolderImpl<BookDetailUiState>> = _uiState.asStateFlow()
 
     /**
-     * 加载书籍详情信息
-     * 
-     * 采用缓存优先策略，先显示缓存内容，再更新网络数据：
-     * 1. 设置加载状态，清除旧的错误信息
-     * 2. 从缓存或网络获取书籍基本信息
-     * 3. 构建UI状态数据
-     * 4. 异步加载最新章节信息
-     * 5. 生成模拟的用户评价数据
+     * 创建初始状态
+     */
+    override fun createInitialState(): BookDetailState {
+        return BookDetailState()
+    }
+    
+    /**
+     * 获取Reducer实例
+     */
+    override fun getReducer(): com.novel.core.mvi.MviReducer<BookDetailIntent, BookDetailState> {
+        // 返回一个适配器，将MviReducerWithEffect适配为MviReducer
+        val effectReducer = BookDetailReducer()
+        return object : com.novel.core.mvi.MviReducer<BookDetailIntent, BookDetailState> {
+            override fun reduce(currentState: BookDetailState, intent: BookDetailIntent): BookDetailState {
+                val result = effectReducer.reduce(currentState, intent)
+                // 在这里处理副作用
+                result.effect?.let { effect ->
+                    sendEffect(effect)
+                }
+                return result.newState
+            }
+        }
+    }
+    
+    /**
+     * Intent处理完成后的回调
+     * 在这里处理需要调用UseCase的Intent
+     */
+    override fun onIntentProcessed(intent: BookDetailIntent, newState: BookDetailState) {
+        when (intent) {
+            is BookDetailIntent.LoadBookDetail -> {
+                loadBookDetailData(intent.bookId, intent.useCache)
+            }
+            is BookDetailIntent.RefreshBookDetail -> {
+                loadBookDetailData(intent.bookId, useCache = false)
+            }
+            is BookDetailIntent.RetryLoading -> {
+                loadBookDetailData(intent.bookId, useCache = true)
+            }
+            is BookDetailIntent.AddToBookshelf -> {
+                handleAddToBookshelf(intent.bookId)
+            }
+            is BookDetailIntent.RemoveFromBookshelf -> {
+                handleRemoveFromBookshelf(intent.bookId)
+            }
+            is BookDetailIntent.FollowAuthor -> {
+                handleFollowAuthor(intent.authorName)
+            }
+            else -> {
+                // 其他Intent由Reducer处理，无需额外操作
+            }
+        }
+    }
+    
+    // ========== 公共方法 - 保持与原有ViewModel的兼容性 ==========
+    
+    /**
+     * 加载书籍详情信息（兼容性方法）
      * 
      * @param bookId 书籍唯一标识符
      * @param useCache 是否使用缓存，默认为true（缓存优先）
      */
     fun loadBookDetail(bookId: String, useCache: Boolean = true) {
-        viewModelScope.launchWithLoading {
+        TimberLogger.d(TAG, "loadBookDetail调用，转换为LoadBookDetail Intent")
+        sendIntent(BookDetailIntent.LoadBookDetail(bookId, useCache))
+    }
+    
+    /**
+     * 切换书籍简介的展开/收起状态（兼容性方法）
+     */
+    fun toggleDescriptionExpanded() {
+        TimberLogger.d(TAG, "toggleDescriptionExpanded调用，转换为ToggleDescriptionExpanded Intent")
+        sendIntent(BookDetailIntent.ToggleDescriptionExpanded)
+    }
+    
+    // ========== 私有方法 - 业务逻辑处理 ==========
+    
+    /**
+     * 加载书籍详情数据
+     * 
+     * @param bookId 书籍ID
+     * @param useCache 是否使用缓存
+     */
+    private fun loadBookDetailData(bookId: String, useCache: Boolean) {
+        viewModelScope.launch {
             try {
-                TimberLogger.d(TAG, "开始加载书籍详情: bookId=$bookId, useCache=$useCache")
-                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+                TimberLogger.d(TAG, "开始加载书籍详情数据: bookId=$bookId, useCache=$useCache")
                 
-                // 根据参数选择缓存策略
-                val strategy = if (useCache) CacheStrategy.CACHE_FIRST else CacheStrategy.NETWORK_ONLY
-                
-                // 使用缓存优先策略加载书籍信息
-                val bookInfo = cachedBookRepository.getBookInfo(
-                    bookId = bookId.toLong(),
-                    strategy = strategy
+                // 调用UseCase获取书籍详情
+                val result = getBookDetailUseCase(
+                    GetBookDetailUseCase.Params(bookId, useCache)
                 )
                 
-                if (bookInfo != null) {
-                    TimberLogger.d(TAG, "书籍信息加载成功: ${bookInfo.bookName}")
+                if (result.bookInfo != null) {
+                    TimberLogger.d(TAG, "书籍信息加载成功: ${result.bookInfo.bookName}")
                     
-                    // 转换为UI层数据模型
-                    val bookDetailInfo = BookDetailUiState.BookInfo(
-                        id = bookInfo.id.toString(),
-                        bookName = bookInfo.bookName,
-                        authorName = bookInfo.authorName,
-                        bookDesc = bookInfo.bookDesc,
-                        picUrl = bookInfo.picUrl,
-                        visitCount = bookInfo.visitCount,
-                        wordCount = bookInfo.wordCount,
-                        categoryName = bookInfo.categoryName
-                    )
+                    // 发送成功Intent
+                    sendIntent(BookDetailIntent.BookInfoLoadSuccess(
+                        bookInfo = result.bookInfo,
+                        reviews = result.reviews
+                    ))
                     
-                    // 生成模拟书评数据（后续接入真实API时替换）
-                    val reviews = generateMockReviews()
-                    
-                    _uiState.value = _uiState.value.copy(
-                        data = BookDetailUiState(
-                            bookInfo = bookDetailInfo,
-                            lastChapter = null, // 将在异步加载中更新
-                            reviews = reviews,
-                            isDescriptionExpanded = false
-                        ),
-                        isLoading = false,
-                        error = null
-                    )
-                    
-                    // 异步加载最新章节信息，不阻塞主流程
-                    loadLastChapterInfo(bookId.toLong())
+                    // 异步加载最新章节信息
+                    loadLastChapterData(bookId)
                 } else {
                     TimberLogger.w(TAG, "书籍信息加载失败: bookId=$bookId")
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "书籍信息加载失败"
-                    )
+                    sendIntent(BookDetailIntent.LoadFailure("书籍信息加载失败"))
                 }
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "加载书籍详情异常: bookId=$bookId", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "未知错误"
-                )
+                sendIntent(BookDetailIntent.LoadFailure(e.message ?: "未知错误"))
             }
         }
     }
@@ -126,39 +189,21 @@ class BookDetailViewModel @Inject constructor(
     /**
      * 异步加载最新章节信息
      * 
-     * 在书籍基本信息加载完成后，独立加载章节信息：
-     * - 获取书籍的章节列表
-     * - 提取最新章节信息
-     * - 更新UI状态中的最新章节数据
-     * - 加载失败不影响书籍信息的正常显示
-     * 
-     * @param bookId 书籍唯一标识符
+     * @param bookId 书籍ID
      */
-    private fun loadLastChapterInfo(bookId: Long) {
-        viewModelScope.launchWithLoading {
+    private fun loadLastChapterData(bookId: String) {
+        viewModelScope.launch {
             try {
                 TimberLogger.d(TAG, "开始加载最新章节信息: bookId=$bookId")
                 
-                val chapters = cachedBookRepository.getBookChapters(
-                    bookId = bookId,
-                    strategy = CacheStrategy.CACHE_FIRST
+                val result = getLastChapterUseCase(
+                    GetLastChapterUseCase.Params(bookId)
                 )
                 
-                if (chapters.isNotEmpty()) {
-                    val lastChapter = chapters.last()
-                    val lastChapterInfo = BookDetailUiState.LastChapter(
-                        chapterName = lastChapter.chapterName,
-                        chapterUpdateTime = lastChapter.chapterUpdateTime
-                    )
-                    
+                result.lastChapter?.let { lastChapter ->
                     TimberLogger.d(TAG, "最新章节加载成功: ${lastChapter.chapterName}")
-                    
-                    // 更新UI状态中的最新章节信息
-                    val currentData = _uiState.value.data
-                    _uiState.value = _uiState.value.copy(
-                        data = currentData.copy(lastChapter = lastChapterInfo)
-                    )
-                } else {
+                    sendIntent(BookDetailIntent.LastChapterLoadSuccess(lastChapter))
+                } ?: run {
                     TimberLogger.w(TAG, "未找到章节信息: bookId=$bookId")
                 }
             } catch (e: Exception) {
@@ -167,107 +212,79 @@ class BookDetailViewModel @Inject constructor(
             }
         }
     }
-
-    /**
-     * 切换书籍简介的展开/收起状态
-     * 
-     * 用于处理长简介的展示优化，提升阅读体验
-     */
-    fun toggleDescriptionExpanded() {
-        val currentData = _uiState.value.data
-        val newExpanded = !currentData.isDescriptionExpanded
-        
-        TimberLogger.d(TAG, "切换简介展开状态: $newExpanded")
-        
-        _uiState.value = _uiState.value.copy(
-            data = currentData.copy(
-                isDescriptionExpanded = newExpanded
-            )
-        )
-    }
-
-    /**
-     * 生成模拟用户评价数据
-     * 
-     * 临时方案，用于UI展示和功能验证
-     * 后续将替换为真实的用户评价API
-     * 
-     * @return 模拟的用户评价列表
-     */
-    private fun generateMockReviews(): List<BookDetailUiState.BookReview> {
-        TimberLogger.d(TAG, "生成模拟用户评价数据")
-        
-        return listOf(
-            BookDetailUiState.BookReview(
-                id = "1",
-                content = "这个职业(老板)无敌了，全天下的天才为之打工。",
-                rating = 5,
-                readTime = "阅读54分钟后点评",
-                userName = "用户1"
-            ),
-            BookDetailUiState.BookReview(
-                id = "2", 
-                content = "很不错的脑洞，题材也很新颖，就是主角有点感太低了，全是手下在发力，主角变考全程躺平...",
-                rating = 4,
-                readTime = "阅读2小时后点评",
-                userName = "用户2"
-            ),
-            BookDetailUiState.BookReview(
-                id = "3",
-                content = "我看书是不是有点太快了",
-                rating = 5,
-                readTime = "阅读不足30分钟后点评",
-                userName = "用户3"
-            )
-        )
-    }
-}
-
-/**
- * 书籍详情页UI状态数据类
- * 
- * 封装书籍详情页面所需的全部状态信息
- */
-data class BookDetailUiState(
-    /** 书籍基本信息 */
-    val bookInfo: BookInfo? = null,
-    /** 最新章节信息 */
-    val lastChapter: LastChapter? = null,
-    /** 用户评价列表 */
-    val reviews: List<BookReview> = emptyList(),
-    /** 简介是否展开 */
-    val isDescriptionExpanded: Boolean = false
-) {
-    /**
-     * 书籍基本信息数据类
-     */
-    data class BookInfo(
-        val id: String,
-        val bookName: String,
-        val authorName: String,
-        val bookDesc: String,
-        val picUrl: String,
-        val visitCount: Long,
-        val wordCount: Int,
-        val categoryName: String
-    )
     
     /**
-     * 最新章节信息数据类
+     * 处理添加到书架
+     * 
+     * @param bookId 书籍ID
      */
-    data class LastChapter(
-        val chapterName: String,
-        val chapterUpdateTime: String
-    )
+    private fun handleAddToBookshelf(bookId: String) {
+        viewModelScope.launch {
+            try {
+                TimberLogger.d(TAG, "处理添加到书架: bookId=$bookId")
+                
+                val result = addToBookshelfUseCase(
+                    AddToBookshelfUseCase.Params(bookId)
+                )
+                
+                if (!result.success) {
+                    // 如果失败，发送错误Toast
+                    sendEffect(BookDetailEffect.ShowToast(result.message.ifEmpty { "添加到书架失败" }))
+                }
+            } catch (e: Exception) {
+                TimberLogger.e(TAG, "添加到书架异常: bookId=$bookId", e)
+                sendEffect(BookDetailEffect.ShowToast("添加到书架失败"))
+            }
+        }
+    }
     
     /**
-     * 用户评价数据类
+     * 处理从书架移除
+     * 
+     * @param bookId 书籍ID
      */
-    data class BookReview(
-        val id: String,
-        val content: String,
-        val rating: Int, // 1-5星评级
-        val readTime: String,
-        val userName: String
-    )
+    private fun handleRemoveFromBookshelf(bookId: String) {
+        viewModelScope.launch {
+            try {
+                TimberLogger.d(TAG, "处理从书架移除: bookId=$bookId")
+                
+                val result = removeFromBookshelfUseCase(
+                    RemoveFromBookshelfUseCase.Params(bookId)
+                )
+                
+                if (!result.success) {
+                    // 如果失败，发送错误Toast
+                    sendEffect(BookDetailEffect.ShowToast(result.message.ifEmpty { "从书架移除失败" }))
+                }
+            } catch (e: Exception) {
+                TimberLogger.e(TAG, "从书架移除异常: bookId=$bookId", e)
+                sendEffect(BookDetailEffect.ShowToast("从书架移除失败"))
+            }
+        }
+    }
+    
+    /**
+     * 处理关注作者
+     * 
+     * @param authorName 作者名称
+     */
+    private fun handleFollowAuthor(authorName: String) {
+        viewModelScope.launch {
+            try {
+                TimberLogger.d(TAG, "处理关注作者: authorName=$authorName")
+                
+                val result = followAuthorUseCase(
+                    FollowAuthorUseCase.Params(authorName)
+                )
+                
+                if (!result.success) {
+                    // 如果失败，发送错误Toast
+                    sendEffect(BookDetailEffect.ShowToast(result.message.ifEmpty { "关注作者失败" }))
+                }
+            } catch (e: Exception) {
+                TimberLogger.e(TAG, "关注作者异常: authorName=$authorName", e)
+                sendEffect(BookDetailEffect.ShowToast("关注作者失败"))
+            }
+        }
+    }
 } 

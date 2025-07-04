@@ -19,7 +19,10 @@ import com.novel.utils.wdp
  * 包含作者头像、姓名和关注按钮
  */
 @Composable
-fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
+fun AuthorSection(
+    bookInfo: BookDetailUiState.BookInfo?,
+    onFollowAuthor: ((String) -> Unit)? = null
+) {
     val TAG = "AuthorSection"
     
     // 空数据保护
@@ -60,7 +63,7 @@ fun AuthorSection(bookInfo: BookDetailUiState.BookInfo?) {
             },
             onClick = { 
                 TimberLogger.d(TAG, "点击关注作者: ${bookInfo.authorName}")
-                // TODO: 实现关注功能 
+                onFollowAuthor?.invoke(bookInfo.authorName)
             },
             round = 18.wdp,
             color = NovelColors.NovelTextGray.copy(alpha = 0.1f),

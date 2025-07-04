@@ -33,20 +33,26 @@ import com.novel.utils.wdp
  * - 弹窗具有动画效果，可拖拽关闭
  * - 支持HTML标签清理和文本格式化
  * - 性能优化：缓存计算结果，减少重组
+ * - MVI集成：支持外部状态管理
  * 
  * @param description 书籍简介原始内容（可能包含HTML标签）
+ * @param isExpanded 简介是否展开（来自MVI状态）
+ * @param onToggleExpanded 切换展开状态的回调
  */
 @Composable
 fun BookDescriptionSection(
-    description: String
+    description: String,
+    isExpanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null
 ) {
     // 性能优化：使用remember缓存HTML清理结果
     val cleaned = remember(description) { 
         if (description.isBlank()) "" else HtmlTextUtil.cleanHtml(description)
     }
     
-    // 弹窗状态管理
+    // 弹窗状态管理 - 优先使用外部状态，否则使用内部状态
     var showBottomSheet by remember { mutableStateOf(false) }
+    val actualIsExpanded = if (onToggleExpanded != null) isExpanded else showBottomSheet
 
     // 容器宽度状态
     var containerWidthPx by remember { mutableIntStateOf(0) }
@@ -140,7 +146,11 @@ fun BookDescriptionSection(
                             lineHeight = 14.ssp,
                             color = NovelColors.NovelMain,
                             modifier = Modifier.debounceClickable(onClick = {
-                                showBottomSheet = true
+                                if (onToggleExpanded != null) {
+                                    onToggleExpanded()
+                                } else {
+                                    showBottomSheet = true
+                                }
                             })
                         )
                     }
@@ -150,10 +160,16 @@ fun BookDescriptionSection(
     }
 
     // 半屏弹窗 - 展示完整简介内容
-    if (showBottomSheet) {
+    if (actualIsExpanded) {
         BookDescriptionBottomSheet(
             description = description,
-            onDismiss = { showBottomSheet = false }
+            onDismiss = { 
+                if (onToggleExpanded != null) {
+                    onToggleExpanded()
+                } else {
+                    showBottomSheet = false
+                }
+            }
         )
     }
 }
