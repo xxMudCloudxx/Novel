@@ -11,7 +11,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.novel.page.component.LoadingStateComponent
 import com.novel.page.component.ViewState
 import com.novel.page.search.viewmodel.SearchAction
-import com.novel.page.search.viewmodel.SearchEvent
+import com.novel.page.search.viewmodel.SearchEffect
 import com.novel.page.search.viewmodel.SearchViewModel
 import com.novel.page.search.component.SearchHistorySection
 import com.novel.page.search.component.RankingSection
@@ -59,22 +59,22 @@ fun SearchPage(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is SearchEvent.NavigateToBookDetail -> {
+                is SearchEffect.NavigateToBookDetail -> {
                     TimberLogger.d(TAG, "导航到书籍详情: ${event.bookId}")
                     onNavigateToBookDetail(event.bookId)
                 }
 
-                is SearchEvent.NavigateToSearchResult -> {
+                is SearchEffect.NavigateToSearchResult -> {
                     TimberLogger.d(TAG, "导航到搜索结果: ${event.query}")
                     NavViewModel.navigateToSearchResult(event.query)
                 }
 
-                is SearchEvent.NavigateBack -> {
+                is SearchEffect.NavigateBack -> {
                     TimberLogger.d(TAG, "返回上级页面")
                     onNavigateBack()
                 }
 
-                is SearchEvent.ShowToast -> {
+                is SearchEffect.ShowToast -> {
                     TimberLogger.d(TAG, "显示Toast: ${event.message}")
                     // TODO: 集成Toast显示组件
                 }
