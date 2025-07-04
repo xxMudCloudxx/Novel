@@ -105,4 +105,4 @@ sealed class SearchEffect : MviEffect {
     data class ShowToast(val message: String) : SearchEffect()
 }
 
-// endregion 
+// endregion

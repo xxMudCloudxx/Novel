@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.novel.page.component.LoadingStateComponent
 import com.novel.page.component.ViewState
-import com.novel.page.search.viewmodel.SearchAction
+import com.novel.page.search.viewmodel.SearchIntent
 import com.novel.page.search.viewmodel.SearchEffect
 import com.novel.page.search.viewmodel.SearchViewModel
 import com.novel.page.search.component.SearchHistorySection
@@ -53,20 +53,20 @@ fun SearchPage(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val TAG = "SearchPage"
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.state.collectAsState()
 
-    // 处理一次性事件（导航、Toast等副作用）
+    // 处理一次性副作用（导航、Toast等）
     LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
                 is SearchEffect.NavigateToBookDetail -> {
-                    TimberLogger.d(TAG, "导航到书籍详情: ${event.bookId}")
-                    onNavigateToBookDetail(event.bookId)
+                    TimberLogger.d(TAG, "导航到书籍详情: ${effect.bookId}")
+                    onNavigateToBookDetail(effect.bookId)
                 }
 
                 is SearchEffect.NavigateToSearchResult -> {
-                    TimberLogger.d(TAG, "导航到搜索结果: ${event.query}")
-                    NavViewModel.navigateToSearchResult(event.query)
+                    TimberLogger.d(TAG, "导航到搜索结果: ${effect.query}")
+                    NavViewModel.navigateToSearchResult(effect.query)
                 }
 
                 is SearchEffect.NavigateBack -> {
@@ -75,7 +75,7 @@ fun SearchPage(
                 }
 
                 is SearchEffect.ShowToast -> {
-                    TimberLogger.d(TAG, "显示Toast: ${event.message}")
+                    TimberLogger.d(TAG, "显示Toast: ${effect.message}")
                     // TODO: 集成Toast显示组件
                 }
             }
@@ -85,7 +85,7 @@ fun SearchPage(
     // 初始化搜索页面数据
     LaunchedEffect(Unit) {
         TimberLogger.d(TAG, "初始化搜索页面数据")
-        viewModel.onAction(SearchAction.LoadInitialData)
+        viewModel.sendIntent(SearchIntent.LoadInitialData)
     }
 
     // LoadingStateComponent适配器，统一管理加载和错误状态
@@ -107,7 +107,7 @@ fun SearchPage(
             override fun showViewState(viewState: ViewState) {}
             override fun retry() {
                 TimberLogger.d(TAG, "重试加载搜索页面数据")
-                viewModel.onAction(SearchAction.LoadInitialData)
+                viewModel.sendIntent(SearchIntent.LoadInitialData)
             }
         }
     }
@@ -123,7 +123,7 @@ fun SearchPage(
         } else {
             SearchPageContent(
                 uiState = uiState,
-                onAction = viewModel::onAction
+                onIntent = viewModel::sendIntent
             )
         }
     }
@@ -138,12 +138,12 @@ fun SearchPage(
  * - 榜单推荐区域
  * 
  * @param uiState 搜索页面UI状态
- * @param onAction 用户操作回调
+ * @param onIntent 用户操作回调
  */
 @Composable
-private fun SearchPageContent(
-    uiState: com.novel.page.search.viewmodel.SearchUiState,
-    onAction: (SearchAction) -> Unit
+fun SearchPageContent(
+    uiState: com.novel.page.search.viewmodel.SearchState,
+    onIntent: (SearchIntent) -> Unit
 ) {
     val TAG = "SearchPage"
     Column(
@@ -155,15 +155,15 @@ private fun SearchPageContent(
         SearchTopBar(
             query = uiState.searchQuery,
             onQueryChange = { query ->
-                onAction(SearchAction.UpdateSearchQuery(query))
+                onIntent(SearchIntent.UpdateSearchQuery(query))
             },
             onBackClick = {
-                onAction(SearchAction.NavigateBack)
+                onIntent(SearchIntent.NavigateBack)
             },
             onSearchClick = {
                 if (uiState.searchQuery.isNotBlank()) {
                     TimberLogger.d(TAG, "执行搜索: ${uiState.searchQuery}")
-                    onAction(SearchAction.PerformSearch(uiState.searchQuery))
+                    onIntent(SearchIntent.PerformSearch(uiState.searchQuery))
                 }
             }
         )
@@ -182,11 +182,11 @@ private fun SearchPageContent(
                     isExpanded = uiState.isHistoryExpanded,
                     onHistoryClick = { query ->
                         // 点击历史记录执行搜索
-                        onAction(SearchAction.UpdateSearchQuery(query))
-                        onAction(SearchAction.PerformSearch(query))
+                        onIntent(SearchIntent.UpdateSearchQuery(query))
+                        onIntent(SearchIntent.PerformSearch(query))
                     },
                     onToggleExpansion = {
-                        onAction(SearchAction.ToggleHistoryExpansion)
+                        onIntent(SearchIntent.ToggleHistoryExpansion)
                     }
                 )
             }
@@ -199,7 +199,7 @@ private fun SearchPageContent(
                 dramaRanking = uiState.dramaRanking,
                 newBookRanking = uiState.newBookRanking,
                 onRankingItemClick = { bookId ->
-                    onAction(SearchAction.NavigateToBookDetail(bookId))
+                    onIntent(SearchIntent.NavigateToBookDetail(bookId))
                 },
                 onViewFullRanking = { rankingType ->
                     // 根据榜单类型获取对应数据

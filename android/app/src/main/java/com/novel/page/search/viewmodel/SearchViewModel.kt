@@ -7,6 +7,11 @@ import com.novel.core.mvi.MviReducer
 import com.novel.page.search.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
 
 /**
@@ -14,16 +19,18 @@ import javax.inject.Inject
  * 
  * 根据优化方案阶段2第13天任务要求，重构为统一MVI架构：
  * - 继承BaseMviViewModel<SearchIntent, SearchState, SearchEffect>
- * - 移除原有的StateFlow和Channel，改用父类提供的MVI框架
- * - 将原有方法转换为Intent处理函数
+ * - 移除兼容性代码，纯MVI架构实现
  * - 保持UI和业务逻辑完全不变，所有功能完整实现无遗漏
+ * - 搜索输入防抖优化
  * 
  * 主要职责：
  * - 管理搜索查询和历史记录
  * - 协调各类榜单数据的加载
  * - 处理搜索相关的用户交互
  * - 管理页面导航和事件通知
+ * - 搜索输入防抖优化
  */
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     /** 获取搜索历史用例 */
@@ -38,23 +45,73 @@ class SearchViewModel @Inject constructor(
     
     companion object {
         private const val TAG = "SearchViewModel"
+        private const val SEARCH_DEBOUNCE_DELAY_MS = 300L // 搜索防抖延迟
+        private const val RANKING_CACHE_DURATION_MS = 5 * 60 * 1000L // 榜单缓存5分钟
     }
     
     /** Reducer实例，处理状态转换逻辑 */
     private val reducer = SearchReducer()
+
+    /** 搜索防抖处理 */
+    private val searchQueryChannel = Channel<String>(Channel.UNLIMITED)
+    private var searchJob: Job? = null
     
-    /** UseCase相关业务逻辑 */
-    private val searchUseCases = SearchUseCases(
-        getSearchHistoryUseCase = getSearchHistoryUseCase,
-        addSearchHistoryUseCase = addSearchHistoryUseCase,
-        toggleHistoryExpansionUseCase = toggleHistoryExpansionUseCase,
-        getRankingListUseCase = getRankingListUseCase
-    )
+    /** 榜单数据缓存 */
+    private var cachedRankingData: com.novel.page.search.repository.RankingData? = null
+    private var rankingCacheTime: Long = 0L
 
     init {
         TimberLogger.d(TAG, "SearchViewModel MVI重构版初始化")
+        setupSearchDebounce()
     }
     
+    /**
+     * 设置搜索防抖机制
+     * 避免用户快速输入时频繁触发搜索建议
+     */
+    private fun setupSearchDebounce() {
+        viewModelScope.launch {
+            searchQueryChannel.receiveAsFlow()
+                .debounce(SEARCH_DEBOUNCE_DELAY_MS)
+                .distinctUntilChanged()
+                .collect { query ->
+                    // 处理防抖后的搜索查询
+                    handleDebouncedSearchInput(query)
+                }
+        }
+    }
+    
+    /**
+     * 处理防抖后的搜索输入
+     * 可以在这里添加搜索建议功能
+     */
+    private fun handleDebouncedSearchInput(query: String) {
+        TimberLogger.d(TAG, "防抖搜索输入: $query")
+        
+        if (query.length >= 2) {
+            // 可以在这里添加搜索建议功能
+            // 例如：加载相关的搜索建议
+            viewModelScope.launch {
+                try {
+                    // 示例：可以调用搜索建议API
+                    // val suggestions = searchSuggestionsUseCase(query)
+                    // 更新状态显示搜索建议
+                    TimberLogger.d(TAG, "可以显示搜索建议: $query")
+                } catch (e: Exception) {
+                    TimberLogger.e(TAG, "加载搜索建议失败", e)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 检查榜单缓存是否有效
+     */
+    private fun isRankingCacheValid(): Boolean {
+        return cachedRankingData != null && 
+               (System.currentTimeMillis() - rankingCacheTime) < RANKING_CACHE_DURATION_MS
+    }
+
     /**
      * 创建初始状态
      * 基础MVI框架要求实现此方法
@@ -86,6 +143,10 @@ class SearchViewModel @Inject constructor(
             is SearchIntent.LoadInitialData -> {
                 handleLoadInitialData()
             }
+            is SearchIntent.UpdateSearchQuery -> {
+                // 搜索输入防抖处理
+                searchQueryChannel.trySend(intent.query)
+            }
             is SearchIntent.PerformSearch -> {
                 handlePerformSearch(intent.query)
             }
@@ -98,35 +159,12 @@ class SearchViewModel @Inject constructor(
         }
     }
     
-    /**
-     * 提供给UI层的便捷方法
-     * 兼容原有的onAction调用方式
-     */
-    fun onAction(action: SearchAction) {
-        val intent = when (action) {
-            is SearchAction.LoadInitialData -> SearchIntent.LoadInitialData
-            is SearchAction.UpdateSearchQuery -> SearchIntent.UpdateSearchQuery(action.query)
-            is SearchAction.PerformSearch -> SearchIntent.PerformSearch(action.query)
-            is SearchAction.ToggleHistoryExpansion -> SearchIntent.ToggleHistoryExpansion
-            is SearchAction.NavigateToBookDetail -> SearchIntent.NavigateToBookDetail(action.bookId)
-            is SearchAction.NavigateBack -> SearchIntent.NavigateBack
-            is SearchAction.ClearError -> SearchIntent.ClearError
-        }
-        sendIntent(intent)
-    }
-    
-    /**
-     * 暴露state和effect给UI层
-     * 保持与原有API的兼容性
-     */
-    val uiState = state
-    val events = effect
-    
     // region 私有业务逻辑处理方法
     
     /**
      * 处理初始数据加载
      * 并行加载搜索历史和榜单数据以提升性能
+     * 支持榜单数据缓存
      */
     private fun handleLoadInitialData() {
         TimberLogger.d(TAG, "开始加载初始数据")
@@ -134,15 +172,27 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // 并行加载数据以提升性能
-                val historyDeferred = searchUseCases.getSearchHistory()
-                val rankingDeferred = searchUseCases.getRankingList()
+                val historyDeferred = getSearchHistoryUseCase()
+                
+                // 检查榜单缓存
+                val rankingData = if (isRankingCacheValid()) {
+                    TimberLogger.d(TAG, "使用缓存的榜单数据")
+                    cachedRankingData!!
+                } else {
+                    TimberLogger.d(TAG, "加载新的榜单数据")
+                    val newData = getRankingListUseCase()
+                    // 更新缓存
+                    cachedRankingData = newData
+                    rankingCacheTime = System.currentTimeMillis()
+                    newData
+                }
                 
                 val newState = reducer.handleLoadInitialDataSuccess(
                     currentState = getCurrentState(),
                     searchHistory = historyDeferred,
-                    novelRanking = rankingDeferred.novelRanking,
-                    dramaRanking = rankingDeferred.dramaRanking,
-                    newBookRanking = rankingDeferred.newBookRanking
+                    novelRanking = rankingData.novelRanking,
+                    dramaRanking = rankingData.dramaRanking,
+                    newBookRanking = rankingData.newBookRanking
                 )
                 updateState(newState)
                 
@@ -171,13 +221,15 @@ class SearchViewModel @Inject constructor(
             return
         }
         
-        viewModelScope.launch {
+        // 取消之前的搜索作业，避免重复搜索
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             try {
                 // 添加到搜索历史
-                searchUseCases.addSearchHistory(query)
+                addSearchHistoryUseCase(query)
                 
                 // 更新搜索历史显示
-                val updatedHistory = searchUseCases.getSearchHistory()
+                val updatedHistory = getSearchHistoryUseCase()
                 val newState = reducer.handleSearchHistoryUpdated(
                     currentState = getCurrentState(),
                     updatedHistory = updatedHistory
@@ -201,7 +253,7 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val currentExpansionState = getCurrentState().isHistoryExpanded
-                val newState = searchUseCases.toggleHistoryExpansion(currentExpansionState)
+                val newState = toggleHistoryExpansionUseCase(currentExpansionState)
                 
                 val updatedState = reducer.handleHistoryExpansionPersisted(
                     currentState = getCurrentState(),
@@ -216,83 +268,15 @@ class SearchViewModel @Inject constructor(
         }
     }
     
+    /**
+     * 清理资源
+     */
+    override fun onCleared() {
+        super.onCleared()
+        searchJob?.cancel()
+        searchQueryChannel.close()
+        TimberLogger.d(TAG, "SearchViewModel资源清理完成")
+    }
+    
     // endregion
 }
-
-// region 兼容性定义
-
-/**
- * 搜索页面用户操作（兼容性保留）
- * 保留原有Action定义，方便UI层迁移
- */
-sealed class SearchAction {
-    /** 加载初始数据 */
-    data object LoadInitialData : SearchAction()
-    /** 更新搜索查询内容 */
-    data class UpdateSearchQuery(val query: String) : SearchAction()
-    /** 执行搜索操作 */
-    data class PerformSearch(val query: String) : SearchAction()
-    /** 切换历史记录展开状态 */
-    data object ToggleHistoryExpansion : SearchAction()
-    /** 导航到书籍详情页 */
-    data class NavigateToBookDetail(val bookId: Long) : SearchAction()
-    /** 返回上级页面 */
-    data object NavigateBack : SearchAction()
-    /** 清除错误状态 */
-    data object ClearError : SearchAction()
-}
-
-/**
- * 搜索页面一次性事件（兼容性保留）
- * 保留原有Event定义，方便UI层迁移
- */
-sealed class SearchEvent {
-    /** 导航到书籍详情页 */
-    data class NavigateToBookDetail(val bookId: Long) : SearchEvent()
-    /** 导航到搜索结果页 */
-    data class NavigateToSearchResult(val query: String) : SearchEvent()
-    /** 返回上级页面 */
-    data object NavigateBack : SearchEvent()
-    /** 显示Toast提示 */
-    data class ShowToast(val message: String) : SearchEvent()
-}
-
-/**
- * 搜索页面UI状态（兼容性保留）
- * 保留原有UiState定义，方便UI层迁移
- */
-typealias SearchUiState = SearchState
-
-// endregion
-
-// region 业务逻辑组合类
-
-/**
- * 搜索相关UseCase组合
- * 封装所有搜索相关的业务逻辑，简化ViewModel
- */
-private class SearchUseCases(
-    private val getSearchHistoryUseCase: GetSearchHistoryUseCase,
-    private val addSearchHistoryUseCase: AddSearchHistoryUseCase,
-    private val toggleHistoryExpansionUseCase: ToggleHistoryExpansionUseCase,
-    private val getRankingListUseCase: GetRankingListUseCase
-) {
-    
-    suspend fun getSearchHistory(): List<String> {
-        return getSearchHistoryUseCase()
-    }
-    
-    suspend fun addSearchHistory(query: String) {
-        addSearchHistoryUseCase(query)
-    }
-    
-    suspend fun getRankingList(): com.novel.page.search.repository.RankingData {
-        return getRankingListUseCase()
-    }
-    
-    suspend fun toggleHistoryExpansion(currentState: Boolean): Boolean {
-        return toggleHistoryExpansionUseCase(currentState)
-    }
-}
-
-// endregion 

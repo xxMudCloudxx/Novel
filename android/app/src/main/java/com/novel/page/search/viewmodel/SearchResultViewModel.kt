@@ -5,8 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.novel.core.mvi.BaseMviViewModel
 import com.novel.core.mvi.MviReducer
 import com.novel.page.search.usecase.*
+import com.novel.page.search.repository.SearchRepository
+import com.novel.page.search.repository.SearchParams
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
 
 /**
@@ -14,9 +21,10 @@ import javax.inject.Inject
  * 
  * 根据优化方案阶段2第13天任务要求，重构为统一MVI架构：
  * - 继承BaseMviViewModel<SearchResultIntent, SearchResultState, SearchResultEffect>
- * - 移除原有的BaseViewModel继承和手写状态管理
- * - 将原有方法转换为Intent处理函数
+ * - 移除原有的兼容性代码和ViewModel内缓存实现
+ * - 缓存逻辑转移到SearchRepository中统一管理
  * - 保持UI和业务逻辑完全不变，所有功能完整实现无遗漏
+ * - 搜索防抖、重试机制优化
  * 
  * 主要职责：
  * - 管理搜索结果的获取和展示
@@ -24,36 +32,143 @@ import javax.inject.Inject
  * - 管理筛选条件和分类选择
  * - 协调搜索相关的用户交互
  */
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchResultViewModel @Inject constructor(
-    /** 搜索书籍用例 */
-    private val searchBooksUseCase: SearchBooksUseCase,
+    /** 搜索数据仓库 */
+    private val searchRepository: SearchRepository,
     /** 获取分类筛选器用例 */
     private val getCategoryFiltersUseCase: GetCategoryFiltersUseCase
 ) : BaseMviViewModel<SearchResultIntent, SearchResultState, SearchResultEffect>() {
     
     companion object {
         private const val TAG = "SearchResultViewModel"
+        private const val SEARCH_DEBOUNCE_DELAY_MS = 500L // 搜索防抖延迟
+        private const val MAX_RETRY_ATTEMPTS = 3 // 最大重试次数
+        private const val RETRY_DELAY_MS = 1000L // 重试延迟
     }
     
     /** Reducer实例，处理状态转换逻辑 */
     private val reducer = SearchResultReducer()
     
-    /** UseCase相关业务逻辑 */
-    private val searchUseCases = SearchResultUseCases(
-        searchBooksUseCase = searchBooksUseCase,
-        getCategoryFiltersUseCase = getCategoryFiltersUseCase
-    )
-    
     /** 当前页码（从1开始） */
     private var currentPage = 1
     /** 分页加载状态标识 */
     private var isLoadingMore = false
+    
+    /** 搜索防抖处理 */
+    private val searchQueryChannel = Channel<SearchParams>(Channel.UNLIMITED)
+    private var searchJob: Job? = null
+    
+    /** 当前搜索参数，用于重试 */
+    private var currentSearchParams: SearchParams? = null
+    private var retryAttempts = 0
 
     init {
         TimberLogger.d(TAG, "SearchResultViewModel MVI重构版初始化")
+        setupSearchDebounce()
         // 立即加载分类筛选器
         loadCategoryFilters()
+    }
+    
+    /**
+     * 设置搜索防抖机制
+     */
+    private fun setupSearchDebounce() {
+        viewModelScope.launch {
+            searchQueryChannel.receiveAsFlow()
+                .debounce(SEARCH_DEBOUNCE_DELAY_MS)
+                .collect { params ->
+                    executeSearch(params)
+                }
+        }
+    }
+    
+    /**
+     * 执行搜索（防抖后的实际搜索逻辑）
+     */
+    private fun executeSearch(params: SearchParams) {
+        TimberLogger.d(TAG, "执行搜索: ${params.query}, 页码: ${params.page}")
+        
+        currentSearchParams = params
+        retryAttempts = 0
+        
+        performSearchWithRetry(params)
+    }
+    
+    /**
+     * 带重试机制的搜索执行
+     */
+    private fun performSearchWithRetry(params: SearchParams) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            try {
+                val response = searchRepository.searchBooksWithCache(params)
+                
+                if (response != null) {
+                    TimberLogger.d(TAG, "搜索成功: 返回${response.list.size}条结果")
+                    
+                    val books = response.list
+                    val hasMore = (response.pages ?: 0) > params.page
+                    val totalResults = response.total?.toInt() ?: 0
+                    
+                    // 更新状态
+                    val newState = reducer.handleSearchSuccess(
+                        currentState = getCurrentState(),
+                        books = books,
+                        totalResults = totalResults,
+                        hasMore = hasMore,
+                        isLoadMore = params.isLoadMore
+                    )
+                    updateState(newState)
+                    
+                    if (params.isLoadMore) {
+                        isLoadingMore = false
+                    }
+                    
+                    // 重置重试计数
+                    retryAttempts = 0
+                } else {
+                    handleSearchFailure(Exception("搜索返回为空"), params)
+                }
+                
+            } catch (e: Exception) {
+                TimberLogger.e(TAG, "搜索异常", e)
+                handleSearchFailure(e, params)
+            }
+        }
+    }
+    
+    /**
+     * 处理搜索失败和重试逻辑
+     */
+    private fun handleSearchFailure(exception: Throwable, params: SearchParams) {
+        retryAttempts++
+        
+        if (retryAttempts <= MAX_RETRY_ATTEMPTS) {
+            TimberLogger.d(TAG, "搜索失败，准备重试 ($retryAttempts/$MAX_RETRY_ATTEMPTS)")
+            
+            viewModelScope.launch {
+                delay(RETRY_DELAY_MS * retryAttempts) // 递增延迟
+                performSearchWithRetry(params)
+            }
+        } else {
+            TimberLogger.e(TAG, "搜索失败，超出重试次数")
+            
+            val newState = reducer.handleSearchError(
+                currentState = getCurrentState(),
+                errorMessage = "搜索失败: ${exception.message}",
+                isLoadMore = params.isLoadMore
+            )
+            updateState(newState)
+            
+            if (params.isLoadMore) {
+                currentPage-- // 恢复页码
+                isLoadingMore = false
+            }
+            
+            sendEffect(SearchResultEffect.ShowToast("搜索失败: ${exception.message}"))
+        }
     }
     
     /**
@@ -102,42 +217,16 @@ class SearchResultViewModel @Inject constructor(
         }
     }
     
-    /**
-     * 提供给UI层的便捷方法
-     * 兼容原有的onAction调用方式
-     */
-    fun onAction(action: SearchResultAction) {
-        val intent = when (action) {
-            is SearchResultAction.UpdateQuery -> SearchResultIntent.UpdateQuery(action.query)
-            is SearchResultAction.PerformSearch -> SearchResultIntent.PerformSearch(action.query)
-            is SearchResultAction.SelectCategory -> SearchResultIntent.SelectCategory(action.categoryId)
-            is SearchResultAction.OpenFilterSheet -> SearchResultIntent.OpenFilterSheet
-            is SearchResultAction.CloseFilterSheet -> SearchResultIntent.CloseFilterSheet
-            is SearchResultAction.UpdateFilters -> SearchResultIntent.UpdateFilters(action.filters)
-            is SearchResultAction.ApplyFilters -> SearchResultIntent.ApplyFilters
-            is SearchResultAction.ClearFilters -> SearchResultIntent.ClearFilters
-            is SearchResultAction.LoadNextPage -> SearchResultIntent.LoadNextPage
-            is SearchResultAction.NavigateToDetail -> SearchResultIntent.NavigateToDetail(action.bookId)
-            is SearchResultAction.NavigateBack -> SearchResultIntent.NavigateBack
-        }
-        sendIntent(intent)
-    }
-    
-    /**
-     * 暴露state和effect给UI层
-     * 保持与原有API的兼容性
-     */
-    val uiState = state
-    val events = effect
+
     
     // region 私有业务逻辑处理方法
     
     /**
      * 处理搜索操作
-     * 重置分页状态并执行新搜索
+     * 重置分页状态并使用防抖机制执行新搜索
      */
     private fun handlePerformSearch(query: String) {
-        TimberLogger.d(TAG, "执行搜索: $query")
+        TimberLogger.d(TAG, "准备搜索: $query")
         
         if (query.isBlank()) {
             sendEffect(SearchResultEffect.ShowToast("请输入搜索关键词"))
@@ -148,7 +237,17 @@ class SearchResultViewModel @Inject constructor(
         currentPage = 1
         isLoadingMore = false
         
-        performSearch(query, isLoadMore = false)
+        val currentState = getCurrentState()
+        val params = SearchParams(
+            query = query,
+            page = currentPage,
+            categoryId = currentState.selectedCategoryId,
+            filters = currentState.filters,
+            isLoadMore = false
+        )
+        
+        // 使用防抖机制
+        searchQueryChannel.trySend(params)
     }
     
     /**
@@ -162,7 +261,16 @@ class SearchResultViewModel @Inject constructor(
             currentPage = 1
             isLoadingMore = false
             
-            performSearch(currentState.query, isLoadMore = false)
+            val params = SearchParams(
+                query = currentState.query,
+                page = currentPage,
+                categoryId = currentState.selectedCategoryId,
+                filters = currentState.filters,
+                isLoadMore = false
+            )
+            
+            // 分类选择立即搜索，不使用防抖
+            executeSearch(params)
         }
     }
     
@@ -177,7 +285,16 @@ class SearchResultViewModel @Inject constructor(
             currentPage = 1
             isLoadingMore = false
             
-            performSearch(currentState.query, isLoadMore = false)
+            val params = SearchParams(
+                query = currentState.query,
+                page = currentPage,
+                categoryId = currentState.selectedCategoryId,
+                filters = currentState.filters,
+                isLoadMore = false
+            )
+            
+            // 筛选应用立即搜索，不使用防抖
+            executeSearch(params)
         }
     }
     
@@ -202,84 +319,30 @@ class SearchResultViewModel @Inject constructor(
             return
         }
         
+        // 设置分页加载状态
         isLoadingMore = true
         currentPage++
         
-        performSearch(currentState.query, isLoadMore = true)
+        val params = SearchParams(
+            query = currentState.query,
+            page = currentPage,
+            categoryId = currentState.selectedCategoryId,
+            filters = currentState.filters,
+            isLoadMore = true
+        )
+        
+        // 分页加载立即执行，不使用防抖
+        executeSearch(params)
     }
     
     /**
-     * 执行搜索
-     * 统一的搜索逻辑，支持新搜索和分页加载
+     * 清理资源
      */
-    private fun performSearch(query: String, isLoadMore: Boolean) {
-        TimberLogger.d(TAG, "执行搜索 - 查询: $query, 页码: $currentPage, 分页: $isLoadMore")
-        
-        viewModelScope.launch {
-            try {
-                val currentState = getCurrentState()
-                val result = searchUseCases.searchBooks(
-                    query = query,
-                    page = currentPage,
-                    categoryId = currentState.selectedCategoryId,
-                    filters = currentState.filters
-                )
-                
-                result.fold(
-                    onSuccess = { response ->
-                        TimberLogger.d(TAG, "搜索成功 - 结果数量: ${response.list.size}, 总数: ${response.total}")
-                        
-                        val newState = reducer.handleSearchSuccess(
-                            currentState = getCurrentState(),
-                            books = response.list,
-                            totalResults = response.total?.toInt() ?: 0,
-                            hasMore = response.list.size >= 20, // 假设每页20条
-                            isLoadMore = isLoadMore
-                        )
-                        updateState(newState)
-                        
-                        if (isLoadMore) {
-                            isLoadingMore = false
-                        }
-                        
-                    },
-                    onFailure = { exception ->
-                        TimberLogger.e(TAG, "搜索失败", exception)
-                        
-                        val newState = reducer.handleSearchError(
-                            currentState = getCurrentState(),
-                            errorMessage = "搜索失败: ${exception.message}",
-                            isLoadMore = isLoadMore
-                        )
-                        updateState(newState)
-                        
-                        if (isLoadMore) {
-                            currentPage-- // 恢复页码
-                            isLoadingMore = false
-                        }
-                        
-                        sendEffect(SearchResultEffect.ShowToast("搜索失败: ${exception.message}"))
-                    }
-                )
-                
-            } catch (e: Exception) {
-                TimberLogger.e(TAG, "搜索异常", e)
-                
-                val newState = reducer.handleSearchError(
-                    currentState = getCurrentState(),
-                    errorMessage = "搜索异常: ${e.message}",
-                    isLoadMore = isLoadMore
-                )
-                updateState(newState)
-                
-                if (isLoadMore) {
-                    currentPage-- // 恢复页码
-                    isLoadingMore = false
-                }
-                
-                sendEffect(SearchResultEffect.ShowToast("搜索异常: ${e.message}"))
-            }
-        }
+    override fun onCleared() {
+        super.onCleared()
+        searchJob?.cancel()
+        searchQueryChannel.close()
+        TimberLogger.d(TAG, "SearchResultViewModel资源清理完成")
     }
     
     /**
@@ -289,7 +352,7 @@ class SearchResultViewModel @Inject constructor(
     private fun loadCategoryFilters() {
         viewModelScope.launch {
             try {
-                val result = searchUseCases.getCategoryFilters()
+                val result = getCategoryFiltersUseCase.execute()
                 result.fold(
                     onSuccess = { filters ->
                         val newState = reducer.handleCategoryFiltersLoaded(
@@ -325,166 +388,3 @@ class SearchResultViewModel @Inject constructor(
     
     // endregion
 }
-
-// region 业务逻辑组合类
-
-/**
- * 搜索结果相关UseCase组合
- * 封装所有搜索结果相关的业务逻辑，简化ViewModel
- */
-private class SearchResultUseCases(
-    private val searchBooksUseCase: SearchBooksUseCase,
-    private val getCategoryFiltersUseCase: GetCategoryFiltersUseCase
-) {
-    
-    suspend fun searchBooks(
-        query: String,
-        page: Int,
-        categoryId: Int?,
-        filters: FilterState
-    ): Result<com.novel.page.search.repository.PageRespDtoBookInfoRespDto> {
-        return searchBooksUseCase.execute(
-            keyword = query,
-            pageNum = page,
-            categoryId = categoryId,
-            filters = filters,
-            pageSize = 20
-        )
-    }
-    
-    suspend fun getCategoryFilters(): Result<List<CategoryFilter>> {
-        return getCategoryFiltersUseCase.execute()
-    }
-}
-
-// endregion
-
-// region 原有数据类保持不变
-
-/**
- * 搜索结果页UI状态
- */
-data class SearchResultUiState(
-    val query: String = "",
-    val books: List<BookInfoRespDto> = emptyList(),                     
-    val totalResults: Int = 0,
-    val hasMore: Boolean = false,
-    val isEmpty: Boolean = false,
-    val selectedCategoryId: Int? = null,
-    val categoryFilters: List<CategoryFilter> = emptyList(),
-    val filters: FilterState = FilterState(),
-    val isFilterSheetOpen: Boolean = false
-)
-
-/**
- * 筛选状态
- */
-data class FilterState(
-    val updateStatus: UpdateStatus = UpdateStatus.ALL,
-    val isVip: VipStatus = VipStatus.ALL,
-    val wordCountRange: WordCountRange = WordCountRange.ALL,
-    val sortBy: SortBy = SortBy.NULL
-)
-
-/**
- * 更新状态
- */
-enum class UpdateStatus(val value: Int?, val displayName: String) {
-    ALL(null, "全部"),
-    FINISHED(1, "已完结"),
-    ONGOING(0, "连载中"),
-    HALF_YEAR_FINISHED(-1, "半年内完结"),
-    THREE_DAYS_UPDATED(-2, "3日内更新"),
-    SEVEN_DAYS_UPDATED(-3, "7日内更新"),
-    ONE_MONTH_UPDATED(-4, "1月内更新")
-}
-
-/**
- * VIP状态
- */
-enum class VipStatus(val value: Int?, val displayName: String) {
-    ALL(null, "全部"),
-    FREE(0, "免费"),
-    PAID(1, "付费")
-}
-
-/**
- * 字数范围
- */
-enum class WordCountRange(val min: Int?, val max: Int?, val displayName: String) {
-    ALL(null, null, "全部"),
-    UNDER_10W(null, 100000, "10万字以内"),
-    W_10_30(100000, 300000, "10-30万"),
-    W_30_50(300000, 500000, "30-50万"),
-    W_50_100(500000, 1000000, "50-100万"),
-    W_100_200(1000000, 2000000, "100-200万"),
-    W_200_300(2000000, 3000000, "200-300万"),
-    OVER_300W(3000000, null, "300万以上")
-}
-
-/**
- * 排序方式
- */
-enum class SortBy(val value: String, val displayName: String) {
-    NULL("null","默认排序"),
-    NEW_UPDATE("last_chapter_update_time desc", "最近更新"),
-    HIGH_CLICK("visit_count desc", "点击量"),
-    WORD_COUNT("word_count desc", "总字数")
-}
-
-/**
- * 分类筛选
- */
-data class CategoryFilter(
-    val id: Int,
-    val name: String?
-)
-
-/**
- * 书籍信息响应DTO（简化版本，与API对应）
- */
-data class BookInfoRespDto(
-    val id: Long,
-    val categoryId: Long?,
-    val categoryName: String?,
-    val picUrl: String?,
-    val bookName: String?,
-    val authorId: Long?,
-    val authorName: String?,
-    val bookDesc: String?,
-    val bookStatus: Int,
-    val visitCount: Long,
-    val wordCount: Int,
-    val commentCount: Int,
-    val firstChapterId: Long?,
-    val lastChapterId: Long?,
-    val lastChapterName: String?,
-    val updateTime: String?
-)
-
-/**
- * 搜索结果动作
- */
-sealed class SearchResultAction {
-    data class UpdateQuery(val query: String) : SearchResultAction()
-    data class PerformSearch(val query: String) : SearchResultAction()
-    data class SelectCategory(val categoryId: Int?) : SearchResultAction()
-    data object OpenFilterSheet : SearchResultAction()
-    data object CloseFilterSheet : SearchResultAction()
-    data class UpdateFilters(val filters: FilterState) : SearchResultAction()
-    data object ApplyFilters : SearchResultAction()
-    data object ClearFilters : SearchResultAction()
-    data object LoadNextPage : SearchResultAction()
-    data class NavigateToDetail(val bookId: String) : SearchResultAction()
-    data object NavigateBack : SearchResultAction()
-}
-
-/**
- * 搜索结果事件
- */
-sealed class SearchResultEvent {
-    data class NavigateToDetail(val bookId: String) : SearchResultEvent()
-    data object NavigateBack : SearchResultEvent()
-}
-
-// endregion 

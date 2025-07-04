@@ -6,6 +6,7 @@ import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.google.gson.Gson
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.page.search.viewmodel.BookInfoRespDto
+import com.novel.page.search.viewmodel.FilterState
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -48,6 +49,27 @@ data class PageRespDtoBookInfoRespDto(
 )
 
 /**
+ * 搜索参数数据类
+ */
+data class SearchParams(
+    val query: String,
+    val page: Int,
+    val categoryId: Int?,
+    val filters: FilterState,
+    val isLoadMore: Boolean
+)
+
+/**
+ * 缓存的搜索结果
+ */
+data class CachedSearchResult(
+    val books: List<BookInfoRespDto>,
+    val totalResults: Int,
+    val hasMore: Boolean,
+    val timestamp: Long
+)
+
+/**
  * 搜索数据仓库
  * 
  * 核心功能：
@@ -55,6 +77,7 @@ data class PageRespDtoBookInfoRespDto(
  * - 榜单数据获取：集成缓存策略的多类型榜单数据
  * - 书籍搜索：支持多条件筛选的书籍搜索功能
  * - 状态管理：搜索历史展开状态的持久化
+ * - 搜索结果缓存：智能缓存搜索结果，提升用户体验
  * 
  * 技术特点：
  * - 单例模式设计，全局数据一致性
@@ -62,11 +85,13 @@ data class PageRespDtoBookInfoRespDto(
  * - JSON序列化存储，数据结构灵活
  * - 完善的异常处理和日志记录
  * - 依赖注入，便于测试和维护
+ * - 搜索结果智能缓存与过期清理
  * 
  * 存储机制：
  * - 使用NovelUserDefaults进行本地配置存储
  * - 搜索历史限制为10条，自动清理旧记录
  * - 支持历史展开状态的保存和恢复
+ * - 搜索结果缓存限制为20条，5分钟过期
  */
 @Singleton
 class SearchRepository @Inject constructor(
@@ -86,6 +111,10 @@ class SearchRepository @Inject constructor(
         private const val TAG = "SearchRepository"
         /** 搜索历史最大保存数量 */
         private const val MAX_SEARCH_HISTORY = 10
+        /** 搜索结果缓存最大数量 */
+        private const val SEARCH_CACHE_SIZE = 20
+        /** 搜索结果缓存过期时间（5分钟） */
+        private const val SEARCH_CACHE_DURATION_MS = 5 * 60 * 1000L
         
         // 本地存储键名
         /** 搜索历史存储键 */
@@ -93,6 +122,106 @@ class SearchRepository @Inject constructor(
         /** 历史展开状态存储键 */
         private const val HISTORY_EXPANDED_KEY = "history_expanded"
     }
+    
+    /** 搜索结果缓存 */
+    private val searchResultCache = mutableMapOf<String, CachedSearchResult>()
+    
+    // region 搜索结果缓存管理
+    
+    /**
+     * 生成缓存键
+     */
+    private fun generateCacheKey(params: SearchParams): String {
+        return "${params.query}-${params.categoryId}-${params.filters.hashCode()}-${params.page}"
+    }
+    
+    /**
+     * 检查缓存是否有效（5分钟内）
+     */
+    private fun isCacheValid(cached: CachedSearchResult): Boolean {
+        return (System.currentTimeMillis() - cached.timestamp) < SEARCH_CACHE_DURATION_MS
+    }
+    
+    /**
+     * 获取缓存的搜索结果
+     */
+    fun getCachedSearchResult(params: SearchParams): CachedSearchResult? {
+        val cacheKey = generateCacheKey(params)
+        val cached = searchResultCache[cacheKey]
+        
+        return if (cached != null && isCacheValid(cached)) {
+            TimberLogger.d(TAG, "返回缓存的搜索结果: $cacheKey")
+            cached
+        } else {
+            if (cached != null) {
+                TimberLogger.d(TAG, "缓存已过期，移除: $cacheKey")
+                searchResultCache.remove(cacheKey)
+            }
+            null
+        }
+    }
+    
+    /**
+     * 缓存搜索结果
+     */
+    fun cacheSearchResult(params: SearchParams, books: List<BookInfoRespDto>, totalResults: Int, hasMore: Boolean) {
+        val cacheKey = generateCacheKey(params)
+        val cachedResult = CachedSearchResult(
+            books = books,
+            totalResults = totalResults,
+            hasMore = hasMore,
+            timestamp = System.currentTimeMillis()
+        )
+        
+        // 清理过期缓存
+        if (searchResultCache.size >= SEARCH_CACHE_SIZE) {
+            cleanExpiredCache()
+            
+            // 如果清理后仍然满了，移除最旧的
+            if (searchResultCache.size >= SEARCH_CACHE_SIZE) {
+                val oldestKey = searchResultCache.minByOrNull { it.value.timestamp }?.key
+                oldestKey?.let { 
+                    searchResultCache.remove(it)
+                    TimberLogger.d(TAG, "移除最旧的缓存项: $it")
+                }
+            }
+        }
+        
+        searchResultCache[cacheKey] = cachedResult
+        TimberLogger.d(TAG, "缓存搜索结果: $cacheKey")
+    }
+    
+    /**
+     * 清理过期缓存
+     */
+    private fun cleanExpiredCache() {
+        val currentTime = System.currentTimeMillis()
+        val expiredKeys = searchResultCache.filter { 
+            (currentTime - it.value.timestamp) >= SEARCH_CACHE_DURATION_MS 
+        }.keys
+        
+        expiredKeys.forEach { key ->
+            searchResultCache.remove(key)
+            TimberLogger.d(TAG, "清理过期缓存: $key")
+        }
+    }
+    
+    /**
+     * 清空搜索结果缓存
+     */
+    fun clearSearchResultCache() {
+        searchResultCache.clear()
+        TimberLogger.d(TAG, "搜索结果缓存已清空")
+    }
+    
+    /**
+     * 检查搜索结果缓存是否可用
+     */
+    fun isSearchResultCacheAvailable(params: SearchParams): Boolean {
+        return getCachedSearchResult(params) != null
+    }
+    
+    // endregion
     
     // region 搜索历史管理
     
@@ -357,6 +486,102 @@ class SearchRepository @Inject constructor(
     // region 搜索功能
     
     /**
+     * 搜索书籍 - 带缓存管理的搜索实现
+     */
+    suspend fun searchBooksWithCache(
+        params: SearchParams,
+        strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
+    ): PageRespDtoBookInfoRespDto? {
+        return try {
+            // 先检查本地缓存
+            if (strategy == CacheStrategy.CACHE_FIRST) {
+                val cached = getCachedSearchResult(params)
+                if (cached != null) {
+                    TimberLogger.d(TAG, "使用缓存搜索结果: ${params.query}")
+                    return PageRespDtoBookInfoRespDto(
+                        pageNum = params.page.toLong(),
+                        pageSize = 20L,
+                        total = cached.totalResults.toLong(),
+                        list = cached.books,
+                        pages = if (cached.hasMore) (params.page + 1).toLong() else params.page.toLong()
+                    )
+                }
+            }
+            
+            // 调用网络搜索
+            val response = searchService.searchBooksCached(
+                keyword = params.query,
+                workDirection = null,
+                categoryId = params.categoryId,
+                isVip = params.filters.isVip.value,
+                bookStatus = params.filters.updateStatus.value,
+                wordCountMin = params.filters.wordCountRange.min,
+                wordCountMax = params.filters.wordCountRange.max,
+                updateTimeMin = null,
+                sort = params.filters.sortBy.value,
+                pageNum = params.page,
+                pageSize = 20,
+                cacheManager = cacheManager,
+                strategy = strategy,
+                onCacheUpdate = {
+                    TimberLogger.d(TAG, "搜索结果缓存已更新: keyword=${params.query}")
+                }
+            ).onSuccess { _, fromCache ->
+                TimberLogger.d(TAG, "搜索成功，来源: ${if (fromCache) "缓存" else "网络"}，关键词: ${params.query}")
+            }.onError { error, _ ->
+                TimberLogger.e(TAG, "搜索失败，关键词: ${params.query}", error)
+            }.let { result ->
+                when (result) {
+                    is com.novel.utils.network.cache.CacheResult.Success -> result.data
+                    is com.novel.utils.network.cache.CacheResult.Error -> result.cachedData
+                }
+            }
+            
+            if (response?.ok == true && response.data != null) {
+                val books = response.data.list.map { searchBook ->
+                    BookInfoRespDto(
+                        id = searchBook.id,
+                        categoryId = searchBook.categoryId,
+                        categoryName = searchBook.categoryName,
+                        picUrl = searchBook.picUrl,
+                        bookName = searchBook.bookName,
+                        authorId = searchBook.authorId,
+                        authorName = searchBook.authorName,
+                        bookDesc = searchBook.bookDesc,
+                        bookStatus = searchBook.bookStatus,
+                        visitCount = searchBook.visitCount,
+                        wordCount = searchBook.wordCount,
+                        commentCount = searchBook.commentCount,
+                        firstChapterId = searchBook.firstChapterId,
+                        lastChapterId = searchBook.lastChapterId,
+                        lastChapterName = searchBook.lastChapterName,
+                        updateTime = searchBook.updateTime
+                    )
+                }
+                
+                val totalResults = response.data.total?.toInt() ?: 0
+                val hasMore = (response.data.pages ?: 0) > params.page
+                
+                // 缓存结果
+                cacheSearchResult(params, books, totalResults, hasMore)
+                
+                PageRespDtoBookInfoRespDto(
+                    pageNum = response.data.pageNum,
+                    pageSize = response.data.pageSize,
+                    total = response.data.total,
+                    list = books,
+                    pages = response.data.pages
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            TimberLogger.e(TAG, "搜索异常，关键词: ${params.query}", e)
+            null
+        }
+    }
+    
+    /**
      * 搜索书籍 - 缓存优先策略
      */
     suspend fun searchBooks(
@@ -412,8 +637,7 @@ class SearchRepository @Inject constructor(
      */
     fun clearSearchCache() {
         try {
-            // 清理搜索相关缓存（需要遍历所有可能的缓存键）
-            // 这里可以根据需要实现更精确的缓存清理逻辑
+            clearSearchResultCache()
             TimberLogger.d(TAG, "搜索缓存已清理")
         } catch (e: Exception) {
             TimberLogger.e(TAG, "清理搜索缓存失败", e)

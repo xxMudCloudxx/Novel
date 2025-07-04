@@ -110,4 +110,91 @@ sealed class SearchResultEffect : MviEffect {
     data class ShowToast(val message: String) : SearchResultEffect()
 }
 
-// endregion 
+// endregion
+
+/**
+ * 筛选状态
+ */
+data class FilterState(
+    val updateStatus: UpdateStatus = UpdateStatus.ALL,
+    val isVip: VipStatus = VipStatus.ALL,
+    val wordCountRange: WordCountRange = WordCountRange.ALL,
+    val sortBy: SortBy = SortBy.NULL
+)
+
+/**
+ * 更新状态
+ */
+enum class UpdateStatus(val value: Int?, val displayName: String) {
+    ALL(null, "全部"),
+    FINISHED(1, "已完结"),
+    ONGOING(0, "连载中"),
+    HALF_YEAR_FINISHED(-1, "半年内完结"),
+    THREE_DAYS_UPDATED(-2, "3日内更新"),
+    SEVEN_DAYS_UPDATED(-3, "7日内更新"),
+    ONE_MONTH_UPDATED(-4, "1月内更新")
+}
+
+/**
+ * VIP状态
+ */
+enum class VipStatus(val value: Int?, val displayName: String) {
+    ALL(null, "全部"),
+    FREE(0, "免费"),
+    PAID(1, "付费")
+}
+
+/**
+ * 字数范围
+ */
+enum class WordCountRange(val min: Int?, val max: Int?, val displayName: String) {
+    ALL(null, null, "全部"),
+    UNDER_10W(null, 100000, "10万字以内"),
+    W_10_30(100000, 300000, "10-30万"),
+    W_30_50(300000, 500000, "30-50万"),
+    W_50_100(500000, 1000000, "50-100万"),
+    W_100_200(1000000, 2000000, "100-200万"),
+    W_200_300(2000000, 3000000, "200-300万"),
+    OVER_300W(3000000, null, "300万以上")
+}
+
+/**
+ * 排序方式
+ */
+enum class SortBy(val value: String, val displayName: String) {
+    NULL("null","默认排序"),
+    NEW_UPDATE("last_chapter_update_time desc", "最近更新"),
+    HIGH_CLICK("visit_count desc", "点击量"),
+    WORD_COUNT("word_count desc", "总字数")
+}
+
+/**
+ * 分类筛选
+ */
+data class CategoryFilter(
+    val id: Int,
+    val name: String?
+)
+
+/**
+ * 书籍信息响应DTO（简化版本，与API对应）
+ */
+data class BookInfoRespDto(
+    val id: Long,
+    val categoryId: Long?,
+    val categoryName: String?,
+    val picUrl: String?,
+    val bookName: String?,
+    val authorId: Long?,
+    val authorName: String?,
+    val bookDesc: String?,
+    val bookStatus: Int,
+    val visitCount: Long,
+    val wordCount: Int,
+    val commentCount: Int,
+    val firstChapterId: Long?,
+    val lastChapterId: Long?,
+    val lastChapterName: String?,
+    val updateTime: String?
+)
+

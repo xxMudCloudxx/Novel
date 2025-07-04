@@ -1,28 +1,40 @@
 package com.novel.page.search
 
-import androidx.compose.foundation.clickable
+import com.novel.utils.TimberLogger
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
+import com.novel.page.component.LoadingStateComponent
+import com.novel.page.component.ViewState
 import com.novel.page.component.NovelText
-import com.novel.page.search.viewmodel.SearchResultAction
+import com.novel.utils.debounceClickable
+import com.novel.page.search.viewmodel.SearchResultIntent
 import com.novel.page.search.viewmodel.SearchResultEffect
 import com.novel.page.search.viewmodel.SearchResultViewModel
-import com.novel.page.search.viewmodel.CategoryFilter
-import com.novel.page.search.component.SearchResultItem
-import com.novel.page.search.component.SearchTopBar
-import com.novel.page.search.component.SearchFilterBottomSheet
+import com.novel.page.search.component.*
 import com.novel.page.search.skeleton.SearchResultPageSkeleton
 import com.novel.ui.theme.NovelColors
-import com.novel.utils.NavViewModel
 import com.novel.utils.wdp
 import com.novel.utils.ssp
+import com.novel.utils.NavViewModel
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.unit.dp
 
 /**
  * 搜索结果页面 - MVI重构版
@@ -30,17 +42,27 @@ import com.novel.utils.ssp
 @Composable
 fun SearchResultPage(
     initialQuery: String,
-    viewModel: SearchResultViewModel = hiltViewModel()
+    viewModel: SearchResultViewModel = hiltViewModel(),
+    globalFlipBookController: com.novel.page.component.FlipBookAnimationController = com.novel.page.component.rememberFlipBookAnimationController()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
+
+    // 准备翻书动画控制器与覆盖层
+    val flipBookController = globalFlipBookController
+    val coroutineScope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val screenSize = remember(configuration, density) {
+        Pair(configuration.screenWidthDp * density.density, configuration.screenHeightDp * density.density)
+    }
 
     // 处理事件
     LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
                 is SearchResultEffect.NavigateToDetail -> {
-                    NavViewModel.navigateToReader(event.bookId, null)
+                    NavViewModel.navigateToReader(effect.bookId, null)
                 }
                 is SearchResultEffect.NavigateBack -> {
                     NavViewModel.navigateBack()
@@ -55,9 +77,27 @@ fun SearchResultPage(
     // 初始化查询
     LaunchedEffect(initialQuery) {
         if (initialQuery.isNotEmpty() && uiState.query.isEmpty()) {
-            viewModel.onAction(SearchResultAction.UpdateQuery(initialQuery))
-            viewModel.onAction(SearchResultAction.PerformSearch(initialQuery))
+            viewModel.sendIntent(SearchResultIntent.UpdateQuery(initialQuery))
+            viewModel.sendIntent(SearchResultIntent.PerformSearch(initialQuery))
         }
+    }
+
+    // 监听滚动状态，自动加载下一页
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo }
+            .collect { layoutInfo ->
+                if (layoutInfo.totalItemsCount > 0) {
+                    val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    if (lastVisibleItemIndex >= layoutInfo.totalItemsCount - 3 && // 提前3项触发
+                        uiState.hasMore &&
+                        !uiState.isLoadingMore &&
+                        !uiState.isLoading
+                    ) {
+                        TimberLogger.d("SearchResultPage", "触发分页加载，当前项: $lastVisibleItemIndex，总项: ${layoutInfo.totalItemsCount}")
+                        viewModel.sendIntent(SearchResultIntent.LoadNextPage)
+                    }
+                }
+            }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -65,13 +105,13 @@ fun SearchResultPage(
         SearchTopBar(
             query = uiState.query,
             onQueryChange = { query ->
-                viewModel.onAction(SearchResultAction.UpdateQuery(query))
+                viewModel.sendIntent(SearchResultIntent.UpdateQuery(query))
             },
             onSearchClick = {
-                viewModel.onAction(SearchResultAction.PerformSearch(uiState.query))
+                viewModel.sendIntent(SearchResultIntent.PerformSearch(uiState.query))
             },
             onBackClick = {
-                viewModel.onAction(SearchResultAction.NavigateBack)
+                viewModel.sendIntent(SearchResultIntent.NavigateBack)
             }
         )
 
@@ -80,10 +120,10 @@ fun SearchResultPage(
             categories = uiState.categoryFilters,
             selectedCategoryId = uiState.selectedCategoryId,
             onCategorySelected = { categoryId ->
-                viewModel.onAction(SearchResultAction.SelectCategory(categoryId))
+                viewModel.sendIntent(SearchResultIntent.SelectCategory(categoryId))
             },
             onFilterClick = {
-                viewModel.onAction(SearchResultAction.OpenFilterSheet)
+                viewModel.sendIntent(SearchResultIntent.OpenFilterSheet)
             }
         )
 
@@ -101,8 +141,20 @@ fun SearchResultPage(
                         items(items = uiState.books, key = { it.id }) { book ->
                             SearchResultItem(
                                 book = book,
-                                onClick = {
-                                    viewModel.onAction(SearchResultAction.NavigateToDetail(book.id.toString()))
+                                onClick = {},
+                                onClickWithPosition = { b, offset, size ->
+                                    coroutineScope.launch {
+                                        flipBookController.startScaleFadeAnimation(
+                                            bookId = b.id.toString(),
+                                            imageUrl = b.picUrl ?: "",
+                                            originalPosition = offset,
+                                            originalSize = size,
+                                            screenWidth = screenSize.first,
+                                            screenHeight = screenSize.second
+                                        )
+                                    }
+                                    NavViewModel.setFlipBookController(flipBookController)
+                                    NavViewModel.navigateToReader(b.id.toString(), null)
                                 }
                             )
                         }
@@ -127,7 +179,7 @@ fun SearchResultPage(
                                             fontSize = 14.ssp,
                                             color = NovelColors.NovelTextGray,
                                             modifier = Modifier.clickable {
-                                                viewModel.onAction(SearchResultAction.LoadNextPage)
+                                                viewModel.sendIntent(SearchResultIntent.LoadNextPage)
                                             }
                                         )
                                     }
@@ -155,6 +207,12 @@ fun SearchResultPage(
                                 fontSize = 16.ssp,
                                 color = NovelColors.NovelTextGray
                             )
+                            Spacer(modifier = Modifier.height(8.wdp))
+                            NovelText(
+                                text = "试试其他关键词或调整筛选条件",
+                                fontSize = 14.ssp,
+                                color = NovelColors.NovelTextGray.copy(alpha = 0.7f)
+                            )
                         }
                     }
                 }
@@ -167,19 +225,22 @@ fun SearchResultPage(
         SearchFilterBottomSheet(
             filters = uiState.filters,
             onFiltersChange = { filters ->
-                viewModel.onAction(SearchResultAction.UpdateFilters(filters))
+                viewModel.sendIntent(SearchResultIntent.UpdateFilters(filters))
             },
             onDismiss = {
-                viewModel.onAction(SearchResultAction.CloseFilterSheet)
+                viewModel.sendIntent(SearchResultIntent.CloseFilterSheet)
             },
             onClear = {
-                viewModel.onAction(SearchResultAction.ClearFilters)
+                viewModel.sendIntent(SearchResultIntent.ClearFilters)
             },
             onApply = {
-                viewModel.onAction(SearchResultAction.ApplyFilters)
+                viewModel.sendIntent(SearchResultIntent.ApplyFilters)
             }
         )
     }
+
+    // 全局动画覆盖层 - 保证动画渲染
+    com.novel.page.component.GlobalFlipBookOverlay(controller = flipBookController)
 }
 
 /**
@@ -187,37 +248,54 @@ fun SearchResultPage(
  */
 @Composable
 private fun CategoryFilterRow(
-    categories: List<CategoryFilter>,
+    categories: List<com.novel.page.search.viewmodel.CategoryFilter>,
     selectedCategoryId: Int?,
     onCategorySelected: (Int?) -> Unit,
     onFilterClick: () -> Unit
 ) {
-    // 简单实现，避免复杂依赖
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.wdp, vertical = 8.wdp),
-        horizontalArrangement = Arrangement.spacedBy(8.wdp)
+        contentAlignment = Alignment.CenterStart
     ) {
-        categories.take(5).forEach { category ->
-            val isSelected = selectedCategoryId == category.id
-            NovelText(
-                text = category.name ?: "",
-                fontSize = 14.ssp,
-                color = if (isSelected) NovelColors.NovelMain else NovelColors.NovelTextGray,
-                modifier = Modifier
-                    .clickable { onCategorySelected(category.id) }
-                    .padding(horizontal = 8.wdp, vertical = 4.wdp)
+        // 分类标签
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.wdp)
+        ) {
+            TimberLogger.d("CategoryFilterRow", "categories: $categories")
+            categories.forEach { category ->
+                com.novel.page.search.component.CategoryFilterChip(
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                    text = category.name ?: "未知分类",
+                    selected = selectedCategoryId == category.id || (selectedCategoryId == null && category.id == -1),
+                    onClick = {
+                        val targetId = if (category.id == -1) null else category.id
+                        onCategorySelected(targetId)
+                    }
+                )
+            }
+        }
+        // 筛选按钮
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .background(NovelColors.NovelBackground)
+                .size(40.wdp)
+                .align(Alignment.CenterEnd)
+                .debounceClickable(
+                    onClick = onFilterClick
+                )
+        ) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = "筛选",
+                tint = NovelColors.NovelMain,
+                modifier = Modifier.size(20.wdp)
             )
         }
-        
-        NovelText(
-            text = "筛选",
-            fontSize = 14.ssp,
-            color = NovelColors.NovelMain,
-            modifier = Modifier
-                .clickable { onFilterClick() }
-                .padding(horizontal = 8.wdp, vertical = 4.wdp)
-        )
     }
 }
