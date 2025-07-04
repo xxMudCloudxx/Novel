@@ -12,6 +12,7 @@ import com.novel.utils.network.cache.onError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.catch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -172,47 +173,44 @@ class HomeRepository @Inject constructor(
         workDirection: Int = 0,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     ): Flow<List<com.novel.utils.network.api.front.BookService.BookCategory>> = flow {
-        try {
-            // 先从本地数据库查询
-            val localCategories = homeDao.getCategories().first()
-            
-            if (localCategories.isNotEmpty()) {
-                // 转换为API格式
-                val apiCategories = localCategories.map { entity ->
-                    com.novel.utils.network.api.front.BookService.BookCategory(
-                        id = entity.id,
-                        name = entity.name
-                    )
-                }
-                emit(apiCategories)
+        // 先从本地数据库查询
+        val localCategories = homeDao.getCategories().first()
+        
+        if (localCategories.isNotEmpty()) {
+            // 转换为API格式
+            val apiCategories = localCategories.map { entity ->
+                com.novel.utils.network.api.front.BookService.BookCategory(
+                    id = entity.id,
+                    name = entity.name
+                )
             }
-            
-            // 使用缓存策略获取网络数据
-            val networkCategories = cachedBookRepository.getBookCategories(
-                workDirection = workDirection,
-                strategy = strategy
-            )
-            
-            if (networkCategories.isNotEmpty()) {
-                emit(networkCategories)
-                
-                // 更新本地数据库
-                val entities = networkCategories.map { category ->
-                    HomeCategoryEntity(
-                        id = category.id,
-                        name = category.name,
-                        iconUrl = null,
-                        sortOrder = 0
-                    )
-                }
-                homeDao.insertCategories(entities)
-            }
-            
-        } catch (e: Exception) {
-            TimberLogger.e(TAG, "获取书籍分类失败", e)
-            // 发射空列表作为最后的备选
-            emit(emptyList())
+            emit(apiCategories)
         }
+        
+        // 使用缓存策略获取网络数据
+        val networkCategories = cachedBookRepository.getBookCategories(
+            workDirection = workDirection,
+            strategy = strategy
+        )
+        
+        if (networkCategories.isNotEmpty()) {
+            emit(networkCategories)
+            
+            // 更新本地数据库
+            val entities = networkCategories.map { category ->
+                HomeCategoryEntity(
+                    id = category.id,
+                    name = category.name,
+                    iconUrl = null,
+                    sortOrder = 0
+                )
+            }
+            homeDao.insertCategories(entities)
+        }
+    }.catch { e ->
+        TimberLogger.e(TAG, "获取书籍分类失败", e)
+        // 发射空列表作为最后的备选
+        emit(emptyList())
     }
     
     // region 书籍数据获取方法

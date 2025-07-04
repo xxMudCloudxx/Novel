@@ -19,8 +19,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.novel.page.home.component.*
-import com.novel.page.home.viewmodel.HomeAction
-import com.novel.page.home.viewmodel.HomeEvent
+import com.novel.page.home.viewmodel.HomeIntent
+import com.novel.page.home.viewmodel.HomeEffect
 import com.novel.page.home.viewmodel.HomeViewModel
 import com.novel.page.home.skeleton.HomePageSkeleton
 import com.novel.page.component.rememberFlipBookAnimationController
@@ -33,6 +33,12 @@ import com.novel.page.component.FlipBookAnimationController
 
 /**
  * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
+ * 
+ * 采用完整MVI架构：
+ * - 直接使用HomeIntent处理用户交互
+ * - 监听HomeEffect处理一次性副作用
+ * - 订阅HomeState流获取UI状态
+ * - 无业务逻辑，纯UI展示和事件转发
  */
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -60,7 +66,7 @@ fun HomePage(
             override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
                 super.onStart(owner)
                 // 页面恢复可见时检查并恢复数据
-                viewModel.onAction(HomeAction.RestoreData)
+                viewModel.sendIntent(HomeIntent.RestoreData)
             }
         })
     }
@@ -78,27 +84,30 @@ fun HomePage(
         )
     }
     
-    // 监听事件 - 移除书籍跳转，因为现在BookDetailPage在动画中显示
+    // 监听副作用 - 使用MVI Effect系统
     LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is HomeEvent.NavigateToBook -> {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is HomeEffect.NavigateToBook -> {
                     // 不再跳转，书籍内容在动画中显示
                 }
-                is HomeEvent.NavigateToBookDetail -> {
+                is HomeEffect.NavigateToBookDetail -> {
                     // 不再跳转，书籍内容在动画中显示
                 }
-                is HomeEvent.NavigateToCategory -> onNavigateToCategory(event.categoryId)
-                is HomeEvent.NavigateToSearch -> {
+                is HomeEffect.NavigateToCategory -> onNavigateToCategory(effect.categoryId)
+                is HomeEffect.NavigateToSearch -> {
                     // 直接调用NavViewModel导航到搜索页面
-                    NavViewModel.navigateToSearch(event.query)
+                    NavViewModel.navigateToSearch(effect.query)
                 }
-                is HomeEvent.NavigateToCategoryPage -> onNavigateToCategoryPage()
-                is HomeEvent.NavigateToFullRanking -> {
+                is HomeEffect.NavigateToCategoryPage -> onNavigateToCategoryPage()
+                is HomeEffect.NavigateToFullRanking -> {
                     // 导航到完整榜单页面 - 待实现
                 }
-                is HomeEvent.ShowToast -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is HomeEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+                is HomeEffect.SendToReactNative -> {
+                    // 处理React Native数据发送 - 已经在UseCase层处理
                 }
             }
         }
@@ -113,9 +122,9 @@ fun HomePage(
             if (isAtBottom && listState.layoutInfo.totalItemsCount > 0) {
                 // 触发加载更多
                 if (uiState.isRecommendMode && uiState.hasMoreHomeRecommend && !uiState.homeRecommendLoading) {
-                    viewModel.onAction(HomeAction.LoadMoreHomeRecommend)
+                    viewModel.sendIntent(HomeIntent.LoadMoreHomeRecommend)
                 } else if (!uiState.isRecommendMode && uiState.hasMoreRecommend && !uiState.recommendLoading) {
-                    viewModel.onAction(HomeAction.LoadMoreRecommend)
+                    viewModel.sendIntent(HomeIntent.LoadMoreRecommend)
                 }
             }
         }
@@ -127,7 +136,7 @@ fun HomePage(
     } else {
         SwipeRefresh(
             state = swipeRefreshState,
-            onRefresh = { viewModel.onAction(HomeAction.RestoreData) },
+            onRefresh = { viewModel.sendIntent(HomeIntent.RefreshData) },
             modifier = Modifier.fillMaxSize()
         ) {
         LazyColumn(
@@ -142,8 +151,8 @@ fun HomePage(
             // 1. 顶部搜索栏和分类按钮
             item(key = "top_bar") {
                 HomeTopBar(
-                    onSearchClick = { viewModel.onAction(HomeAction.NavigateToSearch(uiState.searchQuery)) },
-                    onCategoryClick = { viewModel.onAction(HomeAction.NavigateToCategory(1L)) },
+                    onSearchClick = { viewModel.sendIntent(HomeIntent.NavigateToSearch(uiState.searchQuery)) },
+                    onCategoryClick = { viewModel.sendIntent(HomeIntent.NavigateToCategory(1L)) },
                     modifier = Modifier.padding(horizontal = 15.wdp)
                 )
             }
@@ -153,7 +162,7 @@ fun HomePage(
                 HomeFilterBar(
                     filters = uiState.categoryFilters,
                     selectedFilter = uiState.selectedCategoryFilter,
-                    onFilterSelected = { viewModel.onAction(HomeAction.SelectCategoryFilter(it)) }
+                    onFilterSelected = { viewModel.sendIntent(HomeIntent.SelectCategoryFilter(it)) }
                 )
             }
             
@@ -170,7 +179,7 @@ fun HomePage(
                         HomeRankPanel(
                             rankBooks = uiState.rankBooks,
                             selectedRankType = uiState.selectedRankType,
-                            onRankTypeSelected = { viewModel.onAction(HomeAction.SelectRankType(it)) },
+                            onRankTypeSelected = { viewModel.sendIntent(HomeIntent.SelectRankType(it)) },
                             onBookClick = { bookId, offset, size ->
                                 // 榜单点击触发翻书动画
                                 coroutineScope.launch {
@@ -200,7 +209,7 @@ fun HomePage(
                     // 推荐模式：显示首页推荐数据 - 使用放大透明动画
                     HomeRecommendGrid(
                         homeBooks = uiState.homeRecommendBooks,
-                        onBookClick = { viewModel.onAction(HomeAction.NavigateToBookDetail(it)) },
+                        onBookClick = { viewModel.sendIntent(HomeIntent.NavigateToBookDetail(it)) },
                         onBookClickWithPosition = { bookId, offset, size ->
                             // 推荐流点击触发放大透明动画
                             coroutineScope.launch {
@@ -226,7 +235,7 @@ fun HomePage(
                     // 分类模式：显示搜索结果数据 - 使用放大透明动画
                     HomeRecommendGrid(
                         books = uiState.recommendBooks,
-                        onBookClick = { viewModel.onAction(HomeAction.NavigateToBookDetail(it)) },
+                        onBookClick = { viewModel.sendIntent(HomeIntent.NavigateToBookDetail(it)) },
                         onBookClickWithPosition = { bookId, offset, size ->
                             // 分类推荐点击触发放大透明动画
                             coroutineScope.launch {
@@ -316,7 +325,7 @@ fun HomePage(
                                 )
                             }
                             TextButton(
-                                onClick = { viewModel.onAction(HomeAction.ClearError) }
+                                onClick = { viewModel.sendIntent(HomeIntent.ClearError) }
                             ) {
                                 Text("关闭")
                             }
