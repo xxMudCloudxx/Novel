@@ -87,6 +87,7 @@ android {
 
     namespace "com.novel"
     defaultConfig {
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         applicationId "com.novel"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
@@ -195,12 +196,36 @@ dependencies {
     debugImplementation "androidx.compose.ui:ui-tooling"
     debugImplementation "androidx.compose.ui:ui-test-manifest"
 
+    // 单元测试依赖
     testImplementation "junit:junit:4.13.2"
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0"
+    testImplementation "androidx.arch.core:core-testing:2.2.0"
+    testImplementation "org.mockito:mockito-core:5.18.0"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:5.2.1"
+    testImplementation "app.cash.turbine:turbine:1.0.0"
+    testImplementation "io.kotest:kotest-assertions-core:5.8.0"
+    testImplementation "androidx.test:core:1.5.0"
+    testImplementation "androidx.test.ext:junit:1.1.5"
+    testImplementation "org.robolectric:robolectric:4.11.1"
+    
+    // UI测试依赖
     androidTestImplementation "androidx.test.ext:junit:1.2.1"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.6.1"
+    androidTestImplementation "androidx.test.espresso:espresso-intents:3.6.1"
+    androidTestImplementation "androidx.test:runner:1.6.2"
+    androidTestImplementation "androidx.test:rules:1.6.1"
     androidTestImplementation platform("androidx.compose:compose-bom:2025.05.01")
     androidTestImplementation "androidx.compose.ui:ui-test-junit4"
-    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test"
+    androidTestImplementation "androidx.compose.ui:ui-test-manifest"
+    androidTestImplementation "androidx.test.uiautomator:uiautomator:2.3.0"
+    androidTestImplementation "com.google.dagger:hilt-android-testing:2.52"
+    
+    // 性能测试依赖
+    androidTestImplementation "androidx.benchmark:benchmark-junit4:1.2.4"
+    androidTestImplementation "androidx.benchmark:benchmark-macro-junit4:1.2.4"
+    
+    // Hilt测试处理器
+    kaptAndroidTest "com.google.dagger:hilt-compiler:2.52"
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
