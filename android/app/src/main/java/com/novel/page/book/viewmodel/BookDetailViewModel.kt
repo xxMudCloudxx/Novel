@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,13 +62,16 @@ class BookDetailViewModel @Inject constructor(
         private const val TAG = "BookDetailViewModel"
     }
     
+    /** 新的StateAdapter实例 */
+    val adapter = BookDetailStateAdapter(state)
+    
     /** 兼容性属性：UI状态流，适配原有的UI层期望格式 */
     val uiState: StateFlow<StateHolderImpl<BookDetailUiState>> = state.map { mviState ->
-        BookDetailStateAdapter.toUiState(mviState)
+        adapter.toUiState()
     }.stateIn(
         scope = viewModelScope,
         started = kotlinx.coroutines.flow.SharingStarted.Lazily,
-        initialValue = BookDetailStateAdapter.toUiState(createInitialState())
+        initialValue = BookDetailStateAdapter(MutableStateFlow(createInitialState())).toUiState()
     )
 
     /**

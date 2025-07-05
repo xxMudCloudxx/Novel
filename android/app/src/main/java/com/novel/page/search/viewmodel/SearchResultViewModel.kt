@@ -51,6 +51,9 @@ class SearchResultViewModel @Inject constructor(
     /** Reducer实例，处理状态转换逻辑 */
     private val reducer = SearchResultReducer()
     
+    /** StateAdapter实例，提供UI友好的状态访问 */
+    val adapter = SearchResultStateAdapter(state)
+    
     /** 当前页码（从1开始） */
     private var currentPage = 1
     /** 分页加载状态标识 */

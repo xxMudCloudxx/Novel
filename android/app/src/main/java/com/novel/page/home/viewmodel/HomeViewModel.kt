@@ -77,9 +77,12 @@ class HomeViewModel @Inject constructor(
     // 缓存全量首页推荐数据
     private var cachedHomeBooks: List<com.novel.utils.network.api.front.HomeService.HomeBook> = emptyList()
     
+    /** 新的StateAdapter实例 */
+    val adapter = HomeStateAdapter(state)
+    
     /** 兼容性属性：UI状态流，适配原有的UI层期望格式 */
     val uiState: StateFlow<HomeUiState> = state.map { mviState ->
-        HomeStateAdapter().toHomeUiState(mviState)
+        adapter.toHomeUiState()
     }.stateIn(
         scope = viewModelScope,
         started = kotlinx.coroutines.flow.SharingStarted.Lazily,
