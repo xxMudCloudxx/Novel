@@ -37,9 +37,13 @@ import com.novel.page.login.component.OperatorSection
 import com.novel.page.login.component.PhoneSection
 import com.novel.page.login.component.TitleSection
 import com.novel.page.login.skeleton.LoginPageSkeleton
-import com.novel.page.login.viewmodel.LoginAction
-import com.novel.page.login.viewmodel.LoginEvent
+import com.novel.page.login.viewmodel.CaptchaState
+import com.novel.page.login.viewmodel.LoginEffect
+import com.novel.page.login.viewmodel.LoginForm
+import com.novel.page.login.viewmodel.LoginIntent
 import com.novel.page.login.viewmodel.LoginViewModel
+import com.novel.page.login.viewmodel.RegisterForm
+import com.novel.page.login.viewmodel.ValidationResults
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.NavViewModel.navController
 import com.novel.utils.wdp
@@ -58,34 +62,47 @@ private object AnimationConfig {
 }
 
 /**
- * 登录页面
+ * 登录页面 - MVI架构版本
  */
 @SuppressLint("UnrememberedMutableState", "UseOfNonLambdaOffsetOverload")
 @Composable
 fun LoginPage() {
     val vm: LoginViewModel = hiltViewModel()
-    val uiState by vm.uiState.collectAsState()
+    val adapter = vm.adapter
 
-    // 收集一次性事件
+    // 收集状态
+    val isLoading by adapter.isLoading.collectAsState(initial = false)
+    val isLoginMode by adapter.isLoginMode.collectAsState(initial = true)
+    val isAgreementAccepted by adapter.isAgreementAccepted.collectAsState(initial = false)
+    val operatorName by adapter.operatorName.collectAsState(initial = "")
+    val maskedPhoneNumber by adapter.maskedPhoneNumber.collectAsState(initial = "")
+    val loginForm by adapter.loginForm.collectAsState(initial = LoginForm())
+    val registerForm by adapter.registerForm.collectAsState(initial = RegisterForm())
+    val validationResults by adapter.validationResults.collectAsState(initial = ValidationResults())
+    val captchaState by adapter.captchaState.collectAsState(initial = CaptchaState())
+
+    // 收集副作用
     LaunchedEffect(Unit) {
-        vm.events.collectLatest { event ->
-            when (event) {
-                is LoginEvent.ShowToast -> {}
-                is LoginEvent.Navigate ->
-                    navController.value?.navigate(event.route)
-
-                is LoginEvent.LaunchTelService -> {}
-                is LoginEvent.OpenUserAgreementPage ->
+        vm.effect.collectLatest { effect ->
+            when (effect) {
+                is LoginEffect.ShowToast -> {}
+                is LoginEffect.NavigateToHome ->
+                    navController.value?.navigate("home")
+                is LoginEffect.LaunchTelService -> {}
+                is LoginEffect.NavigateToPrivacyPolicy ->
                     navController.value?.navigate("userAgreement")
-
-                is LoginEvent.OpenRegisterAgreementPage ->
+                is LoginEffect.NavigateToTermsOfService ->
                     navController.value?.navigate("registerAgreement")
+                is LoginEffect.FocusSmsCodeInput -> {}
+                is LoginEffect.NavigateBack -> {}
+                is LoginEffect.ShowSmsCodeSentDialog -> {}
+                is LoginEffect.TriggerHapticFeedback -> {}
             }
         }
     }
 
     // 显示骨架屏或正常内容
-    if (uiState.isLoading) {
+    if (isLoading) {
         LoginPageSkeleton()
     } else {
         Column(
@@ -111,21 +128,29 @@ fun LoginPage() {
                 )
 
                 //  运营商
-                OperatorSection(uiState.operatorName + "认证")
+                OperatorSection(operatorName + "认证")
 
                 // 脱敏后手机号
-                PhoneSection(uiState.phoneNumber)
+                PhoneSection(maskedPhoneNumber)
 
                 // 输入框
                 InputSection(
-                    uiState = uiState,
-                    onAction = vm::onAction
+                    isLoginMode = isLoginMode,
+                    loginForm = loginForm,
+                    registerForm = registerForm,
+                    validationResults = validationResults,
+                    captchaState = captchaState,
+                    onPhoneInput = { vm.sendIntent(LoginIntent.InputPhone(it)) },
+                    onPasswordInput = { vm.sendIntent(LoginIntent.InputPassword(it)) },
+                    onPasswordConfirmInput = { vm.sendIntent(LoginIntent.InputPasswordConfirm(it)) },
+                    onVerifyCodeInput = { vm.sendIntent(LoginIntent.InputVerifyCode(it)) },
+                    onRefreshCaptcha = { vm.sendIntent(LoginIntent.RefreshCaptcha) }
                 )
 
-                // 1. 构建注册模式切换的 Transition
+                // 构建注册模式切换的 Transition
                 val transition =
                     updateTransition(
-                        targetState = uiState.isRegisterMode,
+                        targetState = !isLoginMode,
                         label = "registerTransition"
                     )
 
@@ -152,24 +177,23 @@ fun LoginPage() {
 
                 // 按钮区：在登录/注册两种模式下都保持可见，但切换时做淡入淡出+展开收缩
                 ActionButtons(
-                    firstText = if (uiState.isRegisterMode) "注册" else "登录",
-                    secondText = if (uiState.isRegisterMode) "返回登录" else "暂无账号，去注册",
+                    firstText = if (!isLoginMode) "注册" else "登录",
+                    secondText = if (!isLoginMode) "返回登录" else "暂无账号，去注册",
                     onFirstClick = {
-                        if (uiState.isRegisterMode) {
-                            vm.onAction(
-                                LoginAction.DoRegister(
-                                    username = uiState.username,
-                                    password = uiState.password,
-                                    sessionId = uiState.sessionId,
-                                    velCode = uiState.verifyCode
-                                )
-                            )
+                        if (!isLoginMode) {
+                            vm.sendIntent(LoginIntent.SubmitRegister)
                         } else {
-                            vm.onAction(LoginAction.DoLogin(uiState.username, uiState.password))
+                            vm.sendIntent(LoginIntent.SubmitLogin)
                         }
                     },
-                    isFirstEnabled = uiState.isActionButtonEnabled,
-                    onSecondClick = { vm.onAction(LoginAction.ToggleRegisterMode) },
+                    isFirstEnabled = adapter.canSubmit(),
+                    onSecondClick = { 
+                        if (isLoginMode) {
+                            vm.sendIntent(LoginIntent.SwitchToRegister)
+                        } else {
+                            vm.sendIntent(LoginIntent.SwitchToLogin)
+                        }
+                    },
                     modifier = Modifier
                         .offset(y = buttonOffset)
                         .alpha(buttonAlpha)
@@ -208,12 +232,12 @@ fun LoginPage() {
                             )
                 ) {
                     AgreementSection(
-                        operator = uiState.operatorName,
-                        isChecked = uiState.isAgreementChecked,
-                        onCheckedChange = { vm.onAction(LoginAction.ToggleAgreement(it)) },
-                        onTelServiceClick = { vm.onAction(LoginAction.OpenTelService) },
-                        onUserAgreementClick = { vm.onAction(LoginAction.OpenUserAgreement) },
-                        onRegisterAgreementClick = { vm.onAction(LoginAction.OpenRegisterAgreement) },
+                        operator = operatorName,
+                        isChecked = isAgreementAccepted,
+                        onCheckedChange = { vm.sendIntent(LoginIntent.ToggleAgreement(it)) },
+                        onTelServiceClick = { vm.sendIntent(LoginIntent.NavigateToTelService) },
+                        onUserAgreementClick = { vm.sendIntent(LoginIntent.NavigateToPrivacyPolicy) },
+                        onRegisterAgreementClick = { vm.sendIntent(LoginIntent.NavigateToTermsOfService) },
                         modifier = Modifier
                             .offset(y = buttonOffset)
                             .padding(top = 16.wdp)

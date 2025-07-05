@@ -104,10 +104,11 @@ fun NovelImageView(
         }
     }
 ) {
-    val imageUrl = "https://img.picui.cn/free/2025/06/22/6857c4dee81d8.jpg"
+    TimberLogger.d("NovelImageView", "imageUrl: $imageUrl")
+    val imageUrl = if(imageUrl?.startsWith("/data/user") == true) imageUrl else "https://img.picui.cn/free/2025/06/22/6857c4dee81d8.jpg"
     // 预处理图片URL，过滤空值和无效URL
     val processedImageUrl = remember(imageUrl) {
-        imageUrl.takeIf { it?.isNotEmpty() ?: false }
+        imageUrl.takeIf { it.isNotEmpty() }
     }
 
     // 预计算图片修饰符，避免重复创建

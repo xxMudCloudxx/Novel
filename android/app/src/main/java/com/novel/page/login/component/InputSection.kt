@@ -29,8 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import com.novel.page.component.NovelImageView
 import com.novel.page.component.NovelTextField
-import com.novel.page.login.viewmodel.LoginAction
-import com.novel.page.login.viewmodel.LoginUiState
+import com.novel.page.login.viewmodel.CaptchaState
+import com.novel.page.login.viewmodel.LoginForm
+import com.novel.page.login.viewmodel.RegisterForm
+import com.novel.page.login.viewmodel.ValidationResults
 import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 
@@ -41,19 +43,27 @@ private object AnimationConfig {
 }
 
 /**
- * 输入区域，包含用户名、密码、确认密码和验证码
+ * 输入区域，包含用户名、密码、确认密码和验证码 - MVI版本
  */
 @SuppressLint("UseOfNonLambdaOffsetOverload")
 @Composable
 fun InputSection(
-    uiState: LoginUiState,
-    onAction: (LoginAction) -> Unit
+    isLoginMode: Boolean,
+    loginForm: LoginForm,
+    registerForm: RegisterForm,
+    validationResults: ValidationResults,
+    captchaState: CaptchaState,
+    onPhoneInput: (String) -> Unit,
+    onPasswordInput: (String) -> Unit,
+    onPasswordConfirmInput: (String) -> Unit,
+    onVerifyCodeInput: (String) -> Unit,
+    onRefreshCaptcha: () -> Unit
 ) {
-    // 1. 构建注册模式切换的 Transition
+    // 构建注册模式切换的 Transition
     val transition =
-        updateTransition(targetState = uiState.isRegisterMode, label = "registerTransition")
+        updateTransition(targetState = !isLoginMode, label = "registerTransition")
 
-    // 2. 弹性位移动画：从 -40.wdp 到 0.wdp，下滑时带弹性回弹
+    // 弹性位移动画：从 -40.wdp 到 0.wdp，下滑时带弹性回弹
     val sectionOffset by transition.animateDp(
         transitionSpec = {
             spring(
@@ -66,7 +76,7 @@ fun InputSection(
         if (state) 0.wdp else (-40).wdp
     }
 
-    // 3. 透明度动画：用 tween 控制总时长，并加一点延迟
+    // 透明度动画：用 tween 控制总时长，并加一点延迟
     val sectionAlpha by transition.animateFloat(
         transitionSpec = {
             tween(
@@ -86,31 +96,35 @@ fun InputSection(
             .padding(horizontal = 22.5.wdp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // 手机号输入
         NovelTextField(
-            value = uiState.username,
-            onValueChange = { onAction(LoginAction.InputUsername(it)) },
+            value = if (isLoginMode) loginForm.phone else registerForm.phone,
+            onValueChange = onPhoneInput,
             modifier = Modifier
                 .height(45.wdp)
                 .width(329.wdp),
             placeText = "请输入手机号",
-            isError = uiState.usernameError != null,
-            errorMessage = uiState.usernameError
+            isError = validationResults.phoneError != null,
+            errorMessage = validationResults.phoneError
         )
 
         Spacer(modifier = Modifier.height(19.wdp))
 
+        // 密码输入
         NovelTextField(
-            value = uiState.password,
-            onValueChange = { onAction(LoginAction.InputPassword(it)) },
+            value = if (isLoginMode) loginForm.password else registerForm.password,
+            onValueChange = onPasswordInput,
             modifier = Modifier
                 .height(45.wdp)
                 .width(329.wdp),
             placeText = "请输入密码",
             isPassword = true,
-            isError = uiState.passwordError != null,
-            errorMessage = uiState.passwordError
+            isError = validationResults.passwordError != null,
+            errorMessage = validationResults.passwordError
         )
-        if (uiState.isRegisterMode)
+        
+        // 注册模式的额外字段
+        if (!isLoginMode)
             AnimatedVisibility(
                 visible = true,
                 enter = expandVertically(
@@ -147,18 +161,20 @@ fun InputSection(
                 ) {
                     Spacer(modifier = Modifier.height(19.wdp))
 
+                    // 确认密码输入
                     NovelTextField(
-                        value = uiState.passwordConfirm,
-                        onValueChange = { onAction(LoginAction.InputPasswordConfirm(it)) },
+                        value = registerForm.passwordConfirm,
+                        onValueChange = onPasswordConfirmInput,
                         modifier = Modifier
                             .height(45.wdp)
                             .width(329.wdp),
                         placeText = "再次输入密码",
                         isPassword = true,
-                        isError = uiState.passwordConfirmError != null,
-                        errorMessage = uiState.passwordConfirmError
+                        isError = validationResults.passwordConfirmError != null,
+                        errorMessage = validationResults.passwordConfirmError
                     )
 
+                    // 验证码输入区域
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -167,24 +183,24 @@ fun InputSection(
                             .fillMaxWidth()
                     ) {
                         NovelTextField(
-                            value = uiState.verifyCode,
-                            onValueChange = { onAction(LoginAction.InputVerifyCode(it)) },
+                            value = registerForm.verifyCode,
+                            onValueChange = onVerifyCodeInput,
                             modifier = Modifier
                                 .height(45.wdp)
                                 .width(180.wdp),
                             placeText = "输入验证码",
-                            isError = uiState.verifyCodeError != null,
-                            errorMessage = uiState.verifyCodeError
+                            isError = validationResults.verifyCodeError != null,
+                            errorMessage = validationResults.verifyCodeError
                         )
                         Spacer(modifier = Modifier.width(8.wdp))
                         NovelImageView(
-                            imageUrl = uiState.verifyImage,
-                            isLoading = uiState.isCaptchaLoading,
-                            error = uiState.captchaError,
+                            imageUrl = captchaState.imagePath,
+                            isLoading = captchaState.isLoading,
+                            error = captchaState.error,
                             widthDp = 100,
                             heightDp = 45,
-                            modifier = Modifier.debounceClickable(onClick = { onAction(LoginAction.RefreshCaptcha) }),
-                            onRetry = { onAction(LoginAction.RefreshCaptcha) }
+                            modifier = Modifier.debounceClickable(onClick = onRefreshCaptcha),
+                            onRetry = onRefreshCaptcha
                         )
                     }
                 }
