@@ -7,7 +7,7 @@ import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import javax.inject.Inject
 
 /**
@@ -52,7 +52,7 @@ class SeekProgressUseCase @Inject constructor(
      */
     suspend fun execute(
         progress: Float,
-        state: ReaderUiState
+        state: ReaderState
     ): SeekResult {
         return executeWithResult("跳转阅读进度") {
         logOperationStart("跳转阅读进度", "目标进度=${(progress * 100).toInt()}%")

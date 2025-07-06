@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 /**
  * 章节分页用例
- * 
+ *
  * 负责将章节内容分页处理：
  * 1. 调用分页服务分割内容
  * 2. 创建 PageData 对象
@@ -26,7 +26,7 @@ class PaginateChapterUseCase @Inject constructor(
     dispatchers: DispatcherProvider,
     logger: ServiceLogger
 ) : BaseUseCase(dispatchers, logger) {
-    
+
     companion object {
         private const val TAG = ReaderLogTags.PAGINATE_CHAPTER_USE_CASE
     }
@@ -35,7 +35,7 @@ class PaginateChapterUseCase @Inject constructor(
 
     /**
      * 执行章节分页
-     * 
+     *
      * @param chapter 章节信息
      * @param content 章节内容
      * @param readerSettings 阅读器设置
@@ -55,32 +55,33 @@ class PaginateChapterUseCase @Inject constructor(
         isLastChapter: Boolean
     ): PageData {
         logOperationStart("章节分页", "章节=${chapter.chapterName}, 内容长度=${content.length}")
-        
-        return try {
-        logger.logDebug(
-            "开始分页: 章节=${chapter.chapterName}, 内容长度=${content.length}, " +
-            "容器尺寸=${containerSize.width}x${containerSize.height}",
-            TAG
-        )
 
-        val pages = paginationService.splitContent(content, containerSize, readerSettings, density)
-        
-        val pageData = PageData(
-            chapterId = chapter.id,
-            chapterName = chapter.chapterName,
-            content = content,
-            pages = pages,
-            isFirstChapter = isFirstChapter,
-            isLastChapter = isLastChapter,
-            hasBookDetailPage = isFirstChapter
-        )
+        return try {
+            logger.logDebug(
+                "开始分页: 章节=${chapter.chapterName}, 内容长度=${content.length}, " +
+                        "容器尺寸=${containerSize.width}x${containerSize.height}",
+                TAG
+            )
+
+            val pages =
+                paginationService.splitContent(content, containerSize, readerSettings, density)
+
+            val pageData = PageData(
+                chapterId = chapter.id,
+                chapterName = chapter.chapterName,
+                content = content,
+                pages = pages,
+                isFirstChapter = isFirstChapter,
+                isLastChapter = isLastChapter,
+                hasBookDetailPage = isFirstChapter
+            )
 
             logger.logInfo(
                 "章节分页完成: ${chapter.chapterName}, 共${pages.size}页, " +
-                "首章=$isFirstChapter, 末章=$isLastChapter",
+                        "首章=$isFirstChapter, 末章=$isLastChapter",
                 TAG
             )
-            
+
             logOperationComplete("章节分页", "分页完成，共${pages.size}页")
             pageData
         } catch (e: Exception) {

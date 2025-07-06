@@ -9,7 +9,7 @@ import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import javax.inject.Inject
 
 /**
@@ -49,7 +49,7 @@ class UpdateSettingsUseCase @Inject constructor(
      */
     suspend fun execute(
         newSettings: ReaderSettings,
-        state: ReaderUiState
+        state: ReaderState
     ): UpdateResult {
         return executeWithResult("更新设置") {
         logOperationStart("更新设置", "开始更新阅读器设置")
@@ -157,7 +157,7 @@ class UpdateSettingsUseCase @Inject constructor(
      * 检查是否需要重新分页
      * 根据设置变化判断是否影响页面布局
      */
-    private fun needsRepagination(oldSettings: ReaderSettings, newSettings: ReaderSettings, state: ReaderUiState): Boolean {
+    private fun needsRepagination(oldSettings: ReaderSettings, newSettings: ReaderSettings, state: ReaderState): Boolean {
         if (state.containerSize.width == 0 || state.containerSize.height == 0) {
             logger.logDebug("容器尺寸无效，跳过重新分页", TAG)
             return false

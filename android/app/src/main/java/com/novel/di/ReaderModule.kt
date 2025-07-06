@@ -160,8 +160,4 @@ object ReaderModule {
     ): ObservePaginationProgressUseCase {
         return ObservePaginationProgressUseCase(paginationService, dispatchers, logger)
     }
-
-
-
-
 }

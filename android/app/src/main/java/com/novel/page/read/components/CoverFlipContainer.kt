@@ -1,6 +1,5 @@
 package com.novel.page.read.components
 
-import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -19,7 +18,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import com.novel.page.read.viewmodel.FlipDirection
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import com.novel.utils.SwipeBackContainer
 import com.novel.utils.wdp
@@ -31,10 +30,10 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun CoverFlipContainer(
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
+    onNavigateToReader: ((String, String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null, // 新增：iOS侧滑返回回调
     onClick: () -> Unit
 ) {
@@ -186,9 +185,9 @@ fun CoverFlipContainer(
 @Composable
 private fun PageRenderer(
     virtualPage: VirtualPage,
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     readerSettings: ReaderSettings,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)?,
+    onNavigateToReader: ((String, String?) -> Unit)?,
     onSwipeBack: (() -> Unit)?,
     onPageChange: (FlipDirection) -> Unit,
     onClick: () -> Unit,

@@ -12,7 +12,7 @@ import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -70,7 +70,7 @@ class InitReaderUseCase @Inject constructor(
     suspend fun execute(
         bookId: String,
         chapterId: String?,
-        initialState: ReaderUiState,
+        initialState: ReaderState,
         scope: CoroutineScope
     ): Result<InitReaderResult> {
         return executeWithResult("初始化阅读器") {

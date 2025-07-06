@@ -38,7 +38,7 @@ import com.novel.page.read.repository.ProgressiveCalculationState
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.ReaderIntent
 import com.novel.page.read.viewmodel.ReaderViewModel
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
@@ -47,6 +47,7 @@ import com.novel.utils.NavViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.toArgb
+import com.novel.page.read.viewmodel.ReaderStateAdapter
 
 /**
  * 状态信息，通过 CompositionLocal 提供给子组件
@@ -77,7 +78,11 @@ fun ReaderPage(
 ) {
     val activeController = flipBookController ?: NavViewModel.currentFlipBookController()
 
-    val uiState by viewModel.uiState.collectAsState()
+    val adapter = viewModel.adapter
+    val state by adapter.currentState.collectAsState()
+    val isInitialized by adapter.isInitialized.collectAsState(initial = false)
+    val showProgressRestoredHint by adapter.mapState { it.showProgressRestoredHint }.collectAsState(initial = false)
+    
     val density = LocalDensity.current
 
     val coroutineScope = rememberCoroutineScope()
@@ -92,7 +97,7 @@ fun ReaderPage(
         }
     }
 
-    // —— 真正的“后退”：先做动画，再清理 controller，最后导航 ——
+    // —— 真正的"后退"：先做动画，再清理 controller，最后导航 ——
     val performBack = remember {
         {
             reverseOnly()
@@ -105,76 +110,58 @@ fun ReaderPage(
         performBack()
     }
 
-    // 控制面板显示状态
-    var showControls by remember { mutableStateOf(false) }
-
-    // 章节目录显示状态
-    var showChapterList by remember { mutableStateOf(false) }
-
-    // 设置面板显示状态
-    var showSettings by remember { mutableStateOf(false) }
-
-    // 阅读位置恢复状态
-    var showProgressRestoredHint by remember { mutableStateOf(false) }
-
-    // 在组件初始化时预先加载设置，确保背景色能立即应用
-    LaunchedEffect(Unit) {
-        TimberLogger.d("ReaderPage", "ReaderPage开始初始化，预加载设置")
-        viewModel.loadInitialSettings()
-    }
-
     LaunchedEffect(bookId, chapterId) {
         TimberLogger.d("ReaderPage", "ReaderPage参数变化: bookId=$bookId, chapterId=$chapterId")
-        if (bookId.isNotBlank() && chapterId?.isNotBlank() == true) {
+        if (bookId.isNotBlank()) {
             TimberLogger.d("ReaderPage", "开始加载书籍和章节内容")
-            viewModel.onIntent(ReaderIntent.InitReader(bookId, chapterId))
+            viewModel.sendIntent(ReaderIntent.InitReader(bookId, chapterId))
         } else {
             TimberLogger.w("ReaderPage", "书籍ID或章节ID为空，跳过加载")
         }
     }
 
-    LaunchedEffect(uiState.readerSettings) {
+    LaunchedEffect(state.readerSettings) {
         TimberLogger.d("ReaderPage", "设置状态变化监听触发")
         TimberLogger.d(
             "ReaderPage",
             "当前背景颜色: ${
                 String.format(
                     "#%08X",
-                    uiState.readerSettings.backgroundColor.toArgb()
+                    state.readerSettings.backgroundColor.toArgb()
                 )
             }"
         )
         TimberLogger.d(
             "ReaderPage",
-            "当前文字颜色: ${String.format("#%08X", uiState.readerSettings.textColor.toArgb())}"
+            "当前文字颜色: ${String.format("#%08X", state.readerSettings.textColor.toArgb())}"
         )
-        TimberLogger.d("ReaderPage", "当前字体大小: ${uiState.readerSettings.fontSize}sp")
-        TimberLogger.d("ReaderPage", "当前翻页效果: ${uiState.readerSettings.pageFlipEffect}")
+        TimberLogger.d("ReaderPage", "当前字体大小: ${state.readerSettings.fontSize}sp")
+        TimberLogger.d("ReaderPage", "当前翻页效果: ${state.readerSettings.pageFlipEffect}")
 
         // 强制触发更新容器尺寸，确保页数正确刷新
-        if (uiState.containerSize != IntSize.Zero) {
-            viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
-            TimberLogger.d("ReaderPage", "强制触发容器尺寸更新以刷新页数: ${uiState.containerSize}")
+        if (state.containerSize != IntSize.Zero) {
+            viewModel.sendIntent(ReaderIntent.UpdateContainerSize(state.containerSize, density))
+            TimberLogger.d("ReaderPage", "强制触发容器尺寸更新以刷新页数: ${state.containerSize}")
         }
     }
 
     // 初始化阅读器并启动页数计算
     LaunchedEffect(bookId, chapterId) {
-        viewModel.onIntent(ReaderIntent.InitReader(bookId, chapterId))
+        viewModel.sendIntent(ReaderIntent.InitReader(bookId, chapterId))
 
         // 确保在初始化完成后立即启动页数计算
         delay(100) // 等待初始化完成
-        if (uiState.isSuccess && uiState.containerSize != IntSize.Zero) {
+        if (isInitialized && state.containerSize != IntSize.Zero) {
             // 强制触发页数缓存更新，确保首次打开时页数能正确显示
-            viewModel.onIntent(ReaderIntent.UpdateContainerSize(uiState.containerSize, density))
+            viewModel.sendIntent(ReaderIntent.UpdateContainerSize(state.containerSize, density))
         }
 
         // 如果是恢复阅读进度（没有指定章节），显示恢复提示
         if (chapterId == null) {
             delay(1000) // 等待内容加载完成
-            showProgressRestoredHint = true
+            viewModel.sendIntent(ReaderIntent.ShowProgressRestoredHint(true))
             delay(3000) // 显示3秒后自动隐藏
-            showProgressRestoredHint = false
+            viewModel.sendIntent(ReaderIntent.ShowProgressRestoredHint(false))
         }
     }
 
@@ -185,27 +172,27 @@ fun ReaderPage(
 
     // 将需要传递给子组件的状态打包
     val readerInfo = ReaderInfo(
-        paginationState = uiState.paginationState,
-        pageCountCache = uiState.pageCountCache,
-        currentChapter = uiState.currentChapter,
-        perChapterPageIndex = uiState.currentPageIndex
+        paginationState = state.paginationState,
+        pageCountCache = state.pageCountCache,
+        currentChapter = state.currentChapter,
+        perChapterPageIndex = state.currentPageIndex
     )
 
     // 优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
     val loadingStateComponent = remember(
-        uiState.hasError,
-        uiState.isEmpty,
-        uiState.error,
-        uiState.isLoading,
+        state.hasError,
+        state.isEmpty,
+        state.error,
+        state.isLoading,
         bookId
     ) {
         object : LoadingStateComponent {
-            override val loading: Boolean get() = uiState.isLoading
+            override val loading: Boolean get() = state.isLoading
             override val containsCancelable: Boolean get() = false
             override val viewState: ViewState
                 get() = when {
-                    uiState.hasError -> ViewState.Error(Exception(uiState.error))
-                    uiState.isEmpty -> ViewState.Empty
+                    state.hasError -> ViewState.Error(Exception(state.error))
+                    state.isEmpty -> ViewState.Empty
                     else -> ViewState.Idle
                 }
 
@@ -222,6 +209,7 @@ fun ReaderPage(
             }
 
             override fun retry() {
+                 viewModel.sendIntent(ReaderIntent.Retry)
             }
         }
     }
@@ -243,73 +231,40 @@ fun ReaderPage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(uiState.readerSettings.backgroundColor)
+                    .background(state.readerSettings.backgroundColor)
                     .onSizeChanged { size ->
                         if (size != IntSize.Zero) {
-                            viewModel.onIntent(ReaderIntent.UpdateContainerSize(size, density))
+                            viewModel.sendIntent(ReaderIntent.UpdateContainerSize(size, density))
                         }
                     }
             ) {
                 when {
-                    uiState.isLoading -> {
+                    state.isLoading -> {
                         LoadingIndicator()
                     }
 
-                    uiState.hasError -> {
+                    state.hasError -> {
                         ErrorContent(
-                            error = uiState.error,
+                            error = state.error?:"",
                             onRetry = {
-                                viewModel.onIntent(ReaderIntent.Retry)
+                                viewModel.sendIntent(ReaderIntent.Retry)
                             }
                         )
                     }
 
-                    uiState.isSuccess -> {
+                    isInitialized -> {
                         // 主阅读内容 - 使用整合的翻页容器以支持新的优化
-                        if (uiState.currentPageData != null) {
+                        if (state.currentPageData != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 IntegratedPageFlipContainer(
-                                    viewModel = viewModel,
-                                    uiState = uiState,
-                                    readerSettings = uiState.readerSettings,
-                                    onPageChange = { direction ->
-                                        // 翻页时关闭所有设置栏
-                                        if (showSettings || showChapterList) {
-                                            showSettings = false
-                                            showChapterList = false
-                                        } else {
-//                                            viewModel.onPageChange(direction)
-                                            viewModel.onIntent(ReaderIntent.PageFlip(direction))
-                                        }
-                                    },
-                                    onChapterChange = { direction ->
-                                        // 章节切换时关闭所有设置栏
-                                        if (showSettings || showChapterList) {
-                                            showSettings = false
-                                            showChapterList = false
-                                        } else {
-                                            viewModel.onChapterChange(direction)
-                                        }
-                                    },
-                                    onNavigateToReader = { _, _ ->
-                                        // 从书籍详情页导航到第一页内容
-                                        viewModel.navigateToContent()
-                                    },
+                                    state = state,
+                                    onIntent = viewModel::sendIntent,
                                     onSwipeBack = {
                                         // iOS侧滑返回
                                         reverseOnly()
                                     },
-                                    onVerticalScrollPageChange = { pageIndex ->
-                                        viewModel.updateCurrentPageFromScroll(pageIndex)
-                                    },
                                     onClick = {
-                                        // 点击时关闭所有设置栏
-                                        if (showSettings || showChapterList) {
-                                            showSettings = false
-                                            showChapterList = false
-                                        } else {
-                                            showControls = !showControls
-                                        }
+                                        viewModel.sendIntent(ReaderIntent.ToggleMenu(!state.isMenuVisible))
                                     }
                                 )
                             }
@@ -317,20 +272,16 @@ fun ReaderPage(
                             // 兼容旧的显示方式，当分页数据还未准备好时
                             // 同时更新容器尺寸
                             ReaderContent(
-                                uiState = uiState,
+                                state = state,
                                 onClick = {
-                                    if (showSettings) {
-                                        showSettings = false
-                                    } else {
-                                        showControls = !showControls
-                                    }
+                                     viewModel.sendIntent(ReaderIntent.ToggleMenu(!state.isMenuVisible))
                                 },
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .onSizeChanged { size ->
                                         // 确保容器尺寸信息及时更新到ViewModel
                                         if (size.width > 0 && size.height > 0) {
-                                            viewModel.onIntent(
+                                            viewModel.sendIntent(
                                                 ReaderIntent.UpdateContainerSize(
                                                     size,
                                                     density
@@ -342,7 +293,7 @@ fun ReaderPage(
                         }
 
                         AnimatedVisibility(
-                            visible = showChapterList && !showSettings && showControls,
+                            visible = state.isChapterListVisible,
                             enter = slideInVertically(initialOffsetY = { it }),
                             exit = slideOutVertically(targetOffsetY = { it })
                         ) {
@@ -353,18 +304,17 @@ fun ReaderPage(
                             ) {
                                 Spacer(modifier = Modifier.weight(1f))  // 让面板从剩余区域向上滑
                                 ChapterListPanel(
-                                    chapters = uiState.chapterList,
-                                    currentChapterId = uiState.currentChapter?.id ?: "",
-                                    backgroundColor = uiState.readerSettings.backgroundColor,
+                                    chapters = state.chapterList,
+                                    currentChapterId = state.currentChapter?.id ?: "",
+                                    backgroundColor = state.readerSettings.backgroundColor,
                                     onChapterSelected = { chapter ->
                                         // 保存当前进度
-                                        viewModel.saveCurrentReadingProgress()
+                                        viewModel.sendIntent(ReaderIntent.SaveProgress())
                                         // 切换章节
-//                                        viewModel.switchToChapter(chapter.id)
-                                        viewModel.onIntent(ReaderIntent.SwitchToChapter(chapter.id))
-                                        showChapterList = false
+                                        viewModel.sendIntent(ReaderIntent.SwitchToChapter(chapter.id))
+                                         viewModel.sendIntent(ReaderIntent.ShowChapterList(false))
                                     },
-                                    onDismiss = { showChapterList = false },
+                                    onDismiss = {  viewModel.sendIntent(ReaderIntent.ShowChapterList(false)) },
                                     modifier = Modifier.clickable(enabled = false) { } // 阻止穿透
                                 )
                             }
@@ -372,7 +322,7 @@ fun ReaderPage(
 
                         // —— 再绘制"设置"面板（如果 showSettings == true）——
                         AnimatedVisibility(
-                            visible = showSettings && !showChapterList && showControls,
+                            visible = state.isSettingsPanelVisible,
                             enter = slideInVertically(initialOffsetY = { it }),
                             exit = slideOutVertically(targetOffsetY = { it })
                         ) {
@@ -383,9 +333,9 @@ fun ReaderPage(
                             ) {
                                 Spacer(modifier = Modifier.weight(1f))
                                 ReaderSettingsPanel(
-                                    settings = uiState.readerSettings,
+                                    settings = state.readerSettings,
                                     onSettingsChange = { settings ->
-                                        viewModel.onIntent(
+                                        viewModel.sendIntent(
                                             ReaderIntent.UpdateSettings(settings)
                                         )
                                     },
@@ -427,36 +377,15 @@ fun ReaderPage(
                         }
 
                         AnimatedVisibility(
-                            visible = showControls,  // 只要 showControls，就展示 ReaderControls
+                            visible = state.isMenuVisible,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
                             ReaderControls(
-                                uiState = uiState,
-                                hideProgress = showSettings || showChapterList,  // 有面板时隐藏进度条
+                                state = state,
+                                hideProgress = state.isSettingsPanelVisible || state.isChapterListVisible,
                                 onBack = performBack,
-                                onPreviousChapter = {
-                                    viewModel.onIntent(ReaderIntent.PreviousChapter)
-                                },
-
-                                onNextChapter = {
-                                    viewModel.onIntent(ReaderIntent.NextChapter)
-                                },
-                                onSeekToProgress = { progress ->
-                                    viewModel.onIntent(
-                                        ReaderIntent.SeekToProgress(
-                                            progress
-                                        )
-                                    )
-                                },
-                                onShowChapterList = {
-                                    showChapterList = !showChapterList
-                                    showSettings = false
-                                },
-                                onShowSettings = {
-                                    showSettings = !showSettings
-                                    showChapterList = false
-                                }
+                                onIntent = viewModel::sendIntent
                             )
                         }
                     }
@@ -471,60 +400,82 @@ fun ReaderPage(
  */
 @Composable
 private fun IntegratedPageFlipContainer(
-    viewModel: ReaderViewModel,
-    uiState: ReaderUiState,
-    readerSettings: ReaderSettings,
-    onPageChange: (FlipDirection) -> Unit,
-    onChapterChange: (FlipDirection) -> Unit,
-    onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null,
+    state: ReaderState,
+    onIntent: (ReaderIntent) -> Unit,
     onSwipeBack: (() -> Unit)? = null,
-    onVerticalScrollPageChange: (Int) -> Unit,
     onClick: () -> Unit
 ) {
-    when (readerSettings.pageFlipEffect) {
+    val onPageChange: (FlipDirection) -> Unit = { direction ->
+        if (state.isSettingsPanelVisible || state.isChapterListVisible) {
+            onIntent(ReaderIntent.ShowSettingsPanel(false))
+            onIntent(ReaderIntent.ShowChapterList(false))
+        } else {
+            onIntent(ReaderIntent.PageFlip(direction))
+        }
+    }
+    
+    val onChapterChange: (FlipDirection) -> Unit = { direction ->
+        if (state.isSettingsPanelVisible || state.isChapterListVisible) {
+            onIntent(ReaderIntent.ShowSettingsPanel(false))
+            onIntent(ReaderIntent.ShowChapterList(false))
+        } else {
+            when (direction) {
+                FlipDirection.NEXT -> onIntent(ReaderIntent.NextChapter)
+                FlipDirection.PREVIOUS -> onIntent(ReaderIntent.PreviousChapter)
+            }
+        }
+    }
+    
+    val onNavigateToReader : () -> Unit = {
+        onIntent(ReaderIntent.PageFlip(FlipDirection.NEXT))
+    }
+
+    when (state.readerSettings.pageFlipEffect) {
         PageFlipEffect.NONE -> NoAnimationContainer(
-            uiState = uiState,
-            readerSettings = readerSettings,
+            uiState = state,
+            readerSettings = state.readerSettings,
             onPageChange = onPageChange,
-            onNavigateToReader = onNavigateToReader,
+            onNavigateToReader = { _, _ -> onNavigateToReader() },
             onSwipeBack = onSwipeBack,
             onClick = onClick
         )
 
         PageFlipEffect.COVER -> CoverFlipContainer(
-            uiState = uiState,
-            readerSettings = readerSettings,
+            uiState = state,
+            readerSettings = state.readerSettings,
             onPageChange = onPageChange,
-            onNavigateToReader = onNavigateToReader,
+            onNavigateToReader = { _, _ -> onNavigateToReader() },
             onSwipeBack = onSwipeBack,
             onClick = onClick
         )
 
         PageFlipEffect.SLIDE -> SlideFlipContainer(
-            uiState = uiState,
-            readerSettings = readerSettings,
+            uiState = state,
+            readerSettings = state.readerSettings,
             onPageChange = onPageChange,
             onSwipeBack = onSwipeBack,
             onClick = onClick,
             onSlideIndexChange = { newIndex ->
                 // 使用专用的更新方法避免循环更新
-                viewModel.updateSlideFlipIndex(newIndex)
+                onIntent(ReaderIntent.UpdateSlideIndex(newIndex))
             }
         )
 
         PageFlipEffect.PAGECURL -> PageCurlFlipContainer(
-            uiState = uiState,
-            readerSettings = readerSettings,
+            uiState = state,
+            readerSettings = state.readerSettings,
             onPageChange = onPageChange,
             onSwipeBack = onSwipeBack,
             onClick = onClick
         )
 
         PageFlipEffect.VERTICAL -> VerticalScrollContainer(
-            uiState = uiState,
-            readerSettings = readerSettings,
+            uiState = state,
+            readerSettings = state.readerSettings,
             onChapterChange = onChapterChange,
-            onVerticalScrollPageChange = onVerticalScrollPageChange,
+            onVerticalScrollPageChange = { pageIndex ->
+                 onIntent(ReaderIntent.UpdateScrollPosition(pageIndex))
+            },
             onClick = onClick
         )
     }
@@ -535,7 +486,7 @@ private fun IntegratedPageFlipContainer(
  */
 @Composable
 private fun ReaderContent(
-    uiState: ReaderUiState,
+    state: ReaderState,
     onClick: () -> Unit,
     modifier: Modifier
 ) {
@@ -551,10 +502,10 @@ private fun ReaderContent(
         // 章节标题
         item {
             Text(
-                text = uiState.currentChapter?.chapterName ?: "",
-                fontSize = (uiState.readerSettings.fontSize + 4).sp,
+                text = state.currentChapter?.chapterName ?: "",
+                fontSize = (state.readerSettings.fontSize + 4).sp,
                 fontWeight = FontWeight.Bold,
-                color = uiState.readerSettings.textColor,
+                color = state.readerSettings.textColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -565,10 +516,10 @@ private fun ReaderContent(
         // 章节内容
         item {
             Text(
-                text = uiState.bookContent.replace("<br/><br/>", "\n\n").replace("<br/>", "\n"),
-                fontSize = uiState.readerSettings.fontSize.sp,
-                color = uiState.readerSettings.textColor,
-                lineHeight = (uiState.readerSettings.fontSize * 1.5).sp,
+                text = state.bookContent.replace("<br/><br/>", "\n\n").replace("<br/>", "\n"),
+                fontSize = state.readerSettings.fontSize.sp,
+                color = state.readerSettings.textColor,
+                lineHeight = (state.readerSettings.fontSize * 1.5).sp,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -580,14 +531,10 @@ private fun ReaderContent(
  */
 @Composable
 private fun ReaderControls(
-    uiState: ReaderUiState,
+    state: ReaderState,
     onBack: () -> Unit,
     hideProgress: Boolean = false,
-    onPreviousChapter: () -> Unit,
-    onNextChapter: () -> Unit,
-    onSeekToProgress: (Float) -> Unit,
-    onShowChapterList: () -> Unit,
-    onShowSettings: () -> Unit
+    onIntent: (ReaderIntent) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
@@ -595,20 +542,16 @@ private fun ReaderControls(
         // 顶部控制栏
         TopBar(
             onBack = onBack,
-            readerSettings = uiState.readerSettings
+            readerSettings = state.readerSettings
         )
 
         Spacer(modifier = Modifier.weight(1f))
 
         // 底部控制栏
         BottomControls(
-            uiState = uiState,
+            state = state,
             hideProgress = hideProgress,
-            onPreviousChapter = onPreviousChapter,
-            onNextChapter = onNextChapter,
-            onSeekToProgress = onSeekToProgress,
-            onShowChapterList = onShowChapterList,
-            onShowSettings = onShowSettings
+            onIntent = onIntent
         )
     }
 }
@@ -643,13 +586,9 @@ private fun TopBar(
  */
 @Composable
 private fun BottomControls(
-    uiState: ReaderUiState,
+    state: ReaderState,
     hideProgress: Boolean = false,
-    onPreviousChapter: () -> Unit,
-    onNextChapter: () -> Unit,
-    onSeekToProgress: (Float) -> Unit,
-    onShowChapterList: () -> Unit,
-    onShowSettings: () -> Unit
+    onIntent: (ReaderIntent) -> Unit
 ) {
     val readerInfo = LocalReaderInfo.current
     val paginationState = readerInfo.paginationState
@@ -660,7 +599,7 @@ private fun BottomControls(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(uiState.readerSettings.backgroundColor.copy(alpha = 1f))
+            .background(state.readerSettings.backgroundColor.copy(alpha = 1f))
     ) {
         if (!hideProgress) {
             // Pagination progress indicator
@@ -668,7 +607,7 @@ private fun BottomControls(
                 Text(
                     text = "正在计算总页数...",
                     fontSize = 10.ssp,
-                    color = uiState.readerSettings.textColor.copy(alpha = 0.7f),
+                    color = state.readerSettings.textColor.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -688,25 +627,25 @@ private fun BottomControls(
                     "上一章",
                     fontSize = 14.ssp,
                     fontWeight = FontWeight.Bold,
-                    color = uiState.readerSettings.textColor,
+                    color = state.readerSettings.textColor,
                     modifier = Modifier.debounceClickable(
-                        onClick = { onPreviousChapter() }
+                        onClick = { onIntent(ReaderIntent.PreviousChapter) }
                     ))
 
                 // 进度条 - 改为SolidCircleSlider
                 SolidCircleSlider(
-                    progress = uiState.computedReadingProgress,
+                    progress = state.computedReadingProgress,
                     onValueChange = { rawValue ->
                         // 仿照亮度控制，添加步进量化
                         val stepSize = 20f / (totalPages.takeIf { it > 0 } ?: 1)
                         val stepped = (rawValue / stepSize).roundToInt() * stepSize
                         val clamped = stepped.coerceIn(0f, 1f)
-                        onSeekToProgress(clamped)
+                        onIntent(ReaderIntent.SeekToProgress(clamped))
                     },
                     modifier = Modifier.weight(1f),
                     trackColor = Color.Gray.copy(alpha = 0.1f),
                     progressColor = Color.Gray.copy(alpha = 0.5f),
-                    thumbColor = uiState.readerSettings.backgroundColor,
+                    thumbColor = state.readerSettings.backgroundColor,
                     trackHeightDp = 24.dp,
                     thumbRadiusDp = 16.dp
                 )
@@ -715,9 +654,9 @@ private fun BottomControls(
                     "下一章",
                     fontSize = 14.ssp,
                     fontWeight = FontWeight.Bold,
-                    color = uiState.readerSettings.textColor,
+                    color = state.readerSettings.textColor,
                     modifier = Modifier.debounceClickable(
-                        onClick = { onNextChapter() }
+                        onClick = { onIntent(ReaderIntent.NextChapter) }
                     ))
             }
         } else {
@@ -741,22 +680,22 @@ private fun BottomControls(
             ControlButton(
                 icon = Icons.AutoMirrored.Filled.List,
                 text = "目录",
-                onClick = onShowChapterList,
-                tintColor = uiState.readerSettings.textColor
+                onClick = { onIntent(ReaderIntent.ShowChapterList(true)) },
+                tintColor = state.readerSettings.textColor
             )
 
             ControlButton(
                 icon = Icons.Default.Star,
                 text = "夜间",
                 onClick = { /* 暂不实现 */ },
-                tintColor = uiState.readerSettings.textColor
+                tintColor = state.readerSettings.textColor
             )
 
             ControlButton(
                 icon = Icons.Default.Settings,
                 text = "设置",
-                onClick = onShowSettings,
-                tintColor = uiState.readerSettings.textColor
+                onClick = { onIntent(ReaderIntent.ShowSettingsPanel(true)) },
+                tintColor = state.readerSettings.textColor
             )
         }
     }

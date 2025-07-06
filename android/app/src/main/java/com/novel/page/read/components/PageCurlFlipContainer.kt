@@ -17,13 +17,12 @@ import com.novel.page.component.pagecurl.page.ExperimentalPageCurlApi
 import com.novel.page.component.pagecurl.page.PageCurl
 import com.novel.page.component.pagecurl.page.rememberPageCurlState
 import com.novel.page.read.viewmodel.FlipDirection
-import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
 import com.novel.utils.SwipeBackContainer
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import androidx.compose.runtime.remember
+import com.novel.page.read.viewmodel.ReaderState
 
 /**
  * PageCurl仿真翻页容器
@@ -41,7 +40,7 @@ import androidx.compose.runtime.remember
 @OptIn(ExperimentalPageCurlApi::class)
 @Composable
 fun PageCurlFlipContainer(
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
     onSwipeBack: (() -> Unit)? = null,

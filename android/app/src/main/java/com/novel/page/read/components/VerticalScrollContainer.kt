@@ -32,13 +32,13 @@ import com.novel.page.component.NovelText
 import com.novel.page.component.PaperTexture
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.utils.HtmlTextUtil
 import com.novel.utils.ssp
 import com.novel.utils.wdp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import com.novel.page.read.viewmodel.ReaderUiState
 
 @Composable
 private fun ChapterTitleHeader(title: String, readerSettings: ReaderSettings) {
@@ -72,7 +72,7 @@ private fun ChapterContentText(content: String, readerSettings: ReaderSettings, 
  */
 @Composable
 fun VerticalScrollContainer(
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     readerSettings: ReaderSettings,
     onChapterChange: (FlipDirection) -> Unit,
     onVerticalScrollPageChange: (Int) -> Unit,
@@ -244,7 +244,7 @@ private fun LoadingItem(readerSettings: ReaderSettings, text: String) {
  */
 private fun calculateCurrentPositionInfo(
     visibleItems: List<LazyListItemInfo>,
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     loadedChapters: List<PageData>
 ): Triple<String, String, Int>? {
     if (visibleItems.isEmpty() || loadedChapters.isEmpty()) return null
@@ -347,7 +347,7 @@ private fun estimateChapterPages(content: String, readerSettings: ReaderSettings
 private fun calculateAbsolutePageNumber(
     chapterData: PageData,
     pageInChapter: Int,
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     loadedChapters: List<PageData>
 ): Int {
     // 如果有全局页码缓存，使用缓存数据
@@ -386,7 +386,7 @@ private fun calculateAbsolutePageNumber(
  * 计算总页数
  */
 private fun calculateTotalPages(
-    uiState: ReaderUiState
+    uiState: ReaderState
 ): Int {
     // 优先使用页码缓存
     if (uiState.pageCountCache != null) {

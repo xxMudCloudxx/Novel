@@ -16,9 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import com.novel.page.read.viewmodel.FlipDirection
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.utils.SwipeBackContainer
 import kotlinx.coroutines.flow.distinctUntilChanged
-import com.novel.page.read.viewmodel.ReaderUiState
 import com.novel.page.read.viewmodel.VirtualPage
 
 /**
@@ -27,7 +27,7 @@ import com.novel.page.read.viewmodel.VirtualPage
  */
 @Composable
 fun SlideFlipContainer(
-    uiState: ReaderUiState,
+    uiState: ReaderState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
     onSwipeBack: (() -> Unit)? = null,

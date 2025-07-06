@@ -6,7 +6,7 @@ import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import javax.inject.Inject
 
@@ -48,7 +48,7 @@ class BuildVirtualPagesUseCase @Inject constructor(
      * @param preserveCurrentIndex 是否保持当前虚拟页面索引
      */
     fun execute(
-        state: ReaderUiState,
+        state: ReaderState,
         preserveCurrentIndex: Boolean = true
     ): BuildResult {
         return try {
@@ -137,7 +137,7 @@ class BuildVirtualPagesUseCase @Inject constructor(
      * 获取扩展的相邻章节数据
      * 支持前后各多章的数据获取（最多前后各3章）
      */
-    private fun getExtendedAdjacentChapterData(state: ReaderUiState): Map<String, PageData> {
+    private fun getExtendedAdjacentChapterData(state: ReaderState): Map<String, PageData> {
         val loadedChapterData = mutableMapOf<String, PageData>()
         val chapterList = state.chapterList
         val currentChapterIndex = state.currentChapterIndex
@@ -177,7 +177,7 @@ class BuildVirtualPagesUseCase @Inject constructor(
      * 根据当前状态和是否保持索引来计算合适的虚拟页面索引
      */
     private fun calculateVirtualPageIndex(
-        state: ReaderUiState,
+        state: ReaderState,
         virtualPages: List<VirtualPage>,
         loadedChapterData: Map<String, PageData>,
         preserveCurrentIndex: Boolean

@@ -5,7 +5,7 @@ import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import javax.inject.Inject
 
 /**
@@ -34,7 +34,7 @@ class SaveProgressUseCase @Inject constructor(
      * 
      * @param state 当前阅读器状态
      */
-    suspend fun execute(state: ReaderUiState) = executeIo("保存阅读进度") {
+    suspend fun execute(state: ReaderState) = executeIo("保存阅读进度") {
         val currentChapter = state.currentChapter
         if (currentChapter == null) {
             logger.logWarning("当前章节为空，无法保存进度", TAG)
@@ -65,7 +65,7 @@ class SaveProgressUseCase @Inject constructor(
      * 
      * @param states 多个阅读器状态
      */
-    suspend fun batchSave(states: List<ReaderUiState>) = executeIo("批量保存阅读进度") {
+    suspend fun batchSave(states: List<ReaderState>) = executeIo("批量保存阅读进度") {
         if (states.isEmpty()) {
             logger.logDebug("没有需要保存的进度", TAG)
             return@executeIo
@@ -94,7 +94,7 @@ class SaveProgressUseCase @Inject constructor(
      * 
      * @param state 当前阅读器状态
      */
-    suspend fun saveTemporary(state: ReaderUiState) = executeComputation("保存临时进度") {
+    suspend fun saveTemporary(state: ReaderState) = executeComputation("保存临时进度") {
         val currentChapter = state.currentChapter
         if (currentChapter == null) {
             logger.logWarning("当前章节为空，无法保存临时进度", TAG)

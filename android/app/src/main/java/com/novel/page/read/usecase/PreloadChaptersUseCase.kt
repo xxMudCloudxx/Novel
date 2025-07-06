@@ -9,7 +9,7 @@ import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.usecase.common.PreloadHelper
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -60,7 +60,7 @@ class PreloadChaptersUseCase @Inject constructor(
         scope: CoroutineScope,
         chapterList: List<Chapter>,
         currentChapterId: String,
-        state: ReaderUiState? = null
+        state: ReaderState? = null
     ) {
         logOperationStart("基础预加载", "当前章节=$currentChapterId")
         
@@ -115,7 +115,7 @@ class PreloadChaptersUseCase @Inject constructor(
      */
     fun performDynamicPreload(
         scope: CoroutineScope,
-        state: ReaderUiState,
+        state: ReaderState,
         currentChapterId: String,
         triggerExpansion: Boolean = false
     ) {
@@ -176,7 +176,7 @@ class PreloadChaptersUseCase @Inject constructor(
     private suspend fun performChapterPreload(
         chapter: Chapter,
         index: Int,
-        state: ReaderUiState,
+        state: ReaderState,
         totalChapters: Int
     ) {
         val cachedChapter = chapterService.getCachedChapter(chapter.id)
@@ -262,7 +262,7 @@ class PreloadChaptersUseCase @Inject constructor(
      * 检查是否有新的相邻章节被加载
      */
     suspend fun checkIfNewAdjacentChaptersLoaded(
-        state: ReaderUiState,
+        state: ReaderState,
         currentIndex: Int
     ): Boolean = executeIoWithDefault("检查新相邻章节", false) {
         val chapterList = state.chapterList
@@ -280,7 +280,7 @@ class PreloadChaptersUseCase @Inject constructor(
      * 触发虚拟页面重建
      */
     suspend fun triggerVirtualPageRebuild(
-        state: ReaderUiState,
+        state: ReaderState,
         buildVirtualPagesUseCase: BuildVirtualPagesUseCase
     ): List<VirtualPage>? = executeIo("触发虚拟页面重建") {
         logger.logDebug("触发虚拟页面重建", TAG)

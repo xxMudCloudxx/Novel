@@ -7,7 +7,7 @@ import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import javax.inject.Inject
 
 /**
@@ -49,7 +49,7 @@ class SplitContentUseCase @Inject constructor(
      * @param includeAdjacentChapters 是否包含相邻章节数据
      */
     suspend fun execute(
-        state: ReaderUiState,
+        state: ReaderState,
         restoreProgress: Float? = null,
         includeAdjacentChapters: Boolean = false
     ): SplitResult {
@@ -129,7 +129,7 @@ class SplitContentUseCase @Inject constructor(
      * 加载相邻章节数据
      * 加载并分页前后章节的内容
      */
-    private suspend fun loadAdjacentChapterData(state: ReaderUiState): Pair<PageData?, PageData?> {
+    private suspend fun loadAdjacentChapterData(state: ReaderState): Pair<PageData?, PageData?> {
         val chapterList = state.chapterList
         val currentChapterIndex = state.currentChapterIndex
         val density = state.density ?: return Pair(null, null)
@@ -213,7 +213,7 @@ class SplitContentUseCase @Inject constructor(
      * 根据当前状态、分页结果和进度恢复需求计算合适的页面索引
      */
     private fun calculateSafePageIndex(
-        state: ReaderUiState,
+        state: ReaderState,
         pageData: PageData,
         restoreProgress: Float?
     ): Int {

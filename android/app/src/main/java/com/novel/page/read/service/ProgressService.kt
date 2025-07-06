@@ -5,7 +5,6 @@ import com.novel.page.read.repository.ReadingProgressData
 import com.novel.page.read.repository.ReadingProgressRepository
 import com.novel.page.read.service.common.*
 import com.novel.page.read.utils.ReaderLogTags
-import com.novel.page.read.viewmodel.ReaderUiState
 import javax.inject.Inject
 import javax.inject.Singleton
 

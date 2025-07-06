@@ -7,7 +7,7 @@ import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
@@ -57,7 +57,7 @@ class SwitchChapterUseCase @Inject constructor(
      * @return 切换结果
      */
     suspend fun execute(
-        state: ReaderUiState,
+        state: ReaderState,
         newChapterId: String,
         scope: CoroutineScope,
         flipDirection: FlipDirection? = null

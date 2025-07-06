@@ -6,7 +6,7 @@ import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.FlipDirection
-import com.novel.page.read.viewmodel.ReaderUiState
+import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
@@ -73,7 +73,7 @@ class FlipPageUseCase @Inject constructor(
      * @return 翻页结果
      */
     suspend fun execute(
-        state: ReaderUiState,
+        state: ReaderState,
         direction: FlipDirection,
         scope: CoroutineScope
     ): FlipResult {
@@ -125,7 +125,7 @@ class FlipPageUseCase @Inject constructor(
      * 处理虚拟页面内的翻页
      */
     private suspend fun handleVirtualPageFlip(
-        state: ReaderUiState,
+        state: ReaderState,
         newVirtualIndex: Int,
         newVirtualPage: VirtualPage,
         scope: CoroutineScope
@@ -187,7 +187,7 @@ class FlipPageUseCase @Inject constructor(
      * 处理章节边界的翻页（切换章节）
      */
     private suspend fun handleChapterFlip(
-        state: ReaderUiState,
+        state: ReaderState,
         direction: FlipDirection,
         scope: CoroutineScope
     ): FlipResult {
@@ -222,7 +222,7 @@ class FlipPageUseCase @Inject constructor(
      * 当翻页到章节边界时调用
      */
     suspend fun executePreloadCheck(
-        state: ReaderUiState,
+        state: ReaderState,
         currentVirtualPage: VirtualPage.ContentPage,
         scope: CoroutineScope
     ) {
