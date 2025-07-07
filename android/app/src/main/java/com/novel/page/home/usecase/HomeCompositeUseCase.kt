@@ -7,19 +7,13 @@ import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.page.home.dao.HomeBookEntity
 import com.novel.page.home.dao.toEntity
 import com.novel.page.home.viewmodel.CategoryInfo
-import com.novel.page.home.viewmodel.HomeViewModel
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
-import com.novel.utils.ReactNativeBridge
 import com.novel.utils.TimberLogger
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 /**
@@ -29,8 +23,7 @@ import javax.inject.Inject
  */
 class HomeCompositeUseCase @Inject constructor(
     private val homeRepository: HomeRepository,
-    private val cachedBookRepository: CachedBookRepository,
-    private val composeUseCase: ComposeUseCase
+    private val cachedBookRepository: CachedBookRepository
 ) : BaseUseCase<HomeCompositeUseCase.Params, HomeCompositeUseCase.Result>() {
     
     companion object {

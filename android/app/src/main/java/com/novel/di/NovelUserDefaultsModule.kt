@@ -9,7 +9,7 @@ import com.novel.utils.Store.UserDefaults.SharedPrefsUserDefaults
 import com.novel.utils.network.TokenProvider
 import com.novel.utils.StringProvider
 import com.novel.utils.AndroidStringProvider
-import com.novel.utils.SettingsUtils
+import com.novel.rn.settings.SettingsUtils
 import java.time.Clock
 import dagger.Module
 import dagger.Provides

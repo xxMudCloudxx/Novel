@@ -1,4 +1,4 @@
-package com.novel.utils
+package com.novel.rn
 
 import android.annotation.SuppressLint
 import com.novel.utils.TimberLogger

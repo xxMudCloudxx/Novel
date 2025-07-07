@@ -14,10 +14,10 @@ import com.novel.page.book.BookDetailPage
 import com.novel.page.read.ReaderPage
 import com.novel.page.search.SearchPage
 import com.novel.page.search.SearchResultPage
-import com.novel.page.ReactNativePage
-import com.novel.utils.TimberLogger
+import com.novel.rn.ReactNativePage
 import com.novel.page.component.FlipBookAnimationController
 import com.novel.page.search.FullRankingPage
+import com.novel.rn.MviModuleType
 
 /**
  * 导航设置 - 简化版本，翻书动画在HomePage内部处理
@@ -115,7 +115,8 @@ fun NavigationSetup() {
             // 个人中心页面 - 使用ReactNativePage
             ReactNativePage(
                 componentName = "Novel",
-                initialProps = mapOf("nativeMessage" to "ProfilePage")
+                initialProps = mapOf("nativeMessage" to "ProfilePage"),
+                mviModuleType = MviModuleType.BRIDGE
             )
         }
         composable("settings") {
@@ -123,7 +124,8 @@ fun NavigationSetup() {
             ReactNativePage(
                 componentName = "SettingsPageComponent",
                 initialProps = mapOf("source" to "android_settings"),
-                destroyOnBack = true
+                destroyOnBack = true,
+                mviModuleType = MviModuleType.BOTH
             )
         }
         composable("timed_switch") {
@@ -131,21 +133,24 @@ fun NavigationSetup() {
             ReactNativePage(
                 componentName = "TimedSwitchPageComponent",
                 initialProps = mapOf("source" to "android_timed_switch"),
-                destroyOnBack = true
+                destroyOnBack = true,
+                mviModuleType = MviModuleType.BOTH
             )
         }
         composable("privacy_policy") {
             ReactNativePage(
                 componentName = "PrivacyPolicyPageComponent",
                 initialProps = mapOf("source" to "android_privacy_policy"),
-                destroyOnBack = true
+                destroyOnBack = true,
+                mviModuleType = MviModuleType.BRIDGE
             )
         }
         composable("help_support") {
             ReactNativePage(
                 componentName = "HelpSupportPageComponent",
                 initialProps = mapOf("source" to "android_privacy_policy"),
-                destroyOnBack = true
+                destroyOnBack = true,
+                mviModuleType = MviModuleType.BRIDGE
             )
         }
     }

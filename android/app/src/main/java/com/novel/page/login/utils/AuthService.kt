@@ -2,7 +2,7 @@ package com.novel.page.login.utils
 
 import com.novel.utils.TimberLogger
 import com.novel.page.login.dao.UserRepository
-import com.novel.utils.ReactNativeBridge
+import com.novel.rn.ReactNativeBridge
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
 import com.novel.utils.network.TokenProvider

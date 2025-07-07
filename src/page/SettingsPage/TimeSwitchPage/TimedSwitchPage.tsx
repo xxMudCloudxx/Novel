@@ -7,7 +7,7 @@ import { createTimedSwitchPageStyles } from './styles/TimedSwitchPageStyles';
 import { useNovelColors } from '../../../utils/theme/colors';
 import { SettingItem } from '../settingspage/types';
 
-const { NavigationUtil } = NativeModules;
+const { NavigationBridge } = NativeModules;
 
 /**
  * 定时切换页面
@@ -78,8 +78,8 @@ const TimedSwitchPage: React.FC = () => {
 
   // 返回按钮处理
   const handleBackPress = () => {
-    if (NavigationUtil?.navigateBack) {
-      NavigationUtil.navigateBack('TimedSwitchPageComponent');
+    if (NavigationBridge?.navigateBack) {
+      NavigationBridge.navigateBack('TimedSwitchPageComponent');
     }
   };
 

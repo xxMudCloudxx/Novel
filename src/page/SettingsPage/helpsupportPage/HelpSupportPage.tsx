@@ -4,7 +4,7 @@ import { createHelpSupportPageStyles } from './styles/HelpSupportPageStyles';
 import { useNovelColors } from '../../../utils/theme/colors';
 import { NativeModules } from 'react-native';
 
-const { NavigationUtil } = NativeModules;
+const { NavigationBridge } = NativeModules;
 
 /**
  * 帮助与支持页面
@@ -15,8 +15,8 @@ const HelpSupportPage: React.FC = () => {
   const styles = createHelpSupportPageStyles(colors);
 
   const handleBackPress = () => {
-    if (NavigationUtil?.navigateBack) {
-      NavigationUtil.navigateBack('HelpSupportPageComponent');
+    if (NavigationBridge?.navigateBack) {
+      NavigationBridge.navigateBack('HelpSupportPageComponent');
     }
   };
 

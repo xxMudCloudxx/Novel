@@ -8,7 +8,7 @@ import { useNovelColors } from '../../../utils/theme/colors';
 import { useThemeStore } from '../../../utils/theme/themeStore';
 import { NativeModules } from 'react-native';
 
-const { NavigationUtil } = NativeModules;
+const { NavigationBridge } = NativeModules;
 
 /**
  * 设置页面主组件
@@ -76,10 +76,10 @@ const SettingsPage: React.FC = () => {
    * 处理返回按钮点击
    */
   const handleBackPress = () => {
-    if (NavigationUtil?.navigateBack) {
-      NavigationUtil.navigateBack('SettingsPageComponent');
+    if (NavigationBridge?.navigateBack) {
+      NavigationBridge.navigateBack('SettingsPageComponent');
     } else {
-      console.log('NavigationUtil.navigateBack not available');
+      console.log('NavigationBridge.navigateBack not available');
     }
   };
 
@@ -156,10 +156,10 @@ const SettingsPage: React.FC = () => {
           type: 'arrow',
           value: autoSwitchNightMode ? '已开启' : '已关闭',
           onPress: () => {
-            if (NavigationUtil?.navigateToTimedSwitch) {
-              NavigationUtil.navigateToTimedSwitch();
+            if (NavigationBridge?.navigateToTimedSwitch) {
+              NavigationBridge.navigateToTimedSwitch();
             } else {
-              console.log('NavigationUtil.navigateToTimedSwitch not available');
+              console.log('NavigationBridge.navigateToTimedSwitch not available');
             }
           },
           disabled: followSystemTheme, // 跟随系统时禁用定时切换

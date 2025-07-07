@@ -18,13 +18,14 @@ import com.novel.ui.theme.ThemeManager
 import com.novel.utils.network.RetrofitClient
 import com.novel.utils.network.TokenProvider
 import com.novel.utils.network.interceptor.AuthInterceptor
-import com.novel.utils.rn.NavigationPackage
+import com.novel.rn.NavigationPackage
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import com.facebook.react.ReactRootView
 import java.util.concurrent.ConcurrentHashMap
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.ReactInstanceManager
+import com.novel.rn.settings.SettingsUtils
 import timber.log.Timber
 
 /**
@@ -58,7 +59,7 @@ class MainApplication : Application(), ReactApplication {
     lateinit var tokenProvider: TokenProvider
     
     @Inject
-    lateinit var settingsUtils: com.novel.utils.SettingsUtils
+    lateinit var settingsUtils: SettingsUtils
 
     // 添加ReactRootView缓存管理
     private val reactRootViewCache = ConcurrentHashMap<String, ReactRootView>()

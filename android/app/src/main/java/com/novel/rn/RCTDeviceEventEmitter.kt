@@ -1,4 +1,4 @@
-package com.novel.utils
+package com.novel.rn
 
 import com.novel.utils.TimberLogger
 import com.facebook.react.bridge.ReactContext

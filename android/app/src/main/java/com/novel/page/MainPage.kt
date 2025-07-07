@@ -38,6 +38,8 @@ import com.novel.utils.wdp
 import kotlinx.coroutines.launch
 import com.novel.page.component.rememberFlipBookAnimationController
 import com.novel.page.component.GlobalFlipBookOverlay
+import com.novel.rn.MviModuleType
+import com.novel.rn.ReactNativePage
 
 /**
  * 应用主页面组件
@@ -100,7 +102,9 @@ fun MainPage() {
                         globalFlipBookController = globalFlipBookController
                     )
                     2 -> LoginPage()          // 福利页面（登录相关）
-                    4 -> ReactNativePage()    // 我的页面（React Native实现）
+                    4 -> ReactNativePage(
+                        mviModuleType = MviModuleType.BRIDGE,
+                    )    // 我的页面（React Native实现）
                     else -> Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center

@@ -10,7 +10,7 @@ import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
-import com.novel.utils.ReactNativeBridge
+import com.novel.rn.ReactNativeBridge
 import com.novel.utils.TimberLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow

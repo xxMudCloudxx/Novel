@@ -18,7 +18,7 @@ import {
   WaterfallGrid,
 } from './components';
 
-const { NavigationUtil } = NativeModules;
+const { NavigationBridge } = NativeModules;
 
 const ProfilePage: React.FC = () => {
 
@@ -97,10 +97,10 @@ const ProfilePage: React.FC = () => {
 
   // 设置按钮点击
   const handleSettingsPress = useCallback(() => {
-    if (NavigationUtil?.navigateToSettings) {
-      NavigationUtil.navigateToSettings();
+    if (NavigationBridge?.navigateToSettings) {
+      NavigationBridge.navigateToSettings();
     } else {
-      console.log('NavigationUtil.navigateToSettings not available');
+      console.log('NavigationBridge.navigateToSettings not available');
     }
   }, []);
 

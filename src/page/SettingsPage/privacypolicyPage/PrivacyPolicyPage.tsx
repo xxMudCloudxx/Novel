@@ -4,7 +4,7 @@ import { createPrivacyPolicyPageStyles } from './styles/PrivacyPolicyPageStyles'
 import { useNovelColors } from '../../../utils/theme/colors';
 import { NativeModules } from 'react-native';
 
-const { NavigationUtil } = NativeModules;
+const { NavigationBridge } = NativeModules;
 
 /**
  * 隐私政策页面
@@ -15,8 +15,8 @@ const PrivacyPolicyPage: React.FC = () => {
   const styles = createPrivacyPolicyPageStyles(colors);
 
   const handleBackPress = () => {
-    if (NavigationUtil?.navigateBack) {
-      NavigationUtil.navigateBack('PrivacyPolicyPageComponent');
+    if (NavigationBridge?.navigateBack) {
+      NavigationBridge.navigateBack('PrivacyPolicyPageComponent');
     }
   };
 

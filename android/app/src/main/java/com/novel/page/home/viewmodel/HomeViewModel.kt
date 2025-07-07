@@ -50,7 +50,7 @@ class HomeViewModel @Inject constructor(
     
     // 手动创建UseCase实例，避免Hilt泛型问题
     private val homeCompositeUseCase: HomeCompositeUseCase by lazy {
-        HomeCompositeUseCase(homeRepository, cachedBookRepository, com.novel.core.domain.ComposeUseCase())
+        HomeCompositeUseCase(homeRepository, cachedBookRepository)
     }
     private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase by lazy {
         GetHomeCategoriesUseCase(homeRepository)

@@ -180,6 +180,7 @@ dependencies {
     implementation "androidx.room:room-common:2.7.1"
     implementation "androidx.room:room-ktx:2.7.1"
     ksp "androidx.room:room-compiler:2.7.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.5.0"
     
     // 下拉刷新和上拉加载
     implementation "com.google.accompanist:accompanist-swiperefresh:0.32.0"
