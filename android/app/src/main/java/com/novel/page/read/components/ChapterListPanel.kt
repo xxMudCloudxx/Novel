@@ -20,23 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.novel.page.read.viewmodel.Chapter
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
-
-/**
- * 章节信息数据类
- * 
- * @property id 章节唯一标识
- * @property chapterName 章节名称
- * @property chapterNum 章节序号（可选）
- * @property isVip VIP标识（"0"为免费，"1"为VIP）
- */
-data class Chapter(
-    val id: String,
-    val chapterName: String,
-    val chapterNum: String? = null,
-    val isVip: String = "0"
-)
 
 /**
  * 章节列表侧滑面板组件

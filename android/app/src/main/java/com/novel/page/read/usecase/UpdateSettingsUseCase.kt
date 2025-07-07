@@ -1,14 +1,14 @@
 package com.novel.page.read.usecase
 
 import androidx.compose.ui.graphics.toArgb
-import com.novel.page.read.components.PageFlipEffect
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.service.SettingsService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
+import com.novel.page.read.viewmodel.PageFlipEffect
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.page.read.viewmodel.ReaderState
 import javax.inject.Inject
 

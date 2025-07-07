@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.novel.page.component.NovelText
+import com.novel.page.read.viewmodel.BackgroundTheme
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.ssp
 import com.novel.utils.wdp

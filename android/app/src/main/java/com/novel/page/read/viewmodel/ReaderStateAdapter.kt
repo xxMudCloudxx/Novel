@@ -1,11 +1,7 @@
 package com.novel.page.read.viewmodel
 
-import androidx.compose.ui.graphics.Color
 import com.novel.core.adapter.StateAdapter
-import com.novel.page.read.components.Chapter
-import com.novel.page.read.components.PageFlipEffect
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 
 /**
  * Reader状态适配器

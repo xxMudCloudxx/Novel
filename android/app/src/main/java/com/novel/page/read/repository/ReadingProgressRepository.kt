@@ -3,7 +3,7 @@ package com.novel.page.read.repository
 import com.novel.utils.TimberLogger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.novel.page.read.components.PageFlipEffect
+import com.novel.page.read.viewmodel.PageFlipEffect
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

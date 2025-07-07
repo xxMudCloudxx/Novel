@@ -2,14 +2,14 @@ package com.novel.page.read.usecase
 
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
-import com.novel.page.read.components.Chapter
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
+import com.novel.page.read.viewmodel.Chapter
 import com.novel.page.read.viewmodel.PageData
+import com.novel.page.read.viewmodel.ReaderSettings
 import javax.inject.Inject
 
 /**

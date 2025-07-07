@@ -1,14 +1,15 @@
 package com.novel.page.read.viewmodel
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import com.novel.core.mvi.MviIntent
 import com.novel.core.mvi.MviState
 import com.novel.core.mvi.MviEffect
-import com.novel.page.read.components.Chapter
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.repository.ProgressiveCalculationState
+import com.novel.utils.TimberLogger
 
 /**
  * Reader模块MVI契约类
@@ -119,7 +120,7 @@ data class ReaderState(
     
     val computedReadingProgress: Float
         get() {
-            if (readerSettings.pageFlipEffect == com.novel.page.read.components.PageFlipEffect.VERTICAL) {
+            if (readerSettings.pageFlipEffect == PageFlipEffect.VERTICAL) {
                 // 纵向滚动模式下，进度按章节计算
                 if (chapterList.isEmpty()) return 0f
                 return (currentChapterIndex + 1).toFloat() / chapterList.size.toFloat()
@@ -180,4 +181,201 @@ enum class HapticFeedbackType {
     LIGHT,
     MEDIUM,
     HEAVY
-} 
+}
+
+/**
+ * 章节信息数据类
+ *
+ * @property id 章节唯一标识
+ * @property chapterName 章节名称
+ * @property chapterNum 章节序号（可选）
+ * @property isVip VIP标识（"0"为免费，"1"为VIP）
+ */
+data class Chapter(
+    val id: String,
+    val chapterName: String,
+    val chapterNum: String? = null,
+    val isVip: String = "0"
+)
+
+/**
+ * 翻页方向
+ */
+enum class FlipDirection {
+    PREVIOUS,
+    NEXT
+}
+
+/**
+ * 虚拟页面，用于统一所有翻页模式
+ */
+sealed class VirtualPage {
+    /**
+     * 代表书籍详情页
+     */
+    data object BookDetailPage : VirtualPage()
+
+    /**
+     * 代表一个实际的内容页
+     * @param chapterId 所属章节ID
+     * @param pageIndex 在该章节内的页码 (从0开始)
+     */
+    data class ContentPage(val chapterId: String, val pageIndex: Int) : VirtualPage()
+
+    /**
+     * 代表一个完整的章节，主要用于纵向滚动模式
+     */
+    data class ChapterSection(val chapterId: String) : VirtualPage()
+}
+
+/**
+ * 章节缓存数据
+ */
+data class ChapterCache(
+    val chapter: Chapter,
+    val content: String,
+    var pageData: PageData? = null
+)
+
+/**
+ * 单页数据
+ */
+data class PageData(
+    val chapterId: String,
+    val chapterName: String,
+    val content: String,
+    val pages: List<String>,
+    val isFirstPage: Boolean = false,
+    val isLastPage: Boolean = false,
+    val isFirstChapter: Boolean = false,
+    val isLastChapter: Boolean = false,
+    val nextChapterData: PageData? = null,
+    val previousChapterData: PageData? = null,
+    val bookInfo: BookInfo? = null, // 书籍信息，用于第0页
+    val hasBookDetailPage: Boolean = false // 是否有书籍详情页
+) {
+    val pageCount: Int get() = pages.size
+
+    data class BookInfo(
+        val bookId: String,
+        val bookName: String,
+        val authorName: String,
+        val bookDesc: String,
+        val picUrl: String,
+        val visitCount: Long,
+        val wordCount: Int,
+        val categoryName: String
+    )
+}
+
+/**
+ * 阅读器设置数据类
+ *
+ * 封装阅读器的所有可配置设置项，支持个性化阅读体验
+ * 所有设置都会自动持久化到本地存储
+ *
+ * @param brightness 屏幕亮度值，范围0.0-1.0，0.0最暗，1.0最亮
+ * @param fontSize 阅读字体大小，范围12-44，单位sp
+ * @param backgroundColor 阅读背景颜色，支持多种预设主题
+ * @param textColor 文字颜色，会根据背景色自动适配对比度
+ * @param pageFlipEffect 翻页动画效果，支持多种翻页模式
+ */
+data class ReaderSettings(
+    /** 屏幕亮度值 - 范围0.0-1.0，影响整个屏幕亮度 */
+    val brightness: Float = 0.5f,
+
+    /** 阅读字体大小 - 范围12-44sp，影响文字显示大小 */
+    val fontSize: Int = 16,
+
+    /** 阅读背景颜色 - 默认温暖黄色，护眼舒适 */
+    val backgroundColor: Color = Color(0xFFF5F5DC),
+
+    /** 文字颜色 - 默认深灰色，与背景形成良好对比 */
+    val textColor: Color = Color(0xFF2E2E2E),
+
+    /** 翻页动画效果 - 默认仿真书本翻页效果 */
+    val pageFlipEffect: PageFlipEffect = PageFlipEffect.PAGECURL
+) {
+    companion object {
+        /**
+         * 获取默认阅读器设置
+         *
+         * 提供经过优化的默认配置，确保最佳的阅读体验：
+         * - 适中的亮度避免眼部疲劳
+         * - 标准字体大小适合大多数用户
+         * - 温暖背景色减少蓝光刺激
+         * - 高对比度文字色保证清晰度
+         * - 仿真翻页效果提升沉浸感
+         *
+         * @return 默认的ReaderSettings实例
+         */
+        fun getDefault(): ReaderSettings {
+            val defaultSettings = ReaderSettings(
+                brightness = 0.5f,                    // 中等亮度，平衡护眼与可读性
+                fontSize = 16,                        // 标准字体大小，适合大多数设备
+                backgroundColor = Color(0xFFF5F5DC),  // 温暖米黄色，护眼舒适
+                textColor = Color(0xFF2E2E2E),        // 深灰色文字，清晰易读
+                pageFlipEffect = PageFlipEffect.PAGECURL  // 仿真翻页，增强沉浸感
+            )
+
+            TimberLogger.d("ReaderSettings", "创建默认设置:")
+            TimberLogger.d("ReaderSettings", "  - 字体大小: ${defaultSettings.fontSize}sp")
+            TimberLogger.d("ReaderSettings", "  - 亮度: ${(defaultSettings.brightness * 100).toInt()}%")
+            TimberLogger.d("ReaderSettings", "  - 背景颜色: ${String.format("#%08X", defaultSettings.backgroundColor.toArgb())}")
+            TimberLogger.d("ReaderSettings", "  - 文字颜色: ${String.format("#%08X", defaultSettings.textColor.toArgb())}")
+            TimberLogger.d("ReaderSettings", "  - 翻页效果: ${defaultSettings.pageFlipEffect}")
+
+            return defaultSettings
+        }
+    }
+}
+
+/**
+ * 翻页动画效果枚举类
+ *
+ * 定义阅读器支持的各种翻页动画效果，每种效果都有不同的视觉体验和性能特征
+ *
+ * @param displayName 在设置界面显示的中文名称
+ */
+enum class PageFlipEffect(val displayName: String) {
+    /** 仿真书本翻页 - 模拟真实书本的卷曲翻页效果，最具沉浸感 */
+    PAGECURL("书卷"),
+
+    /** 覆盖式翻页 - 新页面从上方覆盖当前页面，简洁流畅 */
+    COVER("覆盖"),
+
+    /** 平移式翻页 - 页面左右滑动切换，类似于现代应用的标准交互 */
+    SLIDE("平移"),
+
+    /** 垂直滚动 - 连续的上下滚动阅读，适合长篇内容 */
+    VERTICAL("上下"),
+
+    /** 无动画翻页 - 直接切换页面，性能最优，适合低端设备 */
+    NONE("无动画")
+}
+
+/**
+ * 背景主题配置类
+ *
+ * 预定义的阅读背景主题，每个主题都包含优化搭配的背景色和文字色
+ * 确保在不同光线环境下都有良好的可读性和舒适度
+ *
+ * @param name 主题名称，显示在设置界面
+ * @param backgroundColor 背景颜色，影响整个阅读区域
+ * @param textColor 文字颜色，与背景色形成适当对比度
+ */
+data class BackgroundTheme(
+    val name: String,
+    val backgroundColor: Color,
+    val textColor: Color
+)
+
+/**
+ * 状态信息，通过 CompositionLocal 提供给子组件
+ */
+data class ReaderInfo(
+    val paginationState: ProgressiveCalculationState,
+    val pageCountCache: PageCountCacheData?,
+    val currentChapter: Chapter?,
+    val perChapterPageIndex: Int
+)

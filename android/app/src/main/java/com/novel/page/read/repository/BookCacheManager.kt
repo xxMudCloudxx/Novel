@@ -6,8 +6,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Density
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.utils.PageSplitter
+import com.novel.page.read.viewmodel.ReaderSettings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import com.novel.page.read.viewmodel.FlipDirection
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import com.novel.utils.SwipeBackContainer

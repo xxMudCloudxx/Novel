@@ -1,9 +1,10 @@
 package com.novel.page.read.service.settings
 
 import androidx.compose.ui.graphics.toArgb
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.service.common.ReaderServiceConfig
+import com.novel.page.read.viewmodel.PageFlipEffect
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
 
@@ -51,7 +52,7 @@ class SettingsSaver @javax.inject.Inject constructor(
     /**
      * 保存翻页效果设置
      */
-    fun savePageFlipEffect(pageFlipEffect: com.novel.page.read.components.PageFlipEffect) {
+    fun savePageFlipEffect(pageFlipEffect: PageFlipEffect) {
         try {
             userDefaults.set(pageFlipEffect.name, NovelUserDefaultsKey.PAGE_FLIP_EFFECT)
             logger.logDebug("翻页效果保存成功: ${pageFlipEffect.name}", TAG)

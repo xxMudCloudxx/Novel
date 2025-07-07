@@ -1,11 +1,11 @@
 package com.novel.page.read.usecase
 
-import com.novel.page.read.components.PageFlipEffect
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.FlipDirection
+import com.novel.page.read.viewmodel.PageFlipEffect
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import kotlinx.coroutines.CoroutineScope
@@ -221,7 +221,7 @@ class FlipPageUseCase @Inject constructor(
      * 执行预加载检查
      * 当翻页到章节边界时调用
      */
-    suspend fun executePreloadCheck(
+    fun executePreloadCheck(
         state: ReaderState,
         currentVirtualPage: VirtualPage.ContentPage,
         scope: CoroutineScope

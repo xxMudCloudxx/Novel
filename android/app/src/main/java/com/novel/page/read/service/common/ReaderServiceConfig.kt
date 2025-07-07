@@ -1,7 +1,7 @@
 package com.novel.page.read.service.common
 
-import com.novel.page.read.components.PageFlipEffect
 import androidx.compose.ui.graphics.Color
+import com.novel.page.read.viewmodel.PageFlipEffect
 
 /**
  * 阅读器服务统一配置

@@ -24,6 +24,7 @@ import com.novel.page.book.components.BookStatsSection
 import com.novel.page.book.components.BookDescriptionSection
 import com.novel.page.book.components.BookReviewsSection
 import com.novel.page.book.viewmodel.BookDetailUiState
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.debounceClickable
 
 /**

@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.novel.page.component.NovelText
 import com.novel.page.read.LocalReaderInfo
-import com.novel.page.read.ReaderInfo
+import com.novel.page.read.viewmodel.ReaderInfo
 import com.novel.utils.ssp
 
 /**

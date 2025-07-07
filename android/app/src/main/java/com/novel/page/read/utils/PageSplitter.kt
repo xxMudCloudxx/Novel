@@ -1,12 +1,10 @@
 package com.novel.page.read.utils
 
 import com.novel.utils.TimberLogger
-import androidx.collection.LruCache
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
-import com.novel.page.read.components.ReaderSettings
-import com.novel.page.read.utils.ReaderLogTags
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.HtmlTextUtil
 import com.novel.utils.wdp
 import java.util.concurrent.ConcurrentHashMap

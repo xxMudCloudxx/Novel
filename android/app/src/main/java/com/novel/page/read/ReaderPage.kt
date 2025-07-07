@@ -33,8 +33,6 @@ import com.novel.page.component.NovelText
 import com.novel.page.component.SolidCircleSlider
 import com.novel.page.component.ViewState
 import com.novel.page.read.components.*
-import com.novel.page.read.repository.PageCountCacheData
-import com.novel.page.read.repository.ProgressiveCalculationState
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.ReaderIntent
 import com.novel.page.read.viewmodel.ReaderViewModel
@@ -47,17 +45,9 @@ import com.novel.utils.NavViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.toArgb
-import com.novel.page.read.viewmodel.ReaderStateAdapter
-
-/**
- * 状态信息，通过 CompositionLocal 提供给子组件
- */
-data class ReaderInfo(
-    val paginationState: ProgressiveCalculationState,
-    val pageCountCache: PageCountCacheData?,
-    val currentChapter: Chapter?,
-    val perChapterPageIndex: Int
-)
+import com.novel.page.read.viewmodel.PageFlipEffect
+import com.novel.page.read.viewmodel.ReaderInfo
+import com.novel.page.read.viewmodel.ReaderSettings
 
 val LocalReaderInfo = staticCompositionLocalOf<ReaderInfo> {
     error("No ReaderInfo provided")
@@ -435,7 +425,6 @@ private fun IntegratedPageFlipContainer(
             uiState = state,
             readerSettings = state.readerSettings,
             onPageChange = onPageChange,
-            onNavigateToReader = { _, _ -> onNavigateToReader() },
             onSwipeBack = onSwipeBack,
             onClick = onClick
         )

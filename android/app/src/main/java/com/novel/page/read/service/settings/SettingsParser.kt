@@ -4,10 +4,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
-import com.novel.page.read.components.PageFlipEffect
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.service.common.ReaderServiceConfig
+import com.novel.page.read.viewmodel.PageFlipEffect
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
 

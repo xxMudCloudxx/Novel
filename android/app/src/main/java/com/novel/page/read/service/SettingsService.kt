@@ -1,10 +1,10 @@
 package com.novel.page.read.service
 
 import androidx.compose.ui.graphics.toArgb
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.service.common.*
 import com.novel.page.read.service.settings.*
 import com.novel.page.read.utils.ReaderLogTags
+import com.novel.page.read.viewmodel.ReaderSettings
 import javax.inject.Inject
 import javax.inject.Singleton
 

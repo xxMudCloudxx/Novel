@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import com.novel.page.read.viewmodel.FlipDirection
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.utils.SwipeBackContainer
 import kotlinx.coroutines.flow.distinctUntilChanged

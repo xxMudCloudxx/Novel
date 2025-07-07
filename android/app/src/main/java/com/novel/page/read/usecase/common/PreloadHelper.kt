@@ -1,7 +1,7 @@
 package com.novel.page.read.usecase.common
 
-import com.novel.page.read.components.Chapter
-import com.novel.page.read.service.common.ReaderServiceConfig
+import com.novel.page.read.viewmodel.Chapter
+
 
 /**
  * 预加载辅助工具类

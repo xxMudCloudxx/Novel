@@ -2,12 +2,13 @@ package com.novel.page.read.service
 
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
-import com.novel.page.read.components.ReaderSettings
 import com.novel.page.read.repository.BookCacheData
 import com.novel.page.read.repository.BookCacheManager
 import com.novel.page.read.repository.PageCountCacheData
 import com.novel.page.read.service.common.*
 import com.novel.page.read.utils.PageSplitter
+import com.novel.page.read.viewmodel.Chapter
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.network.repository.CachedBookRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -135,7 +136,7 @@ class PaginationService @Inject constructor(
      */
     fun fetchAllBookContentAndPaginateInBackground(
         bookId: String,
-        chapterList: List<com.novel.page.read.components.Chapter>,
+        chapterList: List<Chapter>,
         readerSettings: ReaderSettings,
         containerSize: IntSize,
         density: Density
@@ -192,7 +193,7 @@ class PaginationService @Inject constructor(
      */
     private suspend fun fetchAndBuildBookCache(
         bookId: String,
-        chapterList: List<com.novel.page.read.components.Chapter>,
+        chapterList: List<Chapter>,
         existingBookCache: BookCacheData?,
         readerSettings: ReaderSettings,
         containerSize: IntSize,

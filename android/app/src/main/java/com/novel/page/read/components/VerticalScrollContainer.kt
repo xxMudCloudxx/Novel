@@ -32,6 +32,7 @@ import com.novel.page.component.NovelText
 import com.novel.page.component.PaperTexture
 import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.PageData
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.utils.HtmlTextUtil
 import com.novel.utils.ssp

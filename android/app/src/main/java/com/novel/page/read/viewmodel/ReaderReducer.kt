@@ -161,8 +161,8 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
             version = currentState.version + 1,
             isMenuVisible = intent.show,
             // 显示菜单时关闭其他面板
-            isChapterListVisible = if (intent.show) false else currentState.isChapterListVisible,
-            isSettingsPanelVisible = if (intent.show) false else currentState.isSettingsPanelVisible
+            isChapterListVisible = false,
+            isSettingsPanelVisible = false
         )
         
         return ReduceResult(newState)
@@ -174,8 +174,6 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
         val newState = currentState.copy(
             version = currentState.version + 1,
             isChapterListVisible = intent.show,
-            // 显示章节列表时关闭其他面板
-            isMenuVisible = if (intent.show) false else currentState.isMenuVisible,
             isSettingsPanelVisible = if (intent.show) false else currentState.isSettingsPanelVisible
         )
         
@@ -188,8 +186,6 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
         val newState = currentState.copy(
             version = currentState.version + 1,
             isSettingsPanelVisible = intent.show,
-            // 显示设置面板时关闭其他面板
-            isMenuVisible = if (intent.show) false else currentState.isMenuVisible,
             isChapterListVisible = if (intent.show) false else currentState.isChapterListVisible
         )
         
@@ -247,12 +243,36 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
         TimberLogger.d(TAG, "更新滑动翻页索引: ${currentState.virtualPageIndex} -> ${intent.index}")
         val newVirtualPage = virtualPages[intent.index]
 
-        // 复杂的逻辑仍然在ViewModel中处理，这里只更新核心状态
-        val newState = currentState.copy(
+        // 基于新的虚拟页面推断同步的 currentPageIndex，使得 UI 能实时刷新页码
+        val inferredPageIndex = when (newVirtualPage) {
+            is VirtualPage.ContentPage -> if (newVirtualPage.chapterId == currentState.currentChapter?.id) {
+                newVirtualPage.pageIndex
+            } else currentState.currentPageIndex // 不同章节的翻页将在异步流程中处理
+            is VirtualPage.BookDetailPage -> -1
+            else -> currentState.currentPageIndex
+        }
+
+        var tmpState = currentState.copy(
             version = currentState.version + 1,
-            virtualPageIndex = intent.index
+            virtualPageIndex = intent.index,
+            currentPageIndex = inferredPageIndex
         )
-        return ReduceResult(newState)
+
+        // 尝试即时刷新阅读进度，避免等待异步逻辑
+        if (inferredPageIndex != currentState.currentPageIndex) {
+            val pageCountCache = tmpState.pageCountCache
+            val currentChapter = tmpState.currentChapter
+            if (pageCountCache != null && currentChapter != null && pageCountCache.totalPages > 0) {
+                val chapterRange = pageCountCache.chapterPageRanges.find { it.chapterId == currentChapter.id }
+                if (chapterRange != null) {
+                    val globalPage = if (inferredPageIndex == -1) chapterRange.startPage else chapterRange.startPage + inferredPageIndex
+                    val newProgress = globalPage.toFloat() / pageCountCache.totalPages.toFloat()
+                    tmpState = tmpState.copy(readingProgress = newProgress.coerceIn(0f, 1f))
+                }
+            }
+        }
+
+        return ReduceResult(tmpState)
     }
     
     /**
@@ -260,12 +280,12 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
      */
     fun handleInitReaderSuccess(
         currentState: ReaderState,
-        chapterList: List<com.novel.page.read.components.Chapter>,
-        initialChapter: com.novel.page.read.components.Chapter,
+        chapterList: List<Chapter>,
+        initialChapter: Chapter,
         initialChapterIndex: Int,
         initialPageData: PageData,
         initialPageIndex: Int,
-        settings: com.novel.page.read.components.ReaderSettings,
+        settings: ReaderSettings,
         pageCountCache: com.novel.page.read.repository.PageCountCacheData?
     ): ReaderState {
         return currentState.copy(
@@ -299,7 +319,7 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
      */
     fun handleChapterSwitchSuccess(
         currentState: ReaderState,
-        newChapter: com.novel.page.read.components.Chapter,
+        newChapter: Chapter,
         newChapterIndex: Int,
         newPageData: PageData,
         newPageIndex: Int

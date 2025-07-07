@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import com.novel.page.read.viewmodel.FlipDirection
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.utils.SwipeBackContainer
 import kotlin.math.abs
@@ -27,7 +28,6 @@ fun NoAnimationContainer(
     uiState: ReaderState,
     readerSettings: ReaderSettings,
     onPageChange: (FlipDirection) -> Unit,
-    onNavigateToReader: ((String, String?) -> Unit)? = null,
     onSwipeBack: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {

@@ -350,9 +350,9 @@ class HomeViewModel @Inject constructor(
                 
                 val result = getCategoryRecommendBooksUseCase(
                     GetCategoryRecommendBooksUseCase.Params(
-                        categoryId = categoryId,
-                        pageNum = nextPage,
-                        pageSize = RECOMMEND_PAGE_SIZE,
+                    categoryId = categoryId,
+                    pageNum = nextPage,
+                    pageSize = RECOMMEND_PAGE_SIZE,
                         strategy = CacheStrategy.CACHE_FIRST
                     )
                 )

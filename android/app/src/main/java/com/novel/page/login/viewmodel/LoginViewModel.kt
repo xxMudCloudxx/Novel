@@ -44,7 +44,7 @@ class LoginViewModel @Inject constructor(
     companion object {
         private const val TAG = "LoginViewModel"
     }
-    
+
     /** 状态适配器，提供便利的状态访问方法 */
     val adapter = LoginStateAdapter(state)
 
@@ -118,15 +118,15 @@ class LoginViewModel @Inject constructor(
             val validationResult = validateFormUseCase.validateLogin(
                 phone = currentState.loginForm.phone,
                 password = currentState.loginForm.password
-            )
-            
-            if (!validationResult.isValid) {
+        )
+        
+        if (!validationResult.isValid) {
                 val newState = LoginStateUpdater.updateValidationResults(currentState, validationResult)
                 updateState(newState)
-                return
-            }
-            
-            // 执行登录
+            return
+        }
+        
+        // 执行登录
             val loginResult = loginUseCase(
                 LoginUseCase.Params(
                     username = currentState.loginForm.phone,
@@ -168,15 +168,15 @@ class LoginViewModel @Inject constructor(
                 password = currentState.registerForm.password,
                 passwordConfirm = currentState.registerForm.passwordConfirm,
                 verifyCode = currentState.registerForm.verifyCode
-            )
-            
-            if (!validationResult.isValid) {
+        )
+        
+        if (!validationResult.isValid) {
                 val newState = LoginStateUpdater.updateValidationResults(currentState, validationResult)
                 updateState(newState)
-                return
-            }
-            
-            // 执行注册
+            return
+        }
+        
+        // 执行注册
             val registerResult = registerUseCase(
                 RegisterUseCase.Params(
                     username = currentState.registerForm.phone,

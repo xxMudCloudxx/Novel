@@ -20,6 +20,7 @@ import com.novel.page.read.viewmodel.FlipDirection
 import com.novel.page.read.viewmodel.VirtualPage
 import com.novel.utils.SwipeBackContainer
 import androidx.compose.runtime.snapshotFlow
+import com.novel.page.read.viewmodel.ReaderSettings
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import com.novel.page.read.viewmodel.ReaderState

@@ -1,11 +1,12 @@
 package com.novel.page.read.service
 
 import android.annotation.SuppressLint
-import com.novel.page.read.components.Chapter
 import com.novel.page.read.service.common.*
 import com.novel.page.read.utils.ReaderLogTags
+import com.novel.page.read.viewmodel.Chapter
 import com.novel.page.read.viewmodel.ChapterCache
 import com.novel.page.read.viewmodel.PageData
+import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.network.repository.CachedBookRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -151,7 +152,7 @@ class ChapterService @Inject constructor(
     suspend fun preloadChapter(
         chapterId: String,
         containerSize: androidx.compose.ui.unit.IntSize? = null,
-        readerSettings: com.novel.page.read.components.ReaderSettings? = null,
+        readerSettings: ReaderSettings? = null,
         density: androidx.compose.ui.unit.Density? = null
     ) {
         safeIo {
