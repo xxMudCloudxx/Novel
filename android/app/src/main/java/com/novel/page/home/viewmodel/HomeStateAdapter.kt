@@ -30,7 +30,9 @@ import kotlinx.coroutines.flow.stateIn
 @Stable
 class HomeStateAdapter(
     stateFlow: StateFlow<HomeState>,
-    private val scope: kotlinx.coroutines.CoroutineScope
+    @Stable
+    @Volatile
+    private var scope: kotlinx.coroutines.CoroutineScope
 ) : StateAdapter<HomeState>(stateFlow) {
     
     // region StateFlow 映射扩展函数
@@ -230,16 +232,20 @@ data class HomeScreenState(
 
 @Stable
 class StableStateFlow<T>(
-    private val delegate: StateFlow<T>
+    @Stable
+    @Volatile
+    private var delegate: StateFlow<T>
 ) : StateFlow<T> by delegate
 
 // 扩展函数：方便调用
+@Stable
 fun <T> StateFlow<T>.asStable(): StableStateFlow<T> =
     StableStateFlow(this)
 
 /**
  * 将HomeState转换为UI友好的组合状态
  */
+@Stable
 fun HomeStateAdapter.toScreenState(): HomeScreenState {
     val snapshot = getCurrentSnapshot()
     return HomeScreenState(

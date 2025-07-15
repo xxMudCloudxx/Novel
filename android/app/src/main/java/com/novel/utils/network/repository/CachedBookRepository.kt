@@ -1,5 +1,6 @@
 package com.novel.utils.network.repository
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
@@ -37,10 +38,14 @@ import javax.inject.Singleton
  * - 最大2次重试机制
  * - 响应式数据更新
  */
+@Stable
 @Singleton
 class CachedBookRepository @Inject constructor(
+    @Stable
     private val bookService: BookService,
+    @Stable
     private val searchService: SearchService,
+    @Stable
     private val cacheManager: NetworkCacheManager
 ) {
     companion object {

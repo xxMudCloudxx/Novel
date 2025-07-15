@@ -6,12 +6,15 @@ import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.cache.CacheStrategy
 import javax.inject.Inject
+import androidx.compose.runtime.Stable
 
 /**
  * 首页推荐书籍的PagingSource
  * 处理客户端分页逻辑：一次性加载所有数据，然后按页分割
  */
+@Stable
 class HomeRecommendPagingSource @Inject constructor(
+    @Stable
     private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase
 ) : PagingSource<Int, HomeService.HomeBook>() {
     
@@ -21,7 +24,9 @@ class HomeRecommendPagingSource @Inject constructor(
         private const val PAGE_SIZE = 8
     }
     
-    // 缓存全部数据，避免重复网络请求
+    // 缓存全部数据，避免重复网络请求 - 使用@Stable标记
+    @Stable
+    @Volatile // 添加 @Volatile 确保线程安全
     private var cachedBooks: List<HomeService.HomeBook>? = null
     
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, HomeService.HomeBook> {

@@ -18,14 +18,18 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
 import javax.inject.Inject
+import androidx.compose.runtime.Stable
 
 /**
  * 获取首页分类UseCase（整合分类获取）
  */
+@Stable
 class GetHomeCategoriesUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository
 ) : FlowUseCase<GetHomeCategoriesUseCase.Params, List<CategoryInfo>>() {
     
+    @Stable
     data class Params(
         val workDirection: Int = 0,
         val strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
@@ -50,10 +54,13 @@ class GetHomeCategoriesUseCase @Inject constructor(
 /**
  * 获取首页推荐书籍UseCase（整合推荐书籍）
  */
+@Stable
 class GetHomeRecommendBooksUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository
 ) : BaseUseCase<GetHomeRecommendBooksUseCase.Params, List<HomeService.HomeBook>>() {
     
+    @Stable
     data class Params(
         val strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
     )
@@ -71,10 +78,13 @@ class GetHomeRecommendBooksUseCase @Inject constructor(
 /**
  * 获取榜单书籍UseCase（整合榜单数据）
  */
+@Stable
 class GetRankingBooksUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository
 ) : BaseUseCase<GetRankingBooksUseCase.Params, List<BookService.BookRank>>() {
     
+    @Stable
     data class Params(
         val rankType: String,
         val strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
@@ -93,7 +103,9 @@ class GetRankingBooksUseCase @Inject constructor(
 /**
  * 刷新首页数据UseCase（整合刷新逻辑）
  */
+@Stable
 class RefreshHomeDataUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository
 ) : BaseUseCase<Unit, Triple<List<HomeService.HomeBook>, List<HomeService.FriendLink>, List<BookService.BookCategory>>>() {
     
@@ -110,6 +122,7 @@ class RefreshHomeDataUseCase @Inject constructor(
 /**
  * 发送React Native数据UseCase（RN数据发送）
  */
+@Stable
 class SendReactNativeDataUseCase @Inject constructor() : BaseUseCase<Unit, Unit>() {
     
     override suspend fun execute(params: Unit) {
@@ -128,10 +141,13 @@ class SendReactNativeDataUseCase @Inject constructor() : BaseUseCase<Unit, Unit>
 /**
  * 获取分类推荐书籍UseCase
  */
+@Stable
 class GetCategoryRecommendBooksUseCase @Inject constructor(
+    @Stable
     private val cachedBookRepository: CachedBookRepository
 ) : BaseUseCase<GetCategoryRecommendBooksUseCase.Params, SearchService.PageResponse<SearchService.BookInfo>>() {
     
+    @Stable
     data class Params(
         val categoryId: Int,
         val pageNum: Int = 1,
@@ -163,10 +179,13 @@ class GetCategoryRecommendBooksUseCase @Inject constructor(
 /**
  * 获取书籍分类数据UseCase
  */
+@Stable
 class GetCategoriesUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository
 ) : FlowUseCase<GetCategoriesUseCase.Params, List<HomeCategoryEntity>>() {
     
+    @Stable
     data class Params(
         val forceRefresh: Boolean = false
     )
@@ -193,14 +212,18 @@ class GetCategoriesUseCase @Inject constructor(
 /**
  * 获取各类书籍数据UseCase
  */
+@Stable
 class GetBooksDataUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository
 ) : FlowUseCase<GetBooksDataUseCase.Params, GetBooksDataUseCase.BooksData>() {
     
+    @Stable
     data class Params(
         val forceRefresh: Boolean = false
     )
     
+    @Stable
     data class BooksData(
         val carouselBooks: List<HomeService.HomeBook>,
         val hotBooks: List<HomeService.HomeBook>,

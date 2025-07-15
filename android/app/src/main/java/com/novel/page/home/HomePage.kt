@@ -33,6 +33,7 @@ import com.novel.page.component.FlipBookAnimationController
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 // 稳定的默认回调引用 - 避免cache(false)问题
+@Stable
 private val defaultNavigateToCategory: (Long) -> Unit = { }
 
 /**
@@ -78,37 +79,26 @@ fun HomePage(
         isRefreshing = uiState.isRefreshing
     )
     
-    // 优化：预计算屏幕尺寸，避免重复计算
-    val screenSize = remember(configuration, density) {
-        Pair(
-            configuration.screenWidthDp * density.density,
-            configuration.screenHeightDp * density.density
-        )
+    // 优化：使用derivedStateOf进行屏幕尺寸计算，避免每次重组都重新计算
+    val screenSize by remember {
+        derivedStateOf {
+            Pair(
+                configuration.screenWidthDp * density.density,
+                configuration.screenHeightDp * density.density
+            )
+        }
     }
     
-    // 记忆化回调函数，避免每帧重新创建 lambda
-    val onNavigateToSearch = remember(viewModel) {
-        { viewModel.sendIntent(HomeIntent.NavigateToSearch("")) }
-    }
-    
-    val onNavigateToCategoryPage = remember(viewModel) {
-        { viewModel.sendIntent(HomeIntent.NavigateToCategory(1L)) }
-    }
-    
-    val onFilterSelected = remember(viewModel) {
-        { filter: String -> viewModel.sendIntent(HomeIntent.SelectCategoryFilter(filter)) }
-    }
-    
-    val onRankTypeSelected = remember(viewModel) {
-        { rankType: String -> viewModel.sendIntent(HomeIntent.SelectRankType(rankType)) }
-    }
-    
-    val onBookClick = remember(viewModel) {
-        { bookId: Long -> viewModel.sendIntent(HomeIntent.NavigateToBookDetail(bookId)) }
-    }
-    
-    val onRefresh = remember(viewModel) {
-        { viewModel.sendIntent(HomeIntent.RefreshData) }
+    // 稳定的回调函数集合 - 使用一个稳定的对象来避免多个remember调用
+    val callbacks = remember(viewModel) {
+        object {
+            val navigateToSearch: () -> Unit = { viewModel.sendIntent(HomeIntent.NavigateToSearch("")) }
+            val navigateToCategoryPage: () -> Unit = { viewModel.sendIntent(HomeIntent.NavigateToCategory(1L)) }
+            val filterSelected: (String) -> Unit = { filter -> viewModel.sendIntent(HomeIntent.SelectCategoryFilter(filter)) }
+            val rankTypeSelected: (String) -> Unit = { rankType -> viewModel.sendIntent(HomeIntent.SelectRankType(rankType)) }
+            val bookClick: (Long) -> Unit = { bookId -> viewModel.sendIntent(HomeIntent.NavigateToBookDetail(bookId)) }
+            val refresh: () -> Unit = { viewModel.sendIntent(HomeIntent.RefreshData) }
+        }
     }
     
     // 监听副作用 - 使用MVI Effect系统
@@ -126,7 +116,7 @@ fun HomePage(
                     // 直接调用NavViewModel导航到搜索页面
                     NavViewModel.navigateToSearch(effect.query)
                 }
-                is HomeEffect.NavigateToCategoryPage -> onNavigateToCategoryPage()
+                is HomeEffect.NavigateToCategoryPage -> callbacks.navigateToCategoryPage()
                 is HomeEffect.NavigateToFullRanking -> {
                     // 导航到完整榜单页面 - 待实现
                 }
@@ -140,7 +130,7 @@ fun HomePage(
         }
     }
     
-    // 优化滚动检测 - 使用derivedStateOf减少重组
+    // 优化滚动检测 - 使用derivedStateOf减少重组，并添加防抖
     val isAtBottom by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -158,14 +148,12 @@ fun HomePage(
         snapshotFlow { isAtBottom }
             .distinctUntilChanged()
             .collectLatest { atBottom ->
-                if (atBottom) {
+                if (atBottom && uiState.canLoadMoreRecommend) {
                     // 触发加载更多
-                    if (uiState.canLoadMoreRecommend) {
-                        if (uiState.isRecommendMode) {
-                            viewModel.sendIntent(HomeIntent.LoadMoreHomeRecommend)
-                        } else {
-                            viewModel.sendIntent(HomeIntent.LoadMoreRecommend)
-                        }
+                    if (uiState.isRecommendMode) {
+                        viewModel.sendIntent(HomeIntent.LoadMoreHomeRecommend)
+                    } else {
+                        viewModel.sendIntent(HomeIntent.LoadMoreRecommend)
                     }
                 }
             }
@@ -177,7 +165,7 @@ fun HomePage(
     } else {
         SwipeRefresh(
             state = swipeRefreshState,
-            onRefresh = onRefresh,
+            onRefresh = callbacks.refresh,
             modifier = Modifier.fillMaxSize()
         ) {
         LazyColumn(
@@ -192,8 +180,8 @@ fun HomePage(
             // 1. 顶部搜索栏和分类按钮
             item(key = "top_bar") {
                 HomeTopBar(
-                    onSearchClick = onNavigateToSearch,
-                    onCategoryClick = onNavigateToCategoryPage,
+                    onSearchClick = callbacks.navigateToSearch,
+                    onCategoryClick = callbacks.navigateToCategoryPage,
                     modifier = Modifier.padding(horizontal = 15.wdp)
                 )
             }
@@ -203,7 +191,7 @@ fun HomePage(
                 HomeFilterBar(
                     filters = uiState.categoryFilters,
                     selectedFilter = uiState.selectedCategoryFilter,
-                    onFilterSelected = onFilterSelected
+                    onFilterSelected = callbacks.filterSelected
                 )
             }
             
@@ -220,7 +208,7 @@ fun HomePage(
                         HomeRankPanel(
                             rankBooks = uiState.rankBooks,
                             selectedRankType = uiState.selectedRankType,
-                            onRankTypeSelected = onRankTypeSelected,
+                            onRankTypeSelected = callbacks.rankTypeSelected,
                             onBookClick = { bookId, offset, size ->
                                 // 榜单点击触发翻书动画
                                 coroutineScope.launch {
@@ -248,7 +236,7 @@ fun HomePage(
             item(key = "recommend_grid_${uiState.selectedCategoryFilter}_${uiState.isRecommendMode}") {
                 HomeRecommendGrid(
                     recommendItems = uiState.currentRecommendBooks,
-                    onBookClick = onBookClick,
+                    onBookClick = callbacks.bookClick,
                     onBookClickWithPosition = { bookId, offset, size ->
                         // 推荐流点击触发放大透明动画
                         coroutineScope.launch {

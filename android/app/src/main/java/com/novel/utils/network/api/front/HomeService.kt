@@ -1,5 +1,6 @@
 package com.novel.utils.network.api.front
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
@@ -14,6 +15,7 @@ import javax.inject.Singleton
 class HomeService @Inject constructor() {
     
     // region 数据结构
+    @Stable
     data class HomeBooksResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -21,6 +23,7 @@ class HomeService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class HomeBook(
         @SerializedName("type") val type: Int, // 0-轮播图 1-顶部栏 2-本周强推 3-热门推荐 4-精品推荐
         @SerializedName("bookId") val bookId: Long,
@@ -30,6 +33,7 @@ class HomeService @Inject constructor() {
         @SerializedName("bookDesc") val bookDesc: String
     )
 
+    @Stable
     data class FriendLinksResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -37,6 +41,7 @@ class HomeService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class FriendLink(
         @SerializedName("linkName") val linkName: String,
         @SerializedName("linkUrl") val linkUrl: String

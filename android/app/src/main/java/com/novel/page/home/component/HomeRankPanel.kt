@@ -48,13 +48,15 @@ fun HomeRankPanel(
     // 翻书动画控制器
     flipBookController: FlipBookAnimationController? = null
 ) {
-    // 优化：预计算榜单类型，避免重复创建
-    val rankTypes = remember {
-        listOf(
-            CategoryInfo(HomeRepository.RANK_TYPE_VISIT, "点击榜"),
-            CategoryInfo(HomeRepository.RANK_TYPE_UPDATE, "更新榜"),
-            CategoryInfo(HomeRepository.RANK_TYPE_NEWEST, "新书榜")
-        )
+    // 优化：使用derivedStateOf预计算榜单类型，避免重复创建
+    val rankTypes by remember {
+        derivedStateOf {
+            listOf(
+                CategoryInfo(HomeRepository.RANK_TYPE_VISIT, "点击榜"),
+                CategoryInfo(HomeRepository.RANK_TYPE_UPDATE, "更新榜"),
+                CategoryInfo(HomeRepository.RANK_TYPE_NEWEST, "新书榜")
+            )
+        }
     }
 
     Card(
@@ -111,8 +113,11 @@ private fun RankBooksScrollableGrid(
     modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
-    // 优化：预计算书籍分组，避免重复计算
-    val bookColumns = remember(books) { books.chunked(4) }
+    // 优化：使用derivedStateOf预计算书籍分组，避免重复计算
+    val bookColumns by remember {
+        derivedStateOf { books.chunked(4) }
+    }
+    
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -169,11 +174,16 @@ private fun RankBookColumn(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         books.forEachIndexed { index, book ->
+            // 优化：使用derivedStateOf计算排名，避免重复计算
+            val rankNumber by remember(startRank, index) {
+                derivedStateOf { startRank + index }
+            }
+            
             // 优化：使用稳定的key避免重组
             key(book.id) {
                 RankBookGridItem(
                     book = book,
-                    rank = startRank + index,
+                    rank = rankNumber,
                     onClick = onBookClick,
                     flipBookController = flipBookController,
                     modifier = Modifier.fillMaxWidth()
@@ -347,13 +357,15 @@ private fun BookCoverImage(
     book: BookService.BookRank,
     flipBookController: FlipBookAnimationController? = null
 ) {
-    // 优化：检查是否当前书籍正在进行动画，减少重复计算
-    val isCurrentBookAnimating = remember(flipBookController?.animationState) {
-        flipBookController?.animationState?.let { animState ->
-            animState.isAnimating &&
-                    animState.hideOriginalImage &&
-                    animState.bookId == book.id.toString()
-        } ?: false
+    // 优化：使用derivedStateOf检查是否当前书籍正在进行动画，减少重复计算
+    val isCurrentBookAnimating by remember {
+        derivedStateOf {
+            flipBookController?.animationState?.let { animState ->
+                animState.isAnimating &&
+                        animState.hideOriginalImage &&
+                        animState.bookId == book.id.toString()
+            } == true
+        }
     }
 
     Box(

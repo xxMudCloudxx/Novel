@@ -27,6 +27,27 @@ import com.novel.page.home.usecase.CategoryRecommendPagingSourceFactory
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import kotlinx.coroutines.flow.Flow
+import androidx.compose.runtime.Stable
+
+/**
+ * 稳定的分页配置包装器
+ */
+@Stable
+private data class StablePagingConfig(
+    val pageSize: Int,
+    val enablePlaceholders: Boolean,
+    val initialLoadSize: Int,
+    val prefetchDistance: Int
+) {
+    fun toPagingConfig(): PagingConfig = PagingConfig(
+        pageSize = pageSize,
+        enablePlaceholders = enablePlaceholders,
+        initialLoadSize = initialLoadSize,
+        prefetchDistance = prefetchDistance
+    )
+}
+
+
 
 /**
  * 首页ViewModel - MVI重构版本
@@ -47,11 +68,14 @@ import kotlinx.coroutines.flow.Flow
  * - 下拉刷新和加载更多
  * - 错误处理和重试机制
  */
+@Stable
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     /** 主要数据仓库 - 使用稳定接口避免Compose重组问题 */
+    @Stable
     private val homeRepository: IHomeRepository,
     /** 缓存书籍数据仓库 */
+    @Stable
     private val cachedBookRepository: CachedBookRepository
 ) : BaseMviViewModel<HomeIntent, HomeState, HomeEffect>() {
 
@@ -60,56 +84,68 @@ class HomeViewModel @Inject constructor(
         private const val RECOMMEND_PAGE_SIZE = 8
     }
 
-    // 手动创建UseCase实例，避免Hilt泛型问题，使用稳定接口
-    private val homeCompositeUseCase: HomeCompositeUseCase by lazy {
+    // 预初始化UseCase实例，避免Hilt泛型问题和lazy delegate的unstable问题
+    @Stable
+    private val homeCompositeUseCase: HomeCompositeUseCase = 
         HomeCompositeUseCase(homeRepository, cachedBookRepository)
-    }
-    private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase by lazy {
+    
+    @Stable
+    private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase = 
         GetHomeCategoriesUseCase(homeRepository)
-    }
-    private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase by lazy {
+    
+    @Stable
+    private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase = 
         GetHomeRecommendBooksUseCase(homeRepository)
-    }
-    private val getRankingBooksUseCase: GetRankingBooksUseCase by lazy {
+    
+    @Stable
+    private val getRankingBooksUseCase: GetRankingBooksUseCase = 
         GetRankingBooksUseCase(homeRepository)
-    }
-    private val refreshHomeDataUseCase: RefreshHomeDataUseCase by lazy {
+    
+    @Stable
+    private val refreshHomeDataUseCase: RefreshHomeDataUseCase = 
         RefreshHomeDataUseCase(homeRepository)
-    }
-    private val sendReactNativeDataUseCase: SendReactNativeDataUseCase by lazy {
+    
+    @Stable
+    private val sendReactNativeDataUseCase: SendReactNativeDataUseCase = 
         SendReactNativeDataUseCase()
-    }
-    private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase by lazy {
+    
+    @Stable
+    private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase = 
         GetCategoryRecommendBooksUseCase(cachedBookRepository)
-    }
     
-    // Paging3 相关
-    private val homeRecommendPagingSource: HomeRecommendPagingSource by lazy {
+    // Paging3 相关 - 预初始化以提高稳定性
+    @Stable
+    private val homeRecommendPagingSource: HomeRecommendPagingSource = 
         HomeRecommendPagingSource(getHomeRecommendBooksUseCase)
-    }
-    private val categoryRecommendPagingSourceFactory: CategoryRecommendPagingSourceFactory by lazy {
-        CategoryRecommendPagingSourceFactory(getCategoryRecommendBooksUseCase)
-    }
     
-    // Paging配置
-    private val pagingConfig = PagingConfig(
+    @Stable
+    private val categoryRecommendPagingSourceFactory: CategoryRecommendPagingSourceFactory = 
+        CategoryRecommendPagingSourceFactory(getCategoryRecommendBooksUseCase)
+    
+    // Paging配置 - 使用@Stable标记
+    @Stable
+    private val pagingConfig: StablePagingConfig = StablePagingConfig(
         pageSize = RECOMMEND_PAGE_SIZE,
         enablePlaceholders = false,
         initialLoadSize = RECOMMEND_PAGE_SIZE,
         prefetchDistance = 2
     )
-    private val homeStatusCheckUseCase: HomeStatusCheckUseCase by lazy {
+    
+    @Stable
+    private val homeStatusCheckUseCase: HomeStatusCheckUseCase = 
         HomeStatusCheckUseCase(homeRepository)
-    }
 
-    // 缓存全量首页推荐数据
-    private var cachedHomeBooks: List<HomeService.HomeBook> =
-        emptyList()
+    // 缓存全量首页推荐数据 - 使用@Stable标记
+    @Stable
+    @Volatile
+    private var cachedHomeBooks: List<HomeService.HomeBook> = emptyList()
 
     /** 新的StateAdapter实例 */
+    @Stable
     val adapter = HomeStateAdapter(state, viewModelScope)
 
     /** UI组合状态 - 提供稳定的 State<HomeScreenState> */
+    @Stable
     val screenState: StateFlow<HomeScreenState> = state.map { mviState ->
         adapter.toScreenState()
     }.stateIn(
@@ -142,19 +178,25 @@ class HomeViewModel @Inject constructor(
         )
     )
 
-    // Paging3 数据流
+    // Paging3 数据流 - 使用@Stable标记
     /** 首页推荐书籍的分页数据流 */
+    @Stable
     val homeRecommendPagingData: Flow<PagingData<HomeService.HomeBook>> = Pager(
-        config = pagingConfig,
+        config = pagingConfig.toPagingConfig(),
         pagingSourceFactory = { homeRecommendPagingSource }
     ).flow.cachedIn(viewModelScope)
     
     /** 分类推荐书籍的分页数据流 - 基于当前选中的分类 */
+    @Stable
+    @Volatile
     private var _categoryRecommendPagingData: Flow<PagingData<SearchService.BookInfo>>? = null
+    
+    @Stable
     val categoryRecommendPagingData: Flow<PagingData<SearchService.BookInfo>>
         get() = _categoryRecommendPagingData ?: createCategoryPagingData(getCurrentCategoryId(getCurrentState().selectedCategoryFilter))
 
     /** 兼容性属性：UI状态流，适配原有的UI层期望格式 */
+    @Stable
     val uiState: StateFlow<HomeUiState> = state.map { mviState ->
         adapter.toHomeUiState()
     }.stateIn(
@@ -589,12 +631,12 @@ class HomeViewModel @Inject constructor(
      */
     private fun loadCategoryFilters() {
         viewModelScope.launch {
-            try {
-                getHomeCategoriesUseCase(GetHomeCategoriesUseCase.Params())
-                    .collect { filters ->
-                        sendIntent(HomeIntent.CategoryFiltersLoadSuccess(filters.toImmutableList()))
-                    }
-            } catch (e: Exception) {
+                            try {
+                    getHomeCategoriesUseCase(GetHomeCategoriesUseCase.Params())
+                        .collect { filters ->
+                            sendIntent(HomeIntent.CategoryFiltersLoadSuccess(filters.toImmutableList()))
+                        }
+                } catch (e: Exception) {
                 TimberLogger.e(TAG, "加载分类筛选器异常", e)
                 sendIntent(HomeIntent.CategoryFiltersLoadFailure(e.message ?: "加载分类失败"))
             }
@@ -866,7 +908,7 @@ class HomeViewModel @Inject constructor(
      */
     private fun createCategoryPagingData(categoryId: Int): Flow<PagingData<SearchService.BookInfo>> {
         return Pager(
-            config = pagingConfig,
+            config = pagingConfig.toPagingConfig(),
             pagingSourceFactory = { categoryRecommendPagingSourceFactory.create(categoryId) }
         ).flow.cachedIn(viewModelScope)
     }

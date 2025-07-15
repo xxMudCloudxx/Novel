@@ -16,6 +16,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.compose.runtime.Stable
 
 /**
  * 缓存条目数据
@@ -72,10 +73,11 @@ sealed class CacheResult<T> {
  * - NETWORK_ONLY: 仅使用网络数据，适用于实时性要求高的场景
  * - SMART_FALLBACK: 智能兜底，多重重试机制
  */
+@Stable
 @Singleton
 class NetworkCacheManager @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val gson: Gson
+    @ApplicationContext @Stable private val context: Context,
+    @Stable private val gson: Gson
 ) {
     companion object {
         private const val TAG = "NetworkCacheManager"

@@ -6,13 +6,17 @@ import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.cache.CacheStrategy
 import javax.inject.Inject
+import androidx.compose.runtime.Stable
 
 /**
  * 分类推荐书籍的PagingSource
  * 处理服务器端分页逻辑：每次从API获取一页数据
  */
+@Stable
 class CategoryRecommendPagingSource @Inject constructor(
+    @Stable
     private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase,
+    @Stable
     private val categoryId: Int
 ) : PagingSource<Int, SearchService.BookInfo>() {
     
@@ -73,7 +77,9 @@ class CategoryRecommendPagingSource @Inject constructor(
  * CategoryRecommendPagingSource的工厂类
  * 用于根据categoryId创建不同的PagingSource实例
  */
+@Stable
 class CategoryRecommendPagingSourceFactory @Inject constructor(
+    @Stable
     private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase
 ) {
     

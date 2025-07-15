@@ -89,8 +89,10 @@ interface IHomeRepository {
 /**
  * 实现类，委托原有 HomeRepository，添加 ImmutableList 支持，保持业务逻辑不变
  */
+@Stable
 @Singleton
 class HomeRepositoryImpl @Inject constructor(
+    @Stable
     private val repository: HomeRepository
 ) : IHomeRepository {
 
@@ -163,11 +165,16 @@ class HomeRepositoryImpl @Inject constructor(
  * @param cachedBookRepository 带缓存的书籍数据仓库
  * @param cacheManager 网络缓存管理器
  */
+@Stable
 @Singleton
 class HomeRepository @Inject constructor(
+    @Stable
     private val homeDao: HomeDao,
+    @Stable
     private val homeService: HomeService,
+    @Stable
     private val cachedBookRepository: CachedBookRepository,
+    @Stable
     private val cacheManager: NetworkCacheManager
 ) {
     

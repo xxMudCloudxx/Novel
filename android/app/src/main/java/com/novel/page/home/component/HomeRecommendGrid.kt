@@ -287,12 +287,14 @@ private fun HomeBookStaggeredItem(
         maxHeight = 280
     ).wdp
 
-    // 根据描述长度动态调整文本区域高度
-    val descriptionLines = remember(book.bookDesc) {
-        when {
-            book.bookDesc.length > 80 -> 3
-            book.bookDesc.length > 40 -> 2
-            else -> 1
+    // 使用derivedStateOf优化描述行数计算，避免每次重组都重新计算
+    val descriptionLines by remember {
+        derivedStateOf {
+            when {
+                book.bookDesc.length > 80 -> 3
+                book.bookDesc.length > 40 -> 2
+                else -> 1
+            }
         }
     }
 
@@ -301,13 +303,15 @@ private fun HomeBookStaggeredItem(
         mutableStateOf(Pair(Offset.Zero, androidx.compose.ui.geometry.Size.Zero))
     }
     
-    // 优化：检查是否当前书籍正在进行动画，减少重复计算
-    val isCurrentBookAnimating = remember(flipBookController?.animationState) {
-        flipBookController?.animationState?.let { animState ->
-            animState.isAnimating && 
-            animState.hideOriginalImage && 
-            animState.bookId == book.bookId.toString()
-        } ?: false
+    // 优化：使用derivedStateOf检查是否当前书籍正在进行动画，减少重复计算
+    val isCurrentBookAnimating by remember {
+        derivedStateOf {
+            flipBookController?.animationState?.let { animState ->
+                animState.isAnimating && 
+                animState.hideOriginalImage && 
+                animState.bookId == book.bookId.toString()
+            } ?: false
+        }
     }
 
     Column(
@@ -429,9 +433,11 @@ private fun SearchBookStaggeredItem(
         maxHeight = 280
     ).wdp
 
-    // 根据书名长度动态调整
-    val titleLines = remember(book.bookName) {
-        if (book.bookName.length > 12) 2 else 1
+    // 使用derivedStateOf优化书名行数计算
+    val titleLines by remember {
+        derivedStateOf {
+            if (book.bookName.length > 12) 2 else 1
+        }
     }
 
     // 位置追踪状态
@@ -750,13 +756,15 @@ private fun RecommendItemStaggeredCard(
         mutableStateOf(Pair(Offset.Zero, androidx.compose.ui.geometry.Size.Zero))
     }
     
-    // 检查是否当前书籍正在进行动画
-    val isCurrentBookAnimating = remember(flipBookController?.animationState) {
-        flipBookController?.animationState?.let { animState ->
-            animState.isAnimating && 
-            animState.hideOriginalImage && 
-            animState.bookId == item.id.toString()
-        } ?: false
+    // 使用derivedStateOf检查是否当前书籍正在进行动画
+    val isCurrentBookAnimating by remember {
+        derivedStateOf {
+            flipBookController?.animationState?.let { animState ->
+                animState.isAnimating && 
+                animState.hideOriginalImage && 
+                animState.bookId == item.id.toString()
+            } ?: false
+        }
     }
 
     Column(

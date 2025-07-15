@@ -15,14 +15,18 @@ import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.utils.TimberLogger
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
+import androidx.compose.runtime.Stable
 
 /**
  * Home模块组合UseCase
  * 
  * 处理复杂的业务逻辑组合，整合所有Home相关的UseCase
  */
+@Stable
 open class HomeCompositeUseCase @Inject constructor(
+    @Stable
     private val homeRepository: IHomeRepository,
+    @Stable
     private val cachedBookRepository: CachedBookRepository
 ) : BaseUseCase<HomeCompositeUseCase.Params, HomeCompositeUseCase.Result>() {
     
@@ -31,6 +35,7 @@ open class HomeCompositeUseCase @Inject constructor(
         private const val RECOMMEND_PAGE_SIZE = 8
     }
     
+    @Stable
     data class Params(
         val loadInitialData: Boolean = false,
         val refreshData: Boolean = false,
@@ -41,6 +46,7 @@ open class HomeCompositeUseCase @Inject constructor(
         val currentPage: Int = 1
     )
     
+    @Stable
     data class Result(
         val categories: List<HomeCategoryEntity> = emptyList(),
         val categoryFilters: List<CategoryInfo> = emptyList(),
@@ -57,31 +63,38 @@ open class HomeCompositeUseCase @Inject constructor(
         val errorMessage: String? = null
     )
     
-    // 创建内部UseCase实例，使用稳定接口避免Compose重组问题
-    private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase by lazy {
+    // 预初始化内部UseCase实例，使用稳定接口避免Compose重组问题
+    @Stable
+    private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase = 
         GetHomeCategoriesUseCase(homeRepository)
-    }
-    private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase by lazy {
+    
+    @Stable
+    private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase = 
         GetHomeRecommendBooksUseCase(homeRepository)
-    }
-    private val getRankingBooksUseCase: GetRankingBooksUseCase by lazy {
+    
+    @Stable
+    private val getRankingBooksUseCase: GetRankingBooksUseCase = 
         GetRankingBooksUseCase(homeRepository)
-    }
-    private val refreshHomeDataUseCase: RefreshHomeDataUseCase by lazy {
+    
+    @Stable
+    private val refreshHomeDataUseCase: RefreshHomeDataUseCase = 
         RefreshHomeDataUseCase(homeRepository)
-    }
-    private val sendReactNativeDataUseCase: SendReactNativeDataUseCase by lazy {
+    
+    @Stable
+    private val sendReactNativeDataUseCase: SendReactNativeDataUseCase = 
         SendReactNativeDataUseCase()
-    }
-    private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase by lazy {
+    
+    @Stable
+    private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase = 
         GetCategoryRecommendBooksUseCase(cachedBookRepository)
-    }
-    private val getCategoriesUseCase: GetCategoriesUseCase by lazy {
+    
+    @Stable
+    private val getCategoriesUseCase: GetCategoriesUseCase = 
         GetCategoriesUseCase(homeRepository)
-    }
-    private val getBooksDataUseCase: GetBooksDataUseCase by lazy {
+    
+    @Stable
+    private val getBooksDataUseCase: GetBooksDataUseCase = 
         GetBooksDataUseCase(homeRepository)
-    }
     
     override suspend fun execute(params: Params): Result {
         TimberLogger.d(TAG, "开始执行组合操作: $params")

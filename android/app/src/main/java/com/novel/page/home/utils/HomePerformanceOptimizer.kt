@@ -3,6 +3,7 @@ package com.novel.page.home.utils
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
 import com.novel.utils.TimberLogger
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 首页性能优化工具类
@@ -34,8 +35,11 @@ object HomePerformanceOptimizer {
      *
      * 存储结构：bookId -> height
      * 避免重复计算随机高度，确保同一书籍显示高度的一致性
+     * 使用 ConcurrentHashMap 替代 mutableStateMapOf 提高稳定性和线程安全性
      */
-    private val imageHeightCache = mutableStateMapOf<String, Int>()
+    @Stable
+    @Volatile
+    private var imageHeightCache: MutableMap<String, Int> = ConcurrentHashMap()
 
     /**
      * 获取优化后的图片高度
