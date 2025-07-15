@@ -2,7 +2,7 @@ package com.novel.page.home.usecase
 
 import com.novel.core.domain.BaseUseCase
 import com.novel.core.domain.FlowUseCase
-import com.novel.page.home.dao.HomeRepository
+import com.novel.page.home.dao.IHomeRepository
 import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.page.home.viewmodel.CategoryInfo
 import com.novel.utils.network.api.front.BookService
@@ -23,7 +23,7 @@ import javax.inject.Inject
  * 获取首页分类UseCase（整合分类获取）
  */
 class GetHomeCategoriesUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : FlowUseCase<GetHomeCategoriesUseCase.Params, List<CategoryInfo>>() {
     
     data class Params(
@@ -51,7 +51,7 @@ class GetHomeCategoriesUseCase @Inject constructor(
  * 获取首页推荐书籍UseCase（整合推荐书籍）
  */
 class GetHomeRecommendBooksUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : BaseUseCase<GetHomeRecommendBooksUseCase.Params, List<HomeService.HomeBook>>() {
     
     data class Params(
@@ -72,7 +72,7 @@ class GetHomeRecommendBooksUseCase @Inject constructor(
  * 获取榜单书籍UseCase（整合榜单数据）
  */
 class GetRankingBooksUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : BaseUseCase<GetRankingBooksUseCase.Params, List<BookService.BookRank>>() {
     
     data class Params(
@@ -94,7 +94,7 @@ class GetRankingBooksUseCase @Inject constructor(
  * 刷新首页数据UseCase（整合刷新逻辑）
  */
 class RefreshHomeDataUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : BaseUseCase<Unit, Triple<List<HomeService.HomeBook>, List<HomeService.FriendLink>, List<BookService.BookCategory>>>() {
     
     override suspend fun execute(params: Unit): Triple<List<HomeService.HomeBook>, List<HomeService.FriendLink>, List<BookService.BookCategory>> {
@@ -164,7 +164,7 @@ class GetCategoryRecommendBooksUseCase @Inject constructor(
  * 获取书籍分类数据UseCase
  */
 class GetCategoriesUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : FlowUseCase<GetCategoriesUseCase.Params, List<HomeCategoryEntity>>() {
     
     data class Params(
@@ -194,7 +194,7 @@ class GetCategoriesUseCase @Inject constructor(
  * 获取各类书籍数据UseCase
  */
 class GetBooksDataUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : FlowUseCase<GetBooksDataUseCase.Params, GetBooksDataUseCase.BooksData>() {
     
     data class Params(

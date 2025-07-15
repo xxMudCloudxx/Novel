@@ -313,10 +313,10 @@ yarn detox test
 - ✅ **包结构优化** - 模块职责分离，消除循环依赖
 
 ### 🎯 阶段 2 - MVI架构收敛 (3周)
-- ✅ **统一MVI框架** - `BaseMviViewModel<Intent, State, Effect>`（BookDetail, Home, Search, login 模块完成）
-- ✅ **UseCase层重构** - 业务逻辑封装，ViewModel瘦身（BookDetail, Home, Search, login 模块完成）
+- ✅ **统一MVI框架** - `BaseMviViewModel<Intent, State, Effect>`（BookDetail, Home, Search, login, Setting, read 模块完成）
+- ✅ **UseCase层重构** - 业务逻辑封装，ViewModel瘦身（BookDetail, Home, Search, login, Setting, read 模块完成）
 - 🔄 **Repository标准化** - 统一 `Flow<Result<T>>` 返回类型
-- 🔄 **跨端状态同步** - React Native MVI状态管理集成
+- ✅ **跨端状态同步** - React Native MVI状态管理集成 (完成)
 
 ### 🎯 阶段 3 - 性能专项 (2周)
 - 🚀 **Compose优化** - 重组次数减少30%，内存使用降低15%

@@ -9,6 +9,7 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply plugin: "com.google.devtools.ksp"
 apply plugin: "kotlin-kapt"
+apply plugin: "androidx.baselineprofile"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -107,8 +108,26 @@ android {
         jvmTarget = '17'
         freeCompilerArgs += [
                 "-Xno-param-assertions",
-                "-Xno-call-assertions"
+                "-Xno-call-assertions",
+                // Compose编译器优化标志
+                "-P",
+                "plugin:androidx.compose.compiler.plugins.kotlin:featureFlag=OptimizeNonSkippingGroups",
+                "-P", 
+                "plugin:androidx.compose.compiler.plugins.kotlin:featureFlag=StrongSkipping",
+                "-P",
+                "plugin:androidx.compose.compiler.plugins.kotlin:featureFlag=IntrinsicRemember"
         ]
+    }
+    
+    composeOptions {
+        // 启用Compose编译器优化标志
+        kotlinCompilerExtensionVersion = "1.5.14"
+        useLiveLiterals = false  // 生产环境禁用LiveLiterals提升性能
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildTypes {
         debug {
@@ -180,7 +199,16 @@ dependencies {
     implementation "androidx.room:room-common:2.7.1"
     implementation "androidx.room:room-ktx:2.7.1"
     ksp "androidx.room:room-compiler:2.7.1"
+    
+    // Paging3 + Compose集成
+    implementation "androidx.paging:paging-runtime-ktx:3.3.5"
+    implementation "androidx.paging:paging-compose:3.3.5"
+    
+    // Baseline Profile
+    implementation "androidx.profileinstaller:profileinstaller:1.4.1"
+    baselineProfile project(':macrobenchmark')
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.5.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5"
     
     // 下拉刷新和上拉加载
     implementation "com.google.accompanist:accompanist-swiperefresh:0.32.0"

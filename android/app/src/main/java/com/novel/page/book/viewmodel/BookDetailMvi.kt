@@ -138,6 +138,7 @@ data class BookDetailState(
     /**
      * 书籍基本信息
      */
+    @Immutable
     data class BookInfo(
         val id: String,
         val bookName: String,
@@ -152,6 +153,7 @@ data class BookDetailState(
     /**
      * 最新章节信息
      */
+    @Immutable
     data class LastChapter(
         val chapterName: String,
         val chapterUpdateTime: String
@@ -160,6 +162,7 @@ data class BookDetailState(
     /**
      * 用户评价
      */
+    @Immutable
     data class BookReview(
         val id: String,
         val content: String,

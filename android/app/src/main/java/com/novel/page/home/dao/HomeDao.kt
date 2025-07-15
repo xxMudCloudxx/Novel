@@ -1,5 +1,6 @@
 package com.novel.page.home.dao
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
  * - home_banners: 轮播图表
  * - home_categories: 分类信息表
  */
+@Stable
 @Dao
 interface HomeDao {
     

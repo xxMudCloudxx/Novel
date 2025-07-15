@@ -1,5 +1,7 @@
 package com.novel.page.read.viewmodel
 
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
@@ -62,6 +64,7 @@ sealed class ReaderIntent : MviIntent {
  * 
  * 基于核心MviState接口，包含Reader模块的所有状态信息
  */
+@Stable
 data class ReaderState(
     override val version: Long = 0L,
     override val isLoading: Boolean = false,
@@ -191,6 +194,7 @@ enum class HapticFeedbackType {
  * @property chapterNum 章节序号（可选）
  * @property isVip VIP标识（"0"为免费，"1"为VIP）
  */
+@Immutable
 data class Chapter(
     val id: String,
     val chapterName: String,
@@ -231,6 +235,7 @@ sealed class VirtualPage {
 /**
  * 章节缓存数据
  */
+@Stable
 data class ChapterCache(
     val chapter: Chapter,
     val content: String,
@@ -240,6 +245,7 @@ data class ChapterCache(
 /**
  * 单页数据
  */
+@Stable
 data class PageData(
     val chapterId: String,
     val chapterName: String,
@@ -256,6 +262,7 @@ data class PageData(
 ) {
     val pageCount: Int get() = pages.size
 
+    @Immutable
     data class BookInfo(
         val bookId: String,
         val bookName: String,
@@ -280,6 +287,7 @@ data class PageData(
  * @param textColor 文字颜色，会根据背景色自动适配对比度
  * @param pageFlipEffect 翻页动画效果，支持多种翻页模式
  */
+@Stable
 data class ReaderSettings(
     /** 屏幕亮度值 - 范围0.0-1.0，影响整个屏幕亮度 */
     val brightness: Float = 0.5f,
@@ -364,6 +372,7 @@ enum class PageFlipEffect(val displayName: String) {
  * @param backgroundColor 背景颜色，影响整个阅读区域
  * @param textColor 文字颜色，与背景色形成适当对比度
  */
+@Immutable
 data class BackgroundTheme(
     val name: String,
     val backgroundColor: Color,
@@ -373,6 +382,7 @@ data class BackgroundTheme(
 /**
  * 状态信息，通过 CompositionLocal 提供给子组件
  */
+@Stable
 data class ReaderInfo(
     val paginationState: ProgressiveCalculationState,
     val pageCountCache: PageCountCacheData?,

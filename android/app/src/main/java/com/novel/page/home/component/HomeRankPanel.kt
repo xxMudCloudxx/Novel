@@ -33,13 +33,14 @@ import kotlinx.coroutines.launch
 import com.novel.page.component.rememberBookClickHandler
 import androidx.compose.ui.graphics.Color
 import com.novel.page.component.RankingNumber
+import kotlinx.collections.immutable.ImmutableList
 
 /**
  * 首页榜单面板组件 - 连续滚动但带精确距离控制，支持3D翻书动画
  */
 @Composable
 fun HomeRankPanel(
-    rankBooks: List<BookService.BookRank>,
+    rankBooks: ImmutableList<BookService.BookRank>,
     selectedRankType: String,
     onRankTypeSelected: (String) -> Unit,
     onBookClick: (Long, Offset, Size) -> Unit,

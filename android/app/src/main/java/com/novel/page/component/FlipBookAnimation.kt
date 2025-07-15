@@ -64,6 +64,7 @@ fun rememberFlipBookAnimationController(): FlipBookAnimationController {
     return remember { FlipBookAnimationController() }
 }
 
+@Stable
 class FlipBookAnimationController {
     private var _animationState by mutableStateOf(FlipBookState())
     val animationState: FlipBookState get() = _animationState

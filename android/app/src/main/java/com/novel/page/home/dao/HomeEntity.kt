@@ -2,6 +2,8 @@ package com.novel.page.home.dao
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 
 /**
  * 首页书籍数据实体
@@ -9,6 +11,7 @@ import androidx.room.PrimaryKey
  * 对应数据库表：home_books
  * 用于缓存首页各类推荐书籍数据
  */
+@Stable
 @Entity(tableName = "home_books")
 data class HomeBookEntity(
     /** 书籍唯一标识符 */
@@ -56,6 +59,7 @@ data class HomeBookEntity(
  * 对应数据库表：home_banners
  * 用于管理首页顶部轮播广告和推荐内容
  */
+@Stable
 @Entity(tableName = "home_banners")
 data class HomeBannerEntity(
     /** 轮播图唯一标识符 */
@@ -79,6 +83,7 @@ data class HomeBannerEntity(
  * 对应数据库表：home_categories
  * 用于管理书籍分类信息和导航
  */
+@Stable
 @Entity(tableName = "home_categories")
 data class HomeCategoryEntity(
     /** 分类唯一标识符 */

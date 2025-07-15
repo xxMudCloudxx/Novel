@@ -2,14 +2,16 @@ package com.novel.page.home.viewmodel
 
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.page.home.dao.HomeBookEntity
 import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.core.adapter.StateAdapter
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * Home状态适配器
@@ -27,131 +29,32 @@ import com.novel.core.adapter.StateAdapter
  */
 @Stable
 class HomeStateAdapter(
-    stateFlow: StateFlow<HomeState>
+    stateFlow: StateFlow<HomeState>,
+    private val scope: kotlinx.coroutines.CoroutineScope
 ) : StateAdapter<HomeState>(stateFlow) {
     
-    // region 基础状态适配
+    // region StateFlow 映射扩展函数
     
-    /** 下拉刷新状态 */
-    val isRefreshing = mapState { it.isRefreshing }
-    
-    /** 搜索查询内容 */
-    val searchQuery = mapState { it.searchQuery }
+    /**
+     * 将状态映射为 StateFlow，确保 Compose 稳定性
+     */
+    private fun <T> mapStateAsStateFlow(
+        transform: (HomeState) -> T
+    ): StateFlow<T> = mapState(transform)
+        .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, transform(getCurrentSnapshot()))
     
     // endregion
     
     // region 分类相关状态适配
     
     /** 书籍分类列表 */
-    val categories = mapState { it.categories }
-    
-    /** 分类数据加载状态 */
-    val categoryLoading = mapState { it.categoryLoading }
+    val categories: StableStateFlow<ImmutableList<HomeCategoryEntity>> = mapStateAsStateFlow { it.categories }.asStable()
+
     
     /** 分类筛选器列表 */
-    val categoryFilters = mapState { it.categoryFilters }
-    
-    /** 当前选中的分类筛选器 */
-    val selectedCategoryFilter = mapState { it.selectedCategoryFilter }
-    
-    /** 分类筛选器加载状态 */
-    val categoryFiltersLoading = mapState { it.categoryFiltersLoading }
-    
-    /** 是否有分类数据 */
-    val hasCategories = createConditionFlow { it.categories.isNotEmpty() }
-    
-    // endregion
-    
-    // region 书籍推荐相关状态适配
-    
-    /** 轮播图书籍列表 */
-    val carouselBooks = mapState { it.carouselBooks }
-    
-    /** 热门书籍列表 */
-    val hotBooks = mapState { it.hotBooks }
-    
-    /** 最新书籍列表 */
-    val newBooks = mapState { it.newBooks }
-    
-    /** VIP书籍列表 */
-    val vipBooks = mapState { it.vipBooks }
-    
-    /** 书籍数据加载状态 */
-    val booksLoading = mapState { it.booksLoading }
-    
-    /** 是否有轮播图书籍 */
-    val hasCarouselBooks = createConditionFlow { it.carouselBooks.isNotEmpty() }
-    
-    /** 是否有热门书籍 */
-    val hasHotBooks = createConditionFlow { it.hotBooks.isNotEmpty() }
-    
-    /** 是否有最新书籍 */
-    val hasNewBooks = createConditionFlow { it.newBooks.isNotEmpty() }
-    
-    /** 是否有VIP书籍 */
-    val hasVipBooks = createConditionFlow { it.vipBooks.isNotEmpty() }
-    
-    // endregion
-    
-    // region 榜单相关状态适配
-    
-    /** 当前选中的榜单类型 */
-    val selectedRankType = mapState { it.selectedRankType }
-    
-    /** 榜单书籍列表 */
-    val rankBooks = mapState { it.rankBooks }
-    
-    /** 榜单加载状态 */
-    val rankLoading = mapState { it.rankLoading }
-    
-    /** 是否有榜单数据 */
-    val hasRankBooks = createConditionFlow { it.rankBooks.isNotEmpty() }
-    
-    // endregion
-    
-    // region 推荐书籍相关状态适配
-    
-    /** 分类推荐书籍列表 */
-    val recommendBooks = mapState { it.recommendBooks }
-    
-    /** 首页推荐书籍列表 */
-    val homeRecommendBooks = mapState { it.homeRecommendBooks }
-    
-    /** 推荐书籍加载状态 */
-    val recommendLoading = mapState { it.recommendLoading }
-    
-    /** 是否还有更多推荐数据 */
-    val hasMoreRecommend = mapState { it.hasMoreRecommend }
-    
-    /** 当前推荐页码 */
-    val recommendPage = mapState { it.recommendPage }
-    
-    /** 显示模式（推荐模式/分类模式） */
-    val isRecommendMode = mapState { it.isRecommendMode }
-    
-    /** 首页推荐加载状态 */
-    val homeRecommendLoading = mapState { it.homeRecommendLoading }
-    
-    /** 是否还有更多首页推荐 */
-    val hasMoreHomeRecommend = mapState { it.hasMoreHomeRecommend }
-    
-    /** 首页推荐页码 */
-    val homeRecommendPage = mapState { it.homeRecommendPage }
-    
-    /** 是否有推荐书籍数据 */
-    val hasRecommendBooks = createConditionFlow { state ->
-        state.recommendBooks.isNotEmpty() || state.homeRecommendBooks.isNotEmpty()
-    }
-    
-    /** 当前显示的推荐书籍数量 */
-    val currentRecommendCount = mapState { state ->
-        if (state.isRecommendMode) {
-            state.homeRecommendBooks.size
-        } else {
-            state.recommendBooks.size
-        }
-    }
-    
+    val categoryFilters: StableStateFlow<ImmutableList<CategoryInfo>> = mapStateAsStateFlow { it.categoryFilters }.asStable()
+
+
     // endregion
     
     // region Home模块专用便利方法
@@ -192,37 +95,7 @@ class HomeStateAdapter(
             else -> "点击加载更多"
         }
     }
-    
-    /** 获取分类筛选器状态文本 */
-    fun getCategoryFilterStatusText(): String {
-        val state = getCurrentSnapshot()
-        return when {
-            state.categoryFiltersLoading -> "加载分类中..."
-            state.categoryFilters.isEmpty() -> "暂无分类"
-            else -> "共${state.categoryFilters.size}个分类"
-        }
-    }
-    
-    /** 获取榜单状态文本 */
-    fun getRankingStatusText(): String {
-        val state = getCurrentSnapshot()
-        return when {
-            state.rankLoading -> "加载榜单中..."
-            state.rankBooks.isEmpty() -> "暂无榜单"
-            else -> "${state.selectedRankType} - ${state.rankBooks.size}本书"
-        }
-    }
-    
-    /** 检查特定分类是否被选中 */
-    fun isCategorySelected(categoryName: String): Boolean {
-        return getCurrentSnapshot().selectedCategoryFilter == categoryName
-    }
-    
-    /** 检查特定榜单类型是否被选中 */
-    fun isRankTypeSelected(rankType: String): Boolean {
-        return getCurrentSnapshot().selectedRankType == rankType
-    }
-    
+
     /** 获取首页状态摘要 */
     fun getHomeStatusSummary(): String {
         val state = getCurrentSnapshot()
@@ -325,14 +198,6 @@ class HomeStateAdapter(
 }
 
 /**
- * StateAdapter工厂方法
- * 简化HomeStateAdapter的创建
- */
-fun StateFlow<HomeState>.asHomeAdapter(): HomeStateAdapter {
-    return HomeStateAdapter(this)
-}
-
-/**
  * 状态组合器
  * 将多个状态组合成UI需要的复合状态
  */
@@ -342,15 +207,16 @@ data class HomeScreenState(
     val error: String?,
     val isRefreshing: Boolean,
     val searchQuery: String,
-    val categories: List<HomeCategoryEntity>,
+    val categories: ImmutableList<HomeCategoryEntity>,
     val selectedCategoryFilter: String,
-    val carouselBooks: List<HomeBookEntity>,
-    val hotBooks: List<HomeBookEntity>,
-    val newBooks: List<HomeBookEntity>,
-    val vipBooks: List<HomeBookEntity>,
-    val rankBooks: List<BookService.BookRank>,
+    val categoryFilters: ImmutableList<CategoryInfo>,
+    val carouselBooks: ImmutableList<HomeBookEntity>,
+    val hotBooks: ImmutableList<HomeBookEntity>,
+    val newBooks: ImmutableList<HomeBookEntity>,
+    val vipBooks: ImmutableList<HomeBookEntity>,
+    val rankBooks: ImmutableList<BookService.BookRank>,
     val selectedRankType: String,
-    val currentRecommendBooks: List<Any>, // 根据模式显示不同类型的书籍
+    val currentRecommendBooks: ImmutableList<RecommendItem>, // 根据模式显示不同类型的书籍
     val canPerformSearch: Boolean,
     val searchHint: String,
     val canLoadMoreRecommend: Boolean,
@@ -358,8 +224,18 @@ data class HomeScreenState(
     val homeStatusSummary: String,
     val shouldShowEmptyState: Boolean,
     val shouldShowLoadMoreButton: Boolean,
-    val recommendModeText: String
+    val recommendModeText: String,
+    val isRecommendMode: Boolean
 )
+
+@Stable
+class StableStateFlow<T>(
+    private val delegate: StateFlow<T>
+) : StateFlow<T> by delegate
+
+// 扩展函数：方便调用
+fun <T> StateFlow<T>.asStable(): StableStateFlow<T> =
+    StableStateFlow(this)
 
 /**
  * 将HomeState转换为UI友好的组合状态
@@ -373,6 +249,7 @@ fun HomeStateAdapter.toScreenState(): HomeScreenState {
         searchQuery = snapshot.searchQuery,
         categories = snapshot.categories,
         selectedCategoryFilter = snapshot.selectedCategoryFilter,
+        categoryFilters = snapshot.categoryFilters,
         carouselBooks = snapshot.carouselBooks,
         hotBooks = snapshot.hotBooks,
         newBooks = snapshot.newBooks,
@@ -380,9 +257,9 @@ fun HomeStateAdapter.toScreenState(): HomeScreenState {
         rankBooks = snapshot.rankBooks,
         selectedRankType = snapshot.selectedRankType,
         currentRecommendBooks = if (snapshot.isRecommendMode) {
-            snapshot.homeRecommendBooks
+            snapshot.homeRecommendBooks.map { HomeRecommendItem(it) }.toImmutableList()
         } else {
-            snapshot.recommendBooks
+            snapshot.recommendBooks.map { CategoryRecommendItem(it) }.toImmutableList()
         },
         canPerformSearch = canPerformSearch(),
         searchHint = getSearchHint(),
@@ -391,55 +268,15 @@ fun HomeStateAdapter.toScreenState(): HomeScreenState {
         homeStatusSummary = getHomeStatusSummary(),
         shouldShowEmptyState = shouldShowEmptyState(),
         shouldShowLoadMoreButton = shouldShowLoadMoreButton(),
-        recommendModeText = getRecommendModeText()
+        recommendModeText = getRecommendModeText(),
+        isRecommendMode = snapshot.isRecommendMode
     )
-}
-
-/**
- * Home模块状态监听器
- * 提供Home模块特定的状态变更监听
- */
-class HomeStateListener(
-    private val adapter: HomeStateAdapter
-) {
-    
-    /** 监听搜索查询变更 */
-    fun onSearchQueryChanged(action: (String) -> Unit) = adapter.searchQuery.map { query ->
-        action(query)
-        query
-    }
-    
-    /** 监听分类筛选器变更 */
-    fun onCategoryFilterChanged(action: (String) -> Unit) = adapter.selectedCategoryFilter.map { filter ->
-        action(filter)
-        filter
-    }
-    
-    /** 监听榜单类型变更 */
-    fun onRankTypeChanged(action: (String) -> Unit) = adapter.selectedRankType.map { rankType ->
-        action(rankType)
-        rankType
-    }
-    
-    /** 监听推荐书籍变更 */
-    fun onRecommendBooksChanged(action: (Boolean, Int) -> Unit) = adapter.combineState { state ->
-        Pair(state.isRecommendMode, if (state.isRecommendMode) state.homeRecommendBooks.size else state.recommendBooks.size)
-    }.map { (isRecommendMode, count) ->
-        action(isRecommendMode, count)
-        Pair(isRecommendMode, count)
-    }
-}
-
-/**
- * 为HomeStateAdapter创建专用监听器
- */
-fun HomeStateAdapter.createHomeListener(): HomeStateListener {
-    return HomeStateListener(this)
 }
 
 /**
  * 原有的HomeUiState数据类（保持兼容性）
  */
+@Stable
 data class HomeUiState(
     // 基础状态
     val version: Long = 0L,
@@ -448,14 +285,14 @@ data class HomeUiState(
     val isRefreshing: Boolean = false,
     
     // 分类数据相关
-    val categories: List<HomeCategoryEntity> = emptyList(),
+    val categories: ImmutableList<HomeCategoryEntity> = persistentListOf(),
     val categoryLoading: Boolean = false,
     
     // 书籍推荐数据相关
-    val carouselBooks: List<HomeBookEntity> = emptyList(),
-    val hotBooks: List<HomeBookEntity> = emptyList(),
-    val newBooks: List<HomeBookEntity> = emptyList(),
-    val vipBooks: List<HomeBookEntity> = emptyList(),
+    val carouselBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+    val hotBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+    val newBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+    val vipBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
     val booksLoading: Boolean = false,
     
     // 搜索相关
@@ -463,17 +300,17 @@ data class HomeUiState(
     
     // 分类筛选器状态
     val selectedCategoryFilter: String = "推荐",
-    val categoryFilters: List<CategoryInfo> = listOf(CategoryInfo("0", "推荐")),
+    val categoryFilters: ImmutableList<CategoryInfo> = persistentListOf(CategoryInfo("0", "推荐")),
     val categoryFiltersLoading: Boolean = false,
     
     // 榜单状态
     val selectedRankType: String = "点击榜",
-    val rankBooks: List<BookService.BookRank> = emptyList(),
+    val rankBooks: ImmutableList<BookService.BookRank> = persistentListOf(),
     val rankLoading: Boolean = false,
     
     // 推荐书籍状态
-    val recommendBooks: List<SearchService.BookInfo> = emptyList(),
-    val homeRecommendBooks: List<HomeService.HomeBook> = emptyList(),
+    val recommendBooks: ImmutableList<SearchService.BookInfo> = persistentListOf(),
+    val homeRecommendBooks: ImmutableList<HomeService.HomeBook> = persistentListOf(),
     val recommendLoading: Boolean = false,
     val hasMoreRecommend: Boolean = true,
     val recommendPage: Int = 1,
@@ -487,36 +324,3 @@ data class HomeUiState(
     // 显示模式控制
     val isRecommendMode: Boolean = true
 )
-
-/**
- * Home页面的Action定义（保持原有定义以确保兼容性）
- */
-sealed class HomeAction {
-    data object LoadInitialData : HomeAction()
-    data object RefreshData : HomeAction()
-    data class UpdateSearchQuery(val query: String) : HomeAction()
-    data class SelectCategoryFilter(val categoryName: String) : HomeAction()
-    data class SelectRankType(val rankType: String) : HomeAction()
-    data object LoadMoreRecommend : HomeAction()
-    data object LoadMoreHomeRecommend : HomeAction()
-    data class NavigateToSearch(val query: String) : HomeAction()
-    data class NavigateToBookDetail(val bookId: Long) : HomeAction()
-    data class NavigateToCategory(val categoryId: Long) : HomeAction()
-    data class NavigateToFullRanking(val rankType: String) : HomeAction()
-    data object RestoreData : HomeAction()
-    data object ClearError : HomeAction()
-}
-
-/**
- * Home页面的Event定义（保持原有定义以确保兼容性）
- */
-sealed class HomeEvent {
-    data class NavigateToBook(val bookId: Long) : HomeEvent()
-    data class NavigateToCategory(val categoryId: Long) : HomeEvent()
-    data class NavigateToSearch(val query: String = "") : HomeEvent()
-    data object NavigateToCategoryPage : HomeEvent()
-    data class ShowToast(val message: String) : HomeEvent()
-    data class NavigateToBookDetail(val bookId: Long) : HomeEvent()
-    data class NavigateToFullRanking(val rankType: String) : HomeEvent()
-    data class SendToReactNative(val data: Any) : HomeEvent()
-}

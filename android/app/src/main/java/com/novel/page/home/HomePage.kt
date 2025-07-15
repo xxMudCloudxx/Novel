@@ -30,6 +30,10 @@ import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.novel.page.component.FlipBookAnimationController
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+// 稳定的默认回调引用 - 避免cache(false)问题
+private val defaultNavigateToCategory: (Long) -> Unit = { }
 
 /**
  * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
@@ -44,13 +48,11 @@ import com.novel.page.component.FlipBookAnimationController
 @Composable
 fun HomePage(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToCategory: (Long) -> Unit = {},
-    onNavigateToCategoryPage: () -> Unit = {},
-    // 接收全局动画控制器
+    onNavigateToCategory: (Long) -> Unit = defaultNavigateToCategory,
     globalFlipBookController: FlipBookAnimationController? = null
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.screenState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
@@ -84,6 +86,31 @@ fun HomePage(
         )
     }
     
+    // 记忆化回调函数，避免每帧重新创建 lambda
+    val onNavigateToSearch = remember(viewModel) {
+        { viewModel.sendIntent(HomeIntent.NavigateToSearch("")) }
+    }
+    
+    val onNavigateToCategoryPage = remember(viewModel) {
+        { viewModel.sendIntent(HomeIntent.NavigateToCategory(1L)) }
+    }
+    
+    val onFilterSelected = remember(viewModel) {
+        { filter: String -> viewModel.sendIntent(HomeIntent.SelectCategoryFilter(filter)) }
+    }
+    
+    val onRankTypeSelected = remember(viewModel) {
+        { rankType: String -> viewModel.sendIntent(HomeIntent.SelectRankType(rankType)) }
+    }
+    
+    val onBookClick = remember(viewModel) {
+        { bookId: Long -> viewModel.sendIntent(HomeIntent.NavigateToBookDetail(bookId)) }
+    }
+    
+    val onRefresh = remember(viewModel) {
+        { viewModel.sendIntent(HomeIntent.RefreshData) }
+    }
+    
     // 监听副作用 - 使用MVI Effect系统
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -113,30 +140,44 @@ fun HomePage(
         }
     }
     
-    // 监听滚动状态，实现上拉加载
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == 
-            listState.layoutInfo.totalItemsCount - 1
-        }.collectLatest { isAtBottom ->
-            if (isAtBottom && listState.layoutInfo.totalItemsCount > 0) {
-                // 触发加载更多
-                if (uiState.isRecommendMode && uiState.hasMoreHomeRecommend && !uiState.homeRecommendLoading) {
-                    viewModel.sendIntent(HomeIntent.LoadMoreHomeRecommend)
-                } else if (!uiState.isRecommendMode && uiState.hasMoreRecommend && !uiState.recommendLoading) {
-                    viewModel.sendIntent(HomeIntent.LoadMoreRecommend)
-                }
-            }
+    // 优化滚动检测 - 使用derivedStateOf减少重组
+    val isAtBottom by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val totalItems = layoutInfo.totalItemsCount
+            
+            totalItems > 0 && 
+            visibleItems.isNotEmpty() && 
+            visibleItems.lastOrNull()?.index == totalItems - 1
         }
     }
     
+    // 监听滚动状态，实现上拉加载 - 添加distinctUntilChanged防止每帧触发
+    LaunchedEffect(listState) {
+        snapshotFlow { isAtBottom }
+            .distinctUntilChanged()
+            .collectLatest { atBottom ->
+                if (atBottom) {
+                    // 触发加载更多
+                    if (uiState.canLoadMoreRecommend) {
+                        if (uiState.isRecommendMode) {
+                            viewModel.sendIntent(HomeIntent.LoadMoreHomeRecommend)
+                        } else {
+                            viewModel.sendIntent(HomeIntent.LoadMoreRecommend)
+                        }
+                    }
+                }
+            }
+    }
+    
     // 显示骨架屏或正常内容
-    if (uiState.isLoading && uiState.homeRecommendBooks.isEmpty() && uiState.recommendBooks.isEmpty()) {
+    if (uiState.isLoading && uiState.currentRecommendBooks.isEmpty()) {
         HomePageSkeleton()
     } else {
         SwipeRefresh(
             state = swipeRefreshState,
-            onRefresh = { viewModel.sendIntent(HomeIntent.RefreshData) },
+            onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()
         ) {
         LazyColumn(
@@ -151,8 +192,8 @@ fun HomePage(
             // 1. 顶部搜索栏和分类按钮
             item(key = "top_bar") {
                 HomeTopBar(
-                    onSearchClick = { viewModel.sendIntent(HomeIntent.NavigateToSearch(uiState.searchQuery)) },
-                    onCategoryClick = { viewModel.sendIntent(HomeIntent.NavigateToCategory(1L)) },
+                    onSearchClick = onNavigateToSearch,
+                    onCategoryClick = onNavigateToCategoryPage,
                     modifier = Modifier.padding(horizontal = 15.wdp)
                 )
             }
@@ -162,13 +203,13 @@ fun HomePage(
                 HomeFilterBar(
                     filters = uiState.categoryFilters,
                     selectedFilter = uiState.selectedCategoryFilter,
-                    onFilterSelected = { viewModel.sendIntent(HomeIntent.SelectCategoryFilter(it)) }
+                    onFilterSelected = onFilterSelected
                 )
             }
             
             // 3. 榜单面板 - 只在推荐模式下显示，支持3D翻书动画
             if (uiState.isRecommendMode) {
-                item(key = "rank_panel") {
+                item(key = "rank_panel_${uiState.selectedRankType}") {
                     // 单个榜单面板，支持内部切换和翻书动画
                     Box(
                         modifier = Modifier
@@ -179,7 +220,7 @@ fun HomePage(
                         HomeRankPanel(
                             rankBooks = uiState.rankBooks,
                             selectedRankType = uiState.selectedRankType,
-                            onRankTypeSelected = { viewModel.sendIntent(HomeIntent.SelectRankType(it)) },
+                            onRankTypeSelected = onRankTypeSelected,
                             onBookClick = { bookId, offset, size ->
                                 // 榜单点击触发翻书动画
                                 coroutineScope.launch {
@@ -203,80 +244,41 @@ fun HomePage(
                 }
             }
             
-            // 4. 推荐书籍瀑布流
-            item(key = "recommend_grid") {
-                if (uiState.isRecommendMode) {
-                    // 推荐模式：显示首页推荐数据 - 使用放大透明动画
-                    HomeRecommendGrid(
-                        homeBooks = uiState.homeRecommendBooks,
-                        onBookClick = { viewModel.sendIntent(HomeIntent.NavigateToBookDetail(it)) },
-                        onBookClickWithPosition = { bookId, offset, size ->
-                            // 推荐流点击触发放大透明动画
-                            coroutineScope.launch {
-                                // 查找对应书籍的图片URL
-                                val book = uiState.homeRecommendBooks.find { it.bookId == bookId }
-                                
-                                flipBookController.startScaleFadeAnimation(
-                                    bookId = bookId.toString(),
-                                    imageUrl = book?.picUrl ?: "",
-                                    originalPosition = offset,
-                                    originalSize = size,
-                                    screenWidth = screenSize.first,
-                                    screenHeight = screenSize.second
-                                )
-                            }
-                        },
-                        onLoadMore = { /* 由上拉监听处理 */ },
-                        modifier = Modifier.fillMaxWidth(),
-                        fixedHeight = true,  // 在 LazyColumn 中使用固定高度版本
-                        flipBookController = flipBookController  // 传递动画控制器
-                    )
-                } else {
-                    // 分类模式：显示搜索结果数据 - 使用放大透明动画
-                    HomeRecommendGrid(
-                        books = uiState.recommendBooks,
-                        onBookClick = { viewModel.sendIntent(HomeIntent.NavigateToBookDetail(it)) },
-                        onBookClickWithPosition = { bookId, offset, size ->
-                            // 分类推荐点击触发放大透明动画
-                            coroutineScope.launch {
-                                // 查找对应书籍的图片URL
-                                val book = uiState.recommendBooks.find { it.id == bookId }
-                                
-                                flipBookController.startScaleFadeAnimation(
-                                    bookId = bookId.toString(),
-                                    imageUrl = book?.picUrl ?: "",
-                                    originalPosition = offset,
-                                    originalSize = size,
-                                    screenWidth = screenSize.first,
-                                    screenHeight = screenSize.second
-                                )
-                            }
-                        },
-                        onLoadMore = { /* 由上拉监听处理 */ },
-                        modifier = Modifier.fillMaxWidth(),
-                        fixedHeight = true,  // 在 LazyColumn 中使用固定高度版本
-                        flipBookController = flipBookController  // 传递动画控制器
-                    )
-                }
+            // 4. 推荐书籍瀑布流 - 使用统一的 RecommendItem 类型
+            item(key = "recommend_grid_${uiState.selectedCategoryFilter}_${uiState.isRecommendMode}") {
+                HomeRecommendGrid(
+                    recommendItems = uiState.currentRecommendBooks,
+                    onBookClick = onBookClick,
+                    onBookClickWithPosition = { bookId, offset, size ->
+                        // 推荐流点击触发放大透明动画
+                        coroutineScope.launch {
+                            // 查找对应书籍的图片URL
+                            val item = uiState.currentRecommendBooks.find { it.id == bookId }
+                            
+                            flipBookController.startScaleFadeAnimation(
+                                bookId = bookId.toString(),
+                                imageUrl = item?.coverUrl ?: "",
+                                originalPosition = offset,
+                                originalSize = size,
+                                screenWidth = screenSize.first,
+                                screenHeight = screenSize.second
+                            )
+                        }
+                    },
+                    onLoadMore = { /* 由上拉监听处理 */ },
+                    modifier = Modifier.fillMaxWidth(),
+                    fixedHeight = true,  // 在 LazyColumn 中使用固定高度版本
+                    flipBookController = flipBookController  // 传递动画控制器
+                )
             }
             
-            // 5. 加载更多指示器 - 根据模式显示不同状态
-            item(key = "load_more_indicator") {
-                if (uiState.isRecommendMode) {
-                    // 首页推荐模式
-                    HomeRecommendLoadMoreIndicator(
-                        isLoading = uiState.homeRecommendLoading,
-                        hasMoreData = uiState.hasMoreHomeRecommend,
-                        totalDataCount = uiState.homeRecommendBooks.size
-                    )
-                } else {
-                    // 分类模式
-                    HomeRecommendLoadMoreIndicator(
-                        isLoading = uiState.recommendLoading,
-                        hasMoreData = uiState.hasMoreRecommend,
-                        totalDataCount = uiState.recommendBooks.size
-                    )
-                }
+            // 5. 加载更多指示器 - 使用统一的状态
+            item(key = "load_more_indicator_${uiState.canLoadMoreRecommend}") {
+                HomeRecommendLoadMoreIndicator(
+                    isLoading = !uiState.canLoadMoreRecommend && uiState.currentRecommendBooks.isNotEmpty(),
+                    hasMoreData = uiState.canLoadMoreRecommend,
+                    totalDataCount = uiState.currentRecommendBooks.size
+                )
             }
             
             // 6. 全局加载状态

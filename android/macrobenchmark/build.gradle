@@ -1,0 +1,70 @@
+plugins {
+    id 'com.android.test'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.novel.macrobenchmark'
+    compileSdk 35
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        minSdk 26
+        targetSdk 35
+        
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        // This benchmark buildType is used for benchmarking, and should function like your
+        // release build (for example, with minification on). It's signed with a debug key
+        // for easy local testing.
+        benchmark {
+            debuggable true
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
+        }
+        
+        release {
+            debuggable true
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    targetProjectPath = ":app"
+    
+    // 实验性特性，用于生成Baseline Profiles
+    experimentalProperties["android.experimental.self-instrumenting"] = true
+}
+
+apply plugin: "androidx.baselineprofile"
+
+// This is the configuration block for the Baseline Profile plugin.
+// You can specify to run the generators on a managed devices or connected devices.
+baselineProfile {
+    // Manages devices
+    managedDevices += "pixel6Api31"
+    useConnectedDevices = false
+}
+
+androidComponents {
+    beforeVariants(selector().all()) {
+        enabled = name == "benchmark" || name == "release"
+    }
+}
+
+dependencies {
+    implementation 'androidx.test.ext:junit:1.1.5'
+    implementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'androidx.test.uiautomator:uiautomator:<latest>'
+    implementation 'androidx.benchmark:benchmark-macro-junit4:1.3.2'
+    implementation 'androidx.profileinstaller:profileinstaller:1.4.1'
+} 

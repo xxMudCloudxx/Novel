@@ -5,6 +5,8 @@ import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.NetworkCacheManager
+import com.novel.page.home.dao.IHomeRepository
+import com.novel.page.home.dao.HomeRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -50,5 +52,25 @@ object RepositoryModule {
     ): CachedBookRepository {
         TimberLogger.d(TAG, "创建带缓存的书籍数据仓库")
         return CachedBookRepository(bookService, searchService, cacheManager)
+    }
+
+    /**
+     * 提供首页数据仓库接口
+     * 
+     * 通过接口暴露稳定的数据访问API：
+     * - 屏蔽底层Room DAO的Unstable特性
+     * - 提供ImmutableList包装的响应式数据流
+     * - 确保Compose重组的性能优化
+     * 
+     * @param homeRepositoryImpl 首页数据仓库实现
+     * @return IHomeRepository接口实例
+     */
+    @Provides
+    @Singleton
+    fun provideIHomeRepository(
+        homeRepositoryImpl: HomeRepositoryImpl
+    ): IHomeRepository {
+        TimberLogger.d(TAG, "创建首页数据仓库接口")
+        return homeRepositoryImpl
     }
 } 

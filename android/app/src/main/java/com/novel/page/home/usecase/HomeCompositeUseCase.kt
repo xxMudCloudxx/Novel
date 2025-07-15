@@ -2,7 +2,7 @@ package com.novel.page.home.usecase
 
 import com.novel.core.domain.BaseUseCase
 import com.novel.core.domain.ComposeUseCase
-import com.novel.page.home.dao.HomeRepository
+import com.novel.page.home.dao.IHomeRepository
 import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.page.home.dao.HomeBookEntity
 import com.novel.page.home.dao.toEntity
@@ -21,8 +21,8 @@ import javax.inject.Inject
  * 
  * 处理复杂的业务逻辑组合，整合所有Home相关的UseCase
  */
-class HomeCompositeUseCase @Inject constructor(
-    private val homeRepository: HomeRepository,
+open class HomeCompositeUseCase @Inject constructor(
+    private val homeRepository: IHomeRepository,
     private val cachedBookRepository: CachedBookRepository
 ) : BaseUseCase<HomeCompositeUseCase.Params, HomeCompositeUseCase.Result>() {
     
@@ -57,7 +57,7 @@ class HomeCompositeUseCase @Inject constructor(
         val errorMessage: String? = null
     )
     
-    // 创建内部UseCase实例
+    // 创建内部UseCase实例，使用稳定接口避免Compose重组问题
     private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase by lazy {
         GetHomeCategoriesUseCase(homeRepository)
     }
@@ -137,7 +137,7 @@ class HomeCompositeUseCase @Inject constructor(
             }
             
             val rankBooksResult = getRankingBooksUseCase(
-                GetRankingBooksUseCase.Params(HomeRepository.RANK_TYPE_VISIT)
+                GetRankingBooksUseCase.Params("点击榜") // 使用字符串常量，避免依赖具体实现类
             )
             
             val homeRecommendResult = getHomeRecommendBooksUseCase(
@@ -358,7 +358,7 @@ class HomeCompositeUseCase @Inject constructor(
  * 检查Home模块的各种状态
  */
 class HomeStatusCheckUseCase @Inject constructor(
-    private val homeRepository: HomeRepository
+    private val homeRepository: IHomeRepository
 ) : BaseUseCase<HomeStatusCheckUseCase.Params, HomeStatusCheckUseCase.Result>() {
     
     companion object {

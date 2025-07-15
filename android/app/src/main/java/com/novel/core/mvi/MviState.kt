@@ -1,5 +1,7 @@
 package com.novel.core.mvi
 
+import androidx.compose.runtime.Stable
+
 /**
  * MVI架构中的State基础接口
  * 
@@ -11,6 +13,7 @@ package com.novel.core.mvi
  * - 错误处理：统一的错误状态管理
  * - 不可变设计：确保状态变更的可预测性
  */
+@Stable
 interface MviState {
     /** 
      * 状态版本号，每次状态变更时递增

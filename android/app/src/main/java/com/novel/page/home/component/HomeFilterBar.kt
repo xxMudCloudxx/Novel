@@ -22,13 +22,14 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 import com.novel.utils.animateTextStyleAsState
 import kotlinx.coroutines.launch
+import kotlinx.collections.immutable.ImmutableList
 
 /**
  * 首页筛选器组件
  */
 @Composable
 fun HomeFilterBar(
-    filters: List<CategoryInfo>,
+    filters: ImmutableList<CategoryInfo>,
     selectedFilter: String,
     onFilterSelected: (String) -> Unit,
     modifier: Modifier = Modifier

@@ -1,20 +1,148 @@
 package com.novel.page.home.dao
 
-import com.novel.utils.TimberLogger
 import com.novel.utils.network.repository.CachedBookRepository
-import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.cache.NetworkCacheManager
-import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.cache.getHomeBookseCached
 import com.novel.utils.network.cache.getFriendLinksCached
 import com.novel.utils.network.cache.onSuccess
 import com.novel.utils.network.cache.onError
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.catch
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.novel.utils.TimberLogger
+import com.novel.utils.network.cache.CacheStrategy
+import com.novel.utils.network.api.front.HomeService
+import com.novel.utils.network.api.front.BookService
+
+/**
+ * 稳定化首页仓库接口，保持原有实现签名
+ */
+@Stable
+interface IHomeRepository {
+
+    /**
+     * 获取榜单书籍
+     */
+    suspend fun getRankBooks(
+        rankType: String,
+        strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
+    ): List<BookService.BookRank>
+
+    /**
+     * 获取首页推荐书籍
+     */
+    suspend fun getHomeBooks(
+        strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
+    ): List<HomeService.HomeBook>
+
+    /**
+     * 获取书籍分类
+     */
+    fun getBookCategories(
+        workDirection: Int = 0,
+        strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
+    ): Flow<ImmutableList<BookService.BookCategory>>
+
+    /**
+     * 获取本地缓存的分类（分页等场景）
+     */
+    fun getCategories(forceRefresh: Boolean = false): Flow<ImmutableList<BookService.BookCategory>>
+
+    /**
+     * 获取轮播图书籍
+     */
+    fun getCarouselBooks(forceRefresh: Boolean = false): Flow<ImmutableList<HomeService.HomeBook>>
+
+    /**
+     * 获取热门推荐书籍
+     */
+    fun getHotBooks(forceRefresh: Boolean = false): Flow<ImmutableList<HomeService.HomeBook>>
+
+    /**
+     * 获取最新书籍
+     */
+    fun getNewBooks(forceRefresh: Boolean = false): Flow<ImmutableList<HomeService.HomeBook>>
+
+    /**
+     * 获取VIP书籍
+     */
+    fun getVipBooks(forceRefresh: Boolean = false): Flow<ImmutableList<HomeService.HomeBook>>
+
+    /**
+     * 强制刷新所有首页数据
+     */
+    suspend fun refreshAllData(): Triple<
+            List<HomeService.HomeBook>,
+            List<HomeService.FriendLink>,
+            List<BookService.BookCategory>
+            >
+}
+
+/**
+ * 实现类，委托原有 HomeRepository，添加 ImmutableList 支持，保持业务逻辑不变
+ */
+@Singleton
+class HomeRepositoryImpl @Inject constructor(
+    private val repository: HomeRepository
+) : IHomeRepository {
+
+    override suspend fun getRankBooks(
+        rankType: String,
+        strategy: CacheStrategy
+    ): List<BookService.BookRank> = repository.getRankBooks(rankType, strategy)
+
+    override suspend fun getHomeBooks(
+        strategy: CacheStrategy
+    ): List<HomeService.HomeBook> = repository.getHomeBooks(strategy)
+
+    override fun getBookCategories(
+        workDirection: Int,
+        strategy: CacheStrategy
+    ): Flow<ImmutableList<BookService.BookCategory>> =
+        repository.getBookCategories(workDirection, strategy)
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
+
+    override fun getCategories(forceRefresh: Boolean): Flow<ImmutableList<BookService.BookCategory>> =
+        repository.getCategories(forceRefresh)
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
+
+    override fun getCarouselBooks(forceRefresh: Boolean): Flow<ImmutableList<HomeService.HomeBook>> =
+        repository.getCarouselBooks(forceRefresh)
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
+
+    override fun getHotBooks(forceRefresh: Boolean): Flow<ImmutableList<HomeService.HomeBook>> =
+        repository.getHotBooks(forceRefresh)
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
+
+    override fun getNewBooks(forceRefresh: Boolean): Flow<ImmutableList<HomeService.HomeBook>> =
+        repository.getNewBooks(forceRefresh)
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
+
+    override fun getVipBooks(forceRefresh: Boolean): Flow<ImmutableList<HomeService.HomeBook>> =
+        repository.getVipBooks(forceRefresh)
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
+
+    override suspend fun refreshAllData(): Triple<
+            List<HomeService.HomeBook>,
+            List<HomeService.FriendLink>,
+            List<BookService.BookCategory>
+            > = repository.refreshAllData()
+}
+
 
 /**
  * 首页数据仓库类

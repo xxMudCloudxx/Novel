@@ -31,8 +31,7 @@ class HomeModuleTest {
         composeTestRule.setContent {
             NovelTheme {
                 HomePage(
-                    onNavigateToCategory = { _ -> },
-                    onNavigateToCategoryPage = {}
+                    onNavigateToCategory = { _ -> }
                 )
             }
         }
@@ -50,8 +49,7 @@ class HomeModuleTest {
         composeTestRule.setContent {
             NovelTheme {
                 HomePage(
-                    onNavigateToCategory = { categoryClicked = true },
-                    onNavigateToCategoryPage = { categoryPageClicked = true }
+                    onNavigateToCategory = { categoryClicked = true }
                 )
             }
         }
@@ -229,8 +227,7 @@ class HomeModuleTest {
             composeTestRule.setContent {
                 NovelTheme {
                     HomePage(
-                        onNavigateToCategory = { _ -> },
-                        onNavigateToCategoryPage = {}
+                        onNavigateToCategory = { _ -> }
                     )
                 }
             }
