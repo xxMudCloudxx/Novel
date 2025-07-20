@@ -78,21 +78,17 @@ fun ReaderPage(
     val coroutineScope = rememberCoroutineScope()
 
     // —— 只做反向动画 + 清理 controller，不做导航 ——
-    val reverseOnly = remember {
-        {
+    val reverseOnly = {
             coroutineScope.launch {
                 activeController?.triggerReverseAnimation()
             }
             NavViewModel.setFlipBookController(null)
-        }
     }
 
     // —— 真正的"后退"：先做动画，再清理 controller，最后导航 ——
-    val performBack = remember {
-        {
+    val performBack = {
             reverseOnly()
             NavViewModel.navigateBack()
-        }
     }
 
     // 系统返回键处理

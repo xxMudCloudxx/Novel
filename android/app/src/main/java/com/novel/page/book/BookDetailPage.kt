@@ -91,45 +91,49 @@ fun BookDetailPage(
     }
 
     // 性能优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
-    val loadingStateComponent = remember(
+    val loadingStateComponent by remember(
         uiState.hasError,
         uiState.isEmpty,
         uiState.error,
         uiState.isLoading,
         bookId
     ) {
-        object : LoadingStateComponent {
-            override val loading: Boolean get() = uiState.isLoading
-            override val containsCancelable: Boolean get() = false
-            override val viewState: ViewState
-                get() = when {
-                    uiState.hasError -> ViewState.Error(Exception(uiState.error))
-                    uiState.isEmpty -> ViewState.Empty
-                    else -> ViewState.Idle
+        derivedStateOf {
+            object : LoadingStateComponent {
+                override val loading: Boolean get() = uiState.isLoading
+                override val containsCancelable: Boolean get() = false
+                override val viewState: ViewState
+                    get() = when {
+                        uiState.hasError -> ViewState.Error(Exception(uiState.error))
+                        uiState.isEmpty -> ViewState.Empty
+                        else -> ViewState.Idle
+                    }
+
+                override fun showLoading(show: Boolean) {
+                    // 状态由ViewModel管理，无需实现
                 }
 
-            override fun showLoading(show: Boolean) {
-                // 状态由ViewModel管理，无需实现
-            }
+                override fun cancelLoading() {
+                    // 无需实现
+                }
 
-            override fun cancelLoading() {
-                // 无需实现
-            }
+                override fun showViewState(viewState: ViewState) {
+                    // 状态由ViewModel管理，无需实现
+                }
 
-            override fun showViewState(viewState: ViewState) {
-                // 状态由ViewModel管理，无需实现
-            }
-
-            override fun retry() {
-                TimberLogger.d("BookDetailPage", "重试加载书籍详情: $bookId")
-                viewModel.loadBookDetail(bookId)
+                override fun retry() {
+                    TimberLogger.d("BookDetailPage", "重试加载书籍详情: $bookId")
+                    viewModel.loadBookDetail(bookId)
+                }
             }
         }
     }
 
     // 性能优化：检查动画状态，避免频繁检查
-    remember(flipBookController?.animationState) {
-        flipBookController?.animationState?.isAnimating == true
+    val isAnimating by remember(flipBookController?.animationState) {
+        derivedStateOf {
+            flipBookController?.animationState?.isAnimating == true
+        }
     }
 
     // 左滑进入阅读器的回调函数

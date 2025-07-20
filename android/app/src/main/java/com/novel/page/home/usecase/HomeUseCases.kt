@@ -49,6 +49,7 @@ class GetHomeCategoriesUseCase @Inject constructor(
                     add(CategoryInfo("0", "推荐"))
                     addAll(categories.map { CategoryInfo(it.id.toString(), it.name) })
                 }
+                TimberLogger.d("GetHomeCategoriesUseCase", "获取分类成功: $filters")
                 emit(filters)
             }
     }

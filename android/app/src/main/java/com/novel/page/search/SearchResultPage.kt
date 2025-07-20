@@ -54,8 +54,10 @@ fun SearchResultPage(
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val screenSize = remember(configuration, density) {
-        Pair(configuration.screenWidthDp * density.density, configuration.screenHeightDp * density.density)
+    val screenSize by remember(configuration, density) {
+        derivedStateOf {
+            Pair(configuration.screenWidthDp * density.density, configuration.screenHeightDp * density.density)
+        }
     }
 
     // 处理事件

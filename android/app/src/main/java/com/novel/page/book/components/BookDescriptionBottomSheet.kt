@@ -41,8 +41,10 @@ fun BookDescriptionBottomSheet(
     description: String,
     onDismiss: () -> Unit
 ) {
-    // 清理HTML内容 - 使用remember缓存
-    val cleaned = remember(description) { HtmlTextUtil.cleanHtml(description) }
+    // 清理HTML内容 - 使用derivedStateOf优化
+    val cleaned by remember(description) { 
+        derivedStateOf { HtmlTextUtil.cleanHtml(description) }
+    }
     
     // 拖动状态管理 - 仿照SearchFilterBottomSheet
     var dragOffset by remember { mutableFloatStateOf(0f) }

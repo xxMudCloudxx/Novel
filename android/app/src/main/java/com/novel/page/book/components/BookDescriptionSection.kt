@@ -45,9 +45,11 @@ fun BookDescriptionSection(
     isExpanded: Boolean = false,
     onToggleExpanded: (() -> Unit)? = null
 ) {
-    // 性能优化：使用remember缓存HTML清理结果
-    val cleaned = remember(description) { 
+    // 性能优化：使用derivedStateOf缓存HTML清理结果
+    val cleaned by remember(description) { 
+        derivedStateOf {
         if (description.isBlank()) "" else HtmlTextUtil.cleanHtml(description)
+        }
     }
     
     // 弹窗状态管理 - 优先使用外部状态，否则使用内部状态
@@ -64,7 +66,7 @@ fun BookDescriptionSection(
     val textStyle = TextStyle(fontSize = 14.ssp, fontFamily = PingFangFamily)
     
     // 性能优化：使用derivedStateOf计算布局信息
-    val layoutInfo = remember(cleaned, containerWidthPx, textStyle) {
+    val layoutInfo by remember(cleaned, containerWidthPx, textStyle) {
         derivedStateOf {
             if (containerWidthPx <= 0 || cleaned.isBlank()) {
                 LayoutInfo(false, "", "")
@@ -87,7 +89,7 @@ fun BookDescriptionSection(
                 }
             }
         }
-    }.value
+    }
 
     Column(
         modifier = Modifier

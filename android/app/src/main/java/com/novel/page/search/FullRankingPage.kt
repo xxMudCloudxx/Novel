@@ -76,15 +76,17 @@ fun FullRankingPage(
     val density = LocalDensity.current
 
     // 差值（像素）——用来位移整块顶栏
-    val diffPx = remember(density) { 
-        val diff = with(density) { (expandedHeight - collapsedHeight).toPx() }
-        TimberLogger.v(TAG, "计算顶栏高度差: ${diff}px")
-        diff
+    val diffPx by remember(density) {
+        derivedStateOf {
+            val diff = with(density) { (expandedHeight - collapsedHeight).toPx() }
+            TimberLogger.v(TAG, "计算顶栏高度差: ${diff}px")
+            diff
+        }
     }
 
     // 内部元素偏移量 - 优化动画曲线
-    val titleShiftYPx = remember(diffPx) { diffPx * 0.4f }  // 主标题需向下平移
-    val subtitleStartYPx = remember(density) { with(density) { 24.dp.toPx() } }
+    val titleShiftYPx by remember(diffPx) { derivedStateOf { diffPx * 0.4f } }  // 主标题需向下平移
+    val subtitleStartYPx by remember(density) { derivedStateOf { with(density) { 24.dp.toPx() } } }
 
     // 告诉 TopAppBarState 能收缩多少像素（负值）
     LaunchedEffect(diffPx) {
@@ -106,15 +108,17 @@ fun FullRankingPage(
     val currentDate = SimpleDateFormat("yyyy年M月d日", Locale.getDefault()).format(Date())
 
     // 预计算动画值，避免在重组中计算
-    val titleTranslationY = remember(progress, titleShiftYPx) { titleShiftYPx * progress }
-    val subtitleTranslationY = remember(progress, subtitleStartYPx, titleShiftYPx) { 
-        subtitleStartYPx - titleShiftYPx * progress 
+    val titleTranslationY by remember(progress, titleShiftYPx) { derivedStateOf { titleShiftYPx * progress } }
+    val subtitleTranslationY by remember(progress, subtitleStartYPx, titleShiftYPx) { 
+        derivedStateOf { subtitleStartYPx - titleShiftYPx * progress }
     }
-    val subtitleAlpha = remember(progress) { 
+    val subtitleAlpha by remember(progress) { 
+        derivedStateOf {
         // 副标题提前淡出，让过渡更自然
         (1f - progress * 1.2f).coerceAtLeast(0f) 
     }
-    val topBarTranslationY = remember(progress, diffPx) { -diffPx * progress }
+    }
+    val topBarTranslationY by remember(progress, diffPx) { derivedStateOf { -diffPx * progress } }
 
     /* ---------- UI ---------- */
     Scaffold(
@@ -256,8 +260,10 @@ private fun FullRankingItem(
     modifier: Modifier = Modifier
 ) {
     // 使用remember缓存计算结果
-    val hotSearchValue = remember(item.rank) { 
-        "${(30 - item.rank) * 1000 + kotlin.random.Random.nextInt(500)}热搜" 
+    val hotSearchValue by remember(item.rank) {
+        derivedStateOf {
+            "${(30 - item.rank) * 1000 + kotlin.random.Random.nextInt(500)}热搜"
+        }
     }
     
     Row(

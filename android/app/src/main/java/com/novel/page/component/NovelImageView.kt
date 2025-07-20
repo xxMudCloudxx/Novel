@@ -19,6 +19,8 @@ import coil.compose.SubcomposeAsyncImageContent
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 import androidx.compose.foundation.background
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import coil.request.CachePolicy
@@ -107,18 +109,22 @@ fun NovelImageView(
     TimberLogger.d("NovelImageView", "imageUrl: $imageUrl")
     val imageUrl = if(imageUrl?.startsWith("/data/user") == true) imageUrl else "https://img.picui.cn/free/2025/06/22/6857c4dee81d8.jpg"
     // 预处理图片URL，过滤空值和无效URL
-    val processedImageUrl = remember(imageUrl) {
-        imageUrl.takeIf { it.isNotEmpty() }
+    val processedImageUrl by remember(imageUrl) {
+        derivedStateOf {
+            imageUrl.takeIf { it.isNotEmpty() }
+        }
     }
 
     // 预计算图片修饰符，避免重复创建
-    val imgModifier = remember(widthDp, heightDp, modifier) {
-        modifier.let {
-            var m = it
-            if (widthDp > 0) m = m.width(widthDp.wdp)
-            if (heightDp > 0) m = m.height(heightDp.wdp)
-            if (widthDp <= 0 && heightDp <= 0) m = m.fillMaxWidth()
-            m
+    val imgModifier by remember(widthDp, heightDp, modifier) {
+        derivedStateOf {
+            modifier.let {
+                var m = it
+                if (widthDp > 0) m = m.width(widthDp.wdp)
+                if (heightDp > 0) m = m.height(heightDp.wdp)
+                if (widthDp <= 0 && heightDp <= 0) m = m.fillMaxWidth()
+                m
+            }
         }
     }
 
@@ -164,13 +170,15 @@ fun NovelImageView(
             else -> {
                 val current = LocalContext.current
                 // 预构建图片请求，避免重复创建
-                val imageRequest = remember(processedImageUrl, crossfadeDuration, cachePolicy) {
-                    ImageRequest.Builder(current)
-                        .data(processedImageUrl)
-                        .crossfade(crossfadeDuration)
-                        .memoryCachePolicy(cachePolicy.first)
-                        .diskCachePolicy(cachePolicy.second)
-                        .build()
+                val imageRequest by remember(processedImageUrl, crossfadeDuration, cachePolicy) {
+                    derivedStateOf {
+                        ImageRequest.Builder(current)
+                            .data(processedImageUrl)
+                            .crossfade(crossfadeDuration)
+                            .memoryCachePolicy(cachePolicy.first)
+                            .diskCachePolicy(cachePolicy.second)
+                            .build()
+                    }
                 }
 
                 // 正常加载图片

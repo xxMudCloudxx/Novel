@@ -83,13 +83,16 @@ fun Modifier.iosSwipeBack(
     
     // 优化：预计算像素值，避免重复计算
     val currenct = LocalConfiguration.current
-    val (widthPx, edgeWidthPx, firstThresholdPx, completeThresholdPx) = remember(density) {
-        val w = with(density) { currenct.screenWidthDp.dp.toPx() }
-        val e = with(density) { edgeWidthDp.toPx() }
-        val f = w * firstThreshold
-        val c = w * completeThreshold
-        listOf(w, e, f, c)
+    val temp by remember(density) {
+        derivedStateOf {
+            val w = with(density) { currenct.screenWidthDp.dp.toPx() }
+            val e = with(density) { edgeWidthDp.toPx() }
+            val f = w * firstThreshold
+            val c = w * completeThreshold
+            listOf(w, e, f, c)
+        }
     }
+    val (widthPx, edgeWidthPx, firstThresholdPx, completeThresholdPx) = temp
 
     // 性能优化：使用单个 Animatable 而不是多个状态
     val offsetX = remember { Animatable(0f) }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -37,8 +39,10 @@ fun PaperTexture(
     LocalDensity.current
     
     // 记住纹理点，避免重复计算
-    val texturePoints = remember(seed, density) {
-        generateTexturePoints(seed, density)
+    val texturePoints by remember(seed, density) {
+        derivedStateOf {
+            generateTexturePoints(seed, density)
+        }
     }
     
     Box(modifier = modifier) {

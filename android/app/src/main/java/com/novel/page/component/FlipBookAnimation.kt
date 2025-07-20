@@ -85,7 +85,7 @@ class FlipBookAnimationController {
         screenHeight: Float = 2400f
     ) {
         TimberLogger.d("FlipBookController", "开始放大透明动画: bookId=$bookId")
-        
+
         // 计算目标缩放比例
         val horScale = screenWidth / originalSize.width
         val verScale = screenHeight / originalSize.height
@@ -277,7 +277,7 @@ class FlipBookAnimationController {
      */
     private suspend fun startReverseAnimation() {
         val currentAnimationType = _animationState.animationType
-        
+
         _animationState = _animationState.copy(
             isOpening = false,
             coverRotationProgress = if (currentAnimationType == AnimationType.FLIP_3D) 1f else 0f,
@@ -292,7 +292,7 @@ class FlipBookAnimationController {
                     // 放大透明动画的倒放：缩小到原始大小并恢复透明度
                     val scaleAnimatable = Animatable(1f)
                     val alphaAnimatable = Animatable(0f)
-                    
+
                     // 计算原始缩放比例（相对于全屏的比例）
                     val originalScale = 0f
 
@@ -322,7 +322,10 @@ class FlipBookAnimationController {
                         var lastAlpha = -1f
 
                         while (scaleAnimatable.isRunning || alphaAnimatable.isRunning) {
-                            TimberLogger.d("Animation", "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}")
+                            TimberLogger.d(
+                                "Animation",
+                                "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}"
+                            )
                             val currentScale = scaleAnimatable.value
                             val currentAlpha = alphaAnimatable.value
 
@@ -341,18 +344,21 @@ class FlipBookAnimationController {
                             delay(16)
                         }
                     }
-                    TimberLogger.d("Animation", "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}")
+                    TimberLogger.d(
+                        "Animation",
+                        "Scale: ${_animationState.scaleProgress}, Alpha: ${_animationState.alphaProgress}"
+                    )
 
                     scaleJob.join()
                     alphaJob.join()
                     updateJob.cancel()
                 }
-                
+
                 AnimationType.FLIP_3D -> {
                     // 3D翻书动画的倒放：缩小到原始大小
                     val coverRotationAnimatable = Animatable(1f)
                     val scaleAnimatable = Animatable(1f)
-                    
+
                     // 计算原始缩放比例（相对于全屏的比例）
                     val originalScale = if (animationState.targetScale > 0f) {
                         0.15f / animationState.targetScale
@@ -412,10 +418,10 @@ class FlipBookAnimationController {
 
             // 延迟一小段时间，确保动画完全完成
             delay(100)
-            
+
             // 清理状态 - 恢复原始图片显示，并触发导航返回
             _animationState = FlipBookState() // 完全重置状态，恢复原始图片
-            
+
             // 动画完成后触发导航返回
             NavViewModel.navigateBack()
         }
@@ -426,10 +432,16 @@ class FlipBookAnimationController {
      */
     suspend fun triggerReverseAnimation() {
         if (_animationState.isAnimating && _animationState.isOpening) {
-            TimberLogger.d("FlipBookController", "开始执行倒放动画: ${_animationState.animationType}")
+            TimberLogger.d(
+                "FlipBookController",
+                "开始执行倒放动画: ${_animationState.animationType}"
+            )
             startReverseAnimation()
         } else {
-            TimberLogger.w("FlipBookController", "无法触发倒放动画 - isAnimating: ${_animationState.isAnimating}, isOpening: ${_animationState.isOpening}")
+            TimberLogger.w(
+                "FlipBookController",
+                "无法触发倒放动画 - isAnimating: ${_animationState.isAnimating}, isOpening: ${_animationState.isOpening}"
+            )
         }
     }
 }
@@ -448,11 +460,13 @@ fun GlobalFlipBookOverlay(
     val configuration = LocalConfiguration.current
 
     // 预计算屏幕尺寸，避免重复计算
-    val screenSize = remember(configuration) {
-        androidx.compose.ui.geometry.Size(
-            configuration.screenWidthDp.dp.value.dpToPx(),
-            configuration.screenHeightDp.dp.value.dpToPx()
-        )
+    val screenSize by remember(configuration) {
+        derivedStateOf {
+            androidx.compose.ui.geometry.Size(
+                configuration.screenWidthDp.dp.value.dpToPx(),
+                configuration.screenHeightDp.dp.value.dpToPx()
+            )
+        }
     }
 
     // 性能关键：只有在动画进行时才渲染，完全避免无效渲染
@@ -460,12 +474,15 @@ fun GlobalFlipBookOverlay(
         return
     }
 
-    val imageUrl = remember(animationState.bookId, animationState.originalImageUrl) {
-        when {
-            !animationState.originalImageUrl.isNullOrEmpty() -> animationState.originalImageUrl
-            getBookImageUrl != null && animationState.bookId.isNotEmpty() ->
-                getBookImageUrl.invoke(animationState.bookId)
-            else -> ""
+    val imageUrl by remember(animationState.bookId, animationState.originalImageUrl) {
+        derivedStateOf {
+            when {
+                !animationState.originalImageUrl.isNullOrEmpty() -> animationState.originalImageUrl
+                getBookImageUrl != null && animationState.bookId.isNotEmpty() ->
+                    getBookImageUrl.invoke(animationState.bookId)
+
+                else -> ""
+            }
         }
     }
 
@@ -479,15 +496,18 @@ fun GlobalFlipBookOverlay(
             when (animationState.animationType) {
                 AnimationType.SCALE_FADE -> {
                     // 放大透明动画：BookDetailPage直接覆盖全屏
-                    val contentAlpha = remember(animationState.scaleProgress, animationState.isOpening) {
-                        when {
-                            !animationState.isOpening -> 0f // 倒放时立即隐藏内容
-                            animationState.scaleProgress > 0.7f -> 1f
-                            animationState.scaleProgress > 0.5f -> (animationState.scaleProgress - 0.5f) * 5f // 0.5-0.7区间淡入
-                            else -> 0f
+                    val contentAlpha by
+                        remember(animationState.scaleProgress, animationState.isOpening) {
+                            derivedStateOf {
+                                when {
+                                    !animationState.isOpening -> 0f // 倒放时立即隐藏内容
+                                    animationState.scaleProgress > 0.7f -> 1f
+                                    animationState.scaleProgress > 0.5f -> (animationState.scaleProgress - 0.5f) * 5f // 0.5-0.7区间淡入
+                                    else -> 0f
+                                }
+                            }
                         }
-                    }
-                    
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -514,28 +534,31 @@ fun GlobalFlipBookOverlay(
 //                        )
                     }
                 }
-                
+
                 AnimationType.FLIP_3D -> {
                     // 3D翻书动画：原有的缩放动画
-                    val (currentScale, _) = remember(
+                    val scaleAndOrigin by remember(
                         animationState.scaleProgress,
                         animationState.originalPosition,
                         screenSize
                     ) {
-                        val progress = animationState.scaleProgress
-                        val scale = if (progress <= 0.5f) {
-                            progress * 0.4f
-                        } else {
-                            0.2f + (progress - 0.5f) * 1.6f
+                        derivedStateOf {
+                            val progress = animationState.scaleProgress
+                            val scale = if (progress <= 0.5f) {
+                                progress * 0.4f
+                            } else {
+                                0.2f + (progress - 0.5f) * 1.6f
+                            }
+
+                            val origin = TransformOrigin(
+                                pivotFractionX = animationState.originalPosition.x / screenSize.width,
+                                pivotFractionY = animationState.originalPosition.y / screenSize.height
+                            )
+
+                            scale to origin
                         }
-
-                        val origin = TransformOrigin(
-                            pivotFractionX = animationState.originalPosition.x / screenSize.width,
-                            pivotFractionY = animationState.originalPosition.y / screenSize.height
-                        )
-
-                        scale to origin
                     }
+                    val (currentScale, _) = scaleAndOrigin
 
                     Box(
                         modifier = Modifier
@@ -569,33 +592,38 @@ fun GlobalFlipBookOverlay(
             when (animationState.animationType) {
                 AnimationType.SCALE_FADE -> {
                     // 放大透明动画：封面从原始位置放大到全屏并透明化
-                    val (offsetX, offsetY, scale, alpha) = remember(
+                    val animationParams by remember(
                         animationState.scaleProgress,
                         animationState.alphaProgress,
                         animationState.originalPosition,
                         animationState.targetScale,
                         screenSize
                     ) {
-                        val scaleProgress = animationState.scaleProgress
-                        val alphaProgress = animationState.alphaProgress
-                        val baseX = animationState.originalPosition.x
-                        val baseY = animationState.originalPosition.y - 120.wdp.value
-                        val centerX = screenSize.width * 0.5f
-                        val centerY = screenSize.height * 0.5f
+                        derivedStateOf {
+                            val scaleProgress = animationState.scaleProgress
+                            val alphaProgress = animationState.alphaProgress
+                            val baseX = animationState.originalPosition.x
+                            val baseY = animationState.originalPosition.y - 120.wdp.value
+                            val centerX = screenSize.width * 0.5f
+                            val centerY = screenSize.height * 0.5f
 
-                        // 使用平滑的缓动函数，让位移更自然
-                        val easedProgress = if (scaleProgress <= 0.5f) {
-                            2f * scaleProgress * scaleProgress // 加速
-                        } else {
-                            -1f + (4f - 2f * scaleProgress) * scaleProgress // 减速
+                            // 使用平滑的缓动函数，让位移更自然
+                            val easedProgress = if (scaleProgress <= 0.5f) {
+                                2f * scaleProgress * scaleProgress // 加速
+                            } else {
+                                -1f + (4f - 2f * scaleProgress) * scaleProgress // 减速
+                            }
+
+                            val offsetX =
+                                baseX + (centerX - baseX - animationState.originalSize.width * 0.5f) * easedProgress
+                            val offsetY =
+                                baseY + (centerY - baseY - animationState.originalSize.height * 0.5f) * easedProgress
+                            val scale = 1f + (animationState.targetScale - 1f) * scaleProgress
+
+                            Tuple4(offsetX, offsetY, scale, alphaProgress)
                         }
-
-                        val offsetX = baseX + (centerX - baseX - animationState.originalSize.width * 0.5f) * easedProgress
-                        val offsetY = baseY + (centerY - baseY - animationState.originalSize.height * 0.5f) * easedProgress
-                        val scale = 1f + (animationState.targetScale - 1f) * scaleProgress
-
-                        Tuple4(offsetX, offsetY, scale, alphaProgress)
                     }
+                    val (offsetX, offsetY, scale, alpha) = animationParams
 
                     Box(
                         modifier = Modifier
@@ -635,29 +663,32 @@ fun GlobalFlipBookOverlay(
                         )
                     }
                 }
-                
+
                 AnimationType.FLIP_3D -> {
                     // 3D翻书动画：原有的旋转效果
-                    val (offsetX, offsetY, rotationY, scale) = remember(
+                    val temp by remember(
                         animationState.scaleProgress,
                         animationState.coverRotationProgress,
                         animationState.originalPosition,
                         animationState.targetScale,
                         screenSize
                     ) {
-                        val scaleProgress = animationState.scaleProgress
-                        val rotationProgress = animationState.coverRotationProgress
-                        val baseX = animationState.originalPosition.x
-                        val baseY = animationState.originalPosition.y - 120.wdp.value
-                        val targetY = screenSize.height * 0.5f
+                        derivedStateOf {
+                            val scaleProgress = animationState.scaleProgress
+                            val rotationProgress = animationState.coverRotationProgress
+                            val baseX = animationState.originalPosition.x
+                            val baseY = animationState.originalPosition.y - 120.wdp.value
+                            val targetY = screenSize.height * 0.5f
 
-                        val offsetX = (baseX * (1 - scaleProgress)).toInt()
-                        val offsetY = (baseY + ((targetY - baseY) * scaleProgress)).toInt()
-                        val rotationY = -90f * rotationProgress
-                        val scale = 1f + (animationState.targetScale - 1f) * scaleProgress
+                            val offsetX = (baseX * (1 - scaleProgress)).toInt()
+                            val offsetY = (baseY + ((targetY - baseY) * scaleProgress)).toInt()
+                            val rotationY = -90f * rotationProgress
+                            val scale = 1f + (animationState.targetScale - 1f) * scaleProgress
 
-                        Tuple4(offsetX, offsetY, rotationY, scale)
+                            Tuple4(offsetX, offsetY, rotationY, scale)
+                        }
                     }
+                    val (offsetX, offsetY, rotationY, scale) = temp
 
                     Box(
                         modifier = Modifier
@@ -720,24 +751,41 @@ fun rememberBookClickHandler(
     bookId: String,
     imageUrl: String,
     position: Offset = Offset.Zero,
-    size: androidx.compose.ui.geometry.Size = androidx.compose.ui.geometry.Size.Zero
+    size: androidx.compose.ui.geometry.Size = androidx.compose.ui.geometry.Size.Zero,
 ): () -> Unit {
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
 
-    // 优化：预计算屏幕尺寸和默认值
-    return remember(bookId, position, size, configuration, density) {
-        val finalPosition = if (position != Offset.Zero) position else Offset(200f, 300f)
-        val finalSize = if (size != androidx.compose.ui.geometry.Size.Zero) {
-            size
-        } else {
-            androidx.compose.ui.geometry.Size(150f, 200f)
+    /* ---------- 纯计算 → derivedStateOf ---------- */
+
+    // 1) 最终位置
+    val finalPosition by remember(position) {
+        derivedStateOf {
+            if (position != Offset.Zero) position else Offset(200f, 300f)
         }
+    }
 
-        val screenWidthPx = configuration.screenWidthDp * density.density
-        val screenHeightPx = configuration.screenHeightDp * density.density
+    // 2) 最终尺寸
+    val finalSize by remember(size) {
+        derivedStateOf {
+            if (size != androidx.compose.ui.geometry.Size.Zero) size
+            else androidx.compose.ui.geometry.Size(150f, 200f)
+        }
+    }
 
+    // 3) 屏幕像素尺寸
+    val screenSizePx by remember(configuration, density) {
+        derivedStateOf {
+            val w = configuration.screenWidthDp * density.density
+            val h = configuration.screenHeightDp * density.density
+            w to h                       // Pair<Float, Float>
+        }
+    }
+
+    /* ---------- click‑handler ---------- */
+
+    return remember(bookId, imageUrl, finalPosition, finalSize, screenSizePx) {
         {
             coroutineScope.launch {
                 controller.startFlipAnimation(
@@ -745,8 +793,8 @@ fun rememberBookClickHandler(
                     imageUrl = imageUrl,
                     originalPosition = finalPosition,
                     originalSize = finalSize,
-                    screenWidth = screenWidthPx,
-                    screenHeight = screenHeightPx
+                    screenWidth  = screenSizePx.first,
+                    screenHeight = screenSizePx.second,
                 )
             }
         }

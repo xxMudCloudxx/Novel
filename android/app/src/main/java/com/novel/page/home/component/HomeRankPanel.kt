@@ -79,8 +79,10 @@ fun HomeRankPanel(
 
             // 榜单书籍连续滚动列表 - 最多16本书，每列4本
             // 优化：预计算限制后的书籍列表
-            val limitedBooks = remember(rankBooks) {
-                rankBooks.take(16).toImmutableList()
+            val limitedBooks by remember(rankBooks) {
+                derivedStateOf {
+                    rankBooks.take(16).toImmutableList()
+                }
             }
 
             if (limitedBooks.isNotEmpty()) {
@@ -137,8 +139,10 @@ private fun RankBooksScrollableGrid(
             key = { columnIndex -> "column_$columnIndex" } // 优化：添加稳定的key
         ) { columnIndex ->
             // 优化：预计算列宽
-            val columnWidth = remember(columnIndex, bookColumns.size) {
-                if (columnIndex != bookColumns.size - 1) 200.wdp else 312.wdp
+            val columnWidth by remember(columnIndex, bookColumns.size) {
+                derivedStateOf {
+                    if (columnIndex != bookColumns.size - 1) 200.wdp else 312.wdp
+                }
             }
 
             RankBookColumn(
