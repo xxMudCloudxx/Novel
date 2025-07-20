@@ -9,7 +9,9 @@ import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.NewsService
 import com.novel.utils.network.api.front.user.UserService
 import com.novel.utils.network.cache.NetworkCacheManager
+import com.novel.utils.network.ImmutableListTypeAdapterFactory
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -79,61 +81,66 @@ object NetworkModule {
     /**
      * 提供书籍服务API
      * 
+     * @param gson JSON序列化工具
      * @return BookService - 书籍相关API接口
      */
     @Provides
     @Singleton
-    fun provideBookService(): BookService {
+    fun provideBookService(gson: Gson): BookService {
         TimberLogger.d(TAG, "创建书籍服务")
-        return BookService()
+        return BookService(gson)
     }
     
     /**
      * 提供搜索服务API
      * 
+     * @param gson JSON序列化工具
      * @return SearchService - 搜索相关API接口
      */
     @Provides
     @Singleton
-    fun provideSearchService(): SearchService {
+    fun provideSearchService(gson: Gson): SearchService {
         TimberLogger.d(TAG, "创建搜索服务")
-        return SearchService()
+        return SearchService(gson)
     }
     
     /**
      * 提供首页服务API
      * 
+     * @param gson JSON序列化工具
      * @return HomeService - 首页数据API接口
      */
     @Provides
     @Singleton
-    fun provideHomeService(): HomeService {
+    fun provideHomeService(gson: Gson): HomeService {
         TimberLogger.d(TAG, "创建首页服务")
-        return HomeService()
+        return HomeService(gson)
     }
     
     /**
      * 提供资讯服务API
      * 
+     * @param gson JSON序列化工具
      * @return NewsService - 资讯相关API接口
      */
     @Provides
     @Singleton
-    fun provideNewsService(): NewsService {
+    fun provideNewsService(gson: Gson): NewsService {
         TimberLogger.d(TAG, "创建资讯服务")
-        return NewsService()
+        return NewsService(gson)
     }
     
     /**
      * 提供用户服务API
      * 
+     * @param gson JSON序列化工具
      * @return UserService - 用户相关API接口
      */
     @Provides
     @Singleton
-    fun provideUserService(): UserService {
+    fun provideUserService(gson: Gson): UserService {
         TimberLogger.d(TAG, "创建用户服务")
-        return UserService()
+        return UserService(gson)
     }
     
     /**
@@ -144,12 +151,16 @@ object NetworkModule {
      * - 缓存数据序列化
      * - 配置数据持久化
      * 
+     * 配置了ImmutableList的TypeAdapter以支持kotlinx.collections.immutable
+     * 
      * @return Gson实例
      */
     @Provides
     @Singleton
     fun provideGson(): Gson {
         TimberLogger.d(TAG, "创建Gson序列化工具")
-        return Gson()
+        return GsonBuilder()
+            .registerTypeAdapterFactory(ImmutableListTypeAdapterFactory())
+            .create()
     }
 } 

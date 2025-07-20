@@ -6,13 +6,16 @@ import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SearchService @Inject constructor() {
+class SearchService @Inject constructor(
+    private val gson: Gson
+) {
     
     // region 数据结构
     @Stable
@@ -28,7 +31,7 @@ class SearchService @Inject constructor() {
         @SerializedName("pageNum") val pageNum: Long,
         @SerializedName("pageSize") val pageSize: Long,
         @SerializedName("total") val total: Long,
-        @SerializedName("list") val list: List<T>,
+        @SerializedName("list") val list: ImmutableList<T>,
         @SerializedName("pages") val pages: Long
     )
 
@@ -243,7 +246,7 @@ class SearchService @Inject constructor() {
             }
             response != null -> {
                 try {
-                    callback(Gson().fromJson(response, clazz), null)
+                    callback(gson.fromJson(response, clazz), null)
                 } catch (e: Exception) {
                     callback(null, e)
                 }

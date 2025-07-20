@@ -27,7 +27,9 @@ import javax.inject.Singleton
  * - 完整的数据模型定义
  */
 @Singleton
-class BookService @Inject constructor() {
+class BookService @Inject constructor(
+    private val gson: Gson
+) {
     
     // region 数据结构
     @Stable
@@ -61,7 +63,7 @@ class BookService @Inject constructor() {
     data class BookListResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<BookInfo>?,
+        @SerializedName("data") val data: ImmutableList<BookInfo>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -69,7 +71,7 @@ class BookService @Inject constructor() {
     data class BookRankResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<BookRank>?,
+        @SerializedName("data") val data: ImmutableList<BookRank>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -91,7 +93,7 @@ class BookService @Inject constructor() {
     data class BookChapterResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<BookChapter>?,
+        @SerializedName("data") val data: ImmutableList<BookChapter>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -129,7 +131,7 @@ class BookService @Inject constructor() {
     @Stable
     data class BookComment(
         @SerializedName("commentTotal") val commentTotal: Long,
-        @SerializedName("comments") val comments: List<CommentInfo>
+        @SerializedName("comments") val comments: ImmutableList<CommentInfo>
     )
 
     data class CommentInfo(
@@ -145,7 +147,7 @@ class BookService @Inject constructor() {
     data class BookCategoryResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<BookCategory>?,
+        @SerializedName("data") val data: ImmutableList<BookCategory>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -543,7 +545,7 @@ class BookService @Inject constructor() {
             }
             response != null -> {
                 try {
-                    callback(Gson().fromJson(response, clazz), null)
+                    callback(gson.fromJson(response, clazz), null)
                 } catch (e: Exception) {
                     callback(null, e)
                 }

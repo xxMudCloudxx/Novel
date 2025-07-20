@@ -6,20 +6,23 @@ import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class HomeService @Inject constructor() {
+class HomeService @Inject constructor(
+    private val gson: Gson
+) {
     
     // region 数据结构
     @Stable
     data class HomeBooksResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<HomeBook>?,
+        @SerializedName("data") val data: ImmutableList<HomeBook>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -37,7 +40,7 @@ class HomeService @Inject constructor() {
     data class FriendLinksResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<FriendLink>?,
+        @SerializedName("data") val data: ImmutableList<FriendLink>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -192,7 +195,7 @@ class HomeService @Inject constructor() {
             }
             response != null -> {
                 try {
-                    callback(Gson().fromJson(response, clazz), null)
+                    callback(gson.fromJson(response, clazz), null)
                 } catch (e: Exception) {
                     callback(null, e)
                 }
@@ -203,4 +206,4 @@ class HomeService @Inject constructor() {
         }
     }
     // endregion
-} 
+}

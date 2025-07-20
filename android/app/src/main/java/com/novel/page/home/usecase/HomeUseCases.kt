@@ -42,7 +42,7 @@ class GetHomeCategoriesUseCase @Inject constructor(
         homeRepository.getBookCategories(params.workDirection, params.strategy)
             .catch { e ->
                 TimberLogger.e("GetHomeCategoriesUseCase", "获取分类失败", e)
-                emit(emptyList())
+                emit(persistentListOf())
             }
             .collect { categories ->
                 val filters = mutableListOf<CategoryInfo>().apply {
@@ -73,7 +73,7 @@ class GetHomeRecommendBooksUseCase @Inject constructor(
             homeRepository.getHomeBooks(params.strategy)
         } catch (e: Exception) {
             TimberLogger.e("GetHomeRecommendBooksUseCase", "获取首页推荐书籍失败", e)
-            emptyList()
+            persistentListOf()
         }
     }
 }
@@ -98,7 +98,7 @@ class GetRankingBooksUseCase @Inject constructor(
             homeRepository.getRankBooks(params.rankType, params.strategy)
         } catch (e: Exception) {
             TimberLogger.e("GetRankingBooksUseCase", "获取榜单书籍失败: ${params.rankType}", e)
-            emptyList()
+            persistentListOf()
         }
     }
 }
@@ -117,7 +117,7 @@ class RefreshHomeDataUseCase @Inject constructor(
             homeRepository.refreshAllData()
         } catch (e: Exception) {
             TimberLogger.e("RefreshHomeDataUseCase", "刷新首页数据失败", e)
-            Triple(emptyList(), emptyList(), emptyList())
+            Triple(persistentListOf(), persistentListOf(), persistentListOf())
         }
     }
 }
@@ -169,7 +169,7 @@ class GetCategoryRecommendBooksUseCase @Inject constructor(
         } catch (e: Exception) {
             TimberLogger.e("GetCategoryRecommendBooksUseCase", "获取分类推荐书籍失败", e)
             SearchService.PageResponse(
-                list = emptyList(),
+                list = persistentListOf(),
                 total = 0L,
                 pages = 0L,
                 pageNum = params.pageNum.toLong(),
@@ -208,7 +208,7 @@ class GetCategoriesUseCase @Inject constructor(
             }
             .catch { e ->
                 TimberLogger.e("GetCategoriesUseCase", "获取分类数据失败", e)
-                emit(emptyList())
+                emit(persistentListOf())
             }
 }
 

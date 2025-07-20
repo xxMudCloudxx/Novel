@@ -529,8 +529,8 @@ class CachedBookRepository @Inject constructor(
                     _error.value = error.message
                 }.let { result ->
                     when (result) {
-                        is CacheResult.Success -> result.data.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
-                        is CacheResult.Error -> result.cachedData?.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                        is CacheResult.Success -> result.data.data ?: SearchService.PageResponse(0, 0, 0, persistentListOf(), 0)
+                        is CacheResult.Error -> result.cachedData?.data ?: SearchService.PageResponse(0, 0, 0, persistentListOf(), 0)
                     }
                 }
             } catch (e: ClassCastException) {
@@ -552,18 +552,18 @@ class CachedBookRepository @Inject constructor(
                         pageNum = pageNum,
                         pageSize = pageSize
                     )
-                    response.data ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                    response.data ?: SearchService.PageResponse(0, 0, 0, persistentListOf(), 0)
                 } catch (networkError: Exception) {
                     TimberLogger.e(TAG, "Network fallback also failed for search", networkError)
                     _error.value = networkError.message
-                    SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                    SearchService.PageResponse(0, 0, 0, persistentListOf(), 0)
                 }
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "Unexpected error in searchBooks", e)
                 _error.value = e.message
-                SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+                SearchService.PageResponse(0, 0, 0, persistentListOf(), 0)
             }
-        } ?: SearchService.PageResponse(0, 0, 0, emptyList(), 0)
+        } ?: SearchService.PageResponse(0, 0, 0, persistentListOf(), 0)
     }
     
     /**
@@ -625,4 +625,4 @@ class CachedBookRepository @Inject constructor(
             _isLoading.value = false
         }
     }
-} 
+}

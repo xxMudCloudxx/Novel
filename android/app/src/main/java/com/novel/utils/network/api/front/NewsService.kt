@@ -6,6 +6,7 @@ import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject
@@ -25,7 +26,9 @@ import javax.inject.Singleton
  * - 统一错误处理机制
  */
 @Singleton
-class NewsService @Inject constructor() {
+class NewsService @Inject constructor(
+    private val gson: Gson
+) {
     
     // region 数据结构
     data class NewsInfoResponse(
@@ -39,7 +42,7 @@ class NewsService @Inject constructor() {
     data class NewsListResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
-        @SerializedName("data") val data: List<NewsInfo>?,
+        @SerializedName("data") val data: ImmutableList<NewsInfo>?,
         @SerializedName("ok") val ok: Boolean?
     )
 
@@ -134,7 +137,7 @@ class NewsService @Inject constructor() {
             }
             response != null -> {
                 try {
-                    callback(Gson().fromJson(response, clazz), null)
+                    callback(gson.fromJson(response, clazz), null)
                 } catch (e: Exception) {
                     callback(null, e)
                 }
@@ -145,4 +148,4 @@ class NewsService @Inject constructor() {
         }
     }
     // endregion
-} 
+}

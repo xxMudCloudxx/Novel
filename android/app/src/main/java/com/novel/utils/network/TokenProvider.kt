@@ -1,5 +1,6 @@
 package com.novel.utils.network
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChain
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChainType
@@ -16,13 +17,16 @@ import javax.inject.Singleton
  * 
  * @param keyChain 安全密钥链存储实例
  */
+@Stable
 @Singleton
 class TokenProvider @Inject constructor(
-    private val keyChain: NovelKeyChain
+    @Stable private val keyChain: NovelKeyChain
 ) {
     
+    @Stable
     val TAG = "TokenProvider"
     /** 访问令牌操作的互斥锁，确保线程安全 */
+    @Stable
     private val mutex = Mutex()
 
     /**

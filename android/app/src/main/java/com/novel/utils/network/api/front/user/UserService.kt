@@ -7,6 +7,7 @@ import com.novel.utils.network.ApiService.BASE_URL_USER
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -41,7 +42,9 @@ import javax.inject.Singleton
  * - 统一的基础响应格式
  */
 @Singleton
-class UserService @Inject constructor() {
+class UserService @Inject constructor(
+    private val gson: Gson
+) {
     
     // region 数据结构
     @Stable
@@ -139,7 +142,7 @@ class UserService @Inject constructor() {
         @SerializedName("pageNum") val pageNum: Long,
         @SerializedName("pageSize") val pageSize: Long,
         @SerializedName("total") val total: Long,
-        @SerializedName("list") val list: List<T>,
+        @SerializedName("list") val list: ImmutableList<T>,
         @SerializedName("pages") val pages: Long
     )
 
@@ -250,7 +253,7 @@ class UserService @Inject constructor() {
     ) {
         TimberLogger.d("UserService", "开始 updateUserInfo()，参数：$request")
         
-        val json = Gson().toJson(request)
+        val json = gson.toJson(request)
         val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
         
         ApiService.put(
@@ -534,7 +537,7 @@ class UserService @Inject constructor() {
             }
             response != null -> {
                 try {
-                    callback(Gson().fromJson(response, clazz), null)
+                    callback(gson.fromJson(response, clazz), null)
                 } catch (e: Exception) {
                     callback(null, e)
                 }
