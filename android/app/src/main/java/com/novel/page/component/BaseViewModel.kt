@@ -1,5 +1,6 @@
 package com.novel.page.component
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import androidx.compose.runtime.mutableStateOf
@@ -26,16 +27,18 @@ import kotlin.coroutines.EmptyCoroutineContext
  * - 支持多任务并发，自动管理加载状态
  * - 提供类型安全的协程扩展函数
  */
+@Stable
 abstract class BaseViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "BaseViewModel"
     }
 
-    /** 懒加载的加载组件实现，避免不必要的初始化开销 */
-    private val loadingComponentImpl by lazy { 
+    /** 加载组件实现，直接初始化以确保 Compose 稳定性 */
+    @Stable
+    private val loadingComponentImpl: LoadingComponentImpl = run {
         TimberLogger.d(TAG, "初始化LoadingComponent")
-        LoadingComponentImpl() 
+        LoadingComponentImpl()
     }
 
     /**

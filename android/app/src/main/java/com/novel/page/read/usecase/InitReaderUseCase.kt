@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.ProgressService
@@ -14,12 +15,14 @@ import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.page.read.viewmodel.ReaderState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 
 /**
  * 初始化阅读器结果数据
  * 包含初始化成功后需要的所有数据
  */
+@Stable
 data class InitReaderResult(
     val settings: ReaderSettings,
     val chapterList: List<Chapter>,
@@ -40,6 +43,7 @@ data class InitReaderResult(
  * 4. 启动预加载和后台分页任务
  * 5. 返回初始化结果
  */
+@Stable
 class InitReaderUseCase @Inject constructor(
     private val settingsService: SettingsService,
     private val chapterService: ChapterService,
@@ -100,7 +104,7 @@ class InitReaderUseCase @Inject constructor(
             // 4. 创建分页状态
             val stateForSplitting = initialState.copy(
                 bookId = bookId,
-                chapterList = chapterList,
+                chapterList = chapterList.toImmutableList(),
                 currentChapter = initialChapter,
                 currentChapterIndex = initialChapterIndex,
                 bookContent = initialContent.content,
@@ -142,7 +146,7 @@ class InitReaderUseCase @Inject constructor(
                             chapterId = initialChapter.id,
                             chapterName = initialChapter.chapterName,
                             content = initialContent.content,
-                            pages = listOf(initialContent.content),
+                            pages = listOf(initialContent.content).toImmutableList(),
                             isFirstChapter = initialChapterIndex == 0,
                             isLastChapter = initialChapterIndex == chapterList.size - 1,
                             hasBookDetailPage = initialChapterIndex == 0

@@ -2,6 +2,7 @@ package com.novel.rn.bridge
 
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.facebook.react.bridge.*
 import androidx.lifecycle.ViewModelProvider
@@ -18,7 +19,9 @@ import com.novel.utils.NavViewModel
  * - 组件缓存管理
  * - 返回操作处理
  */
+@Stable
 class NavigationBridgeModule(
+    @Stable
     private val reactContext: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactContext) {
 

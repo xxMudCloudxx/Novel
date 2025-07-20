@@ -1,5 +1,6 @@
 package com.novel.page.read.repository
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -68,6 +69,7 @@ data class ReaderSettingsData(
  * - 支持增量更新和批量操作
  */
 @Singleton
+@Stable
 class ReadingProgressRepository @Inject constructor(
     /** 用户配置存储服务 */
     private val userDefaults: NovelUserDefaults

@@ -1,5 +1,6 @@
 package com.novel.rn.settings.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.rn.settings.SettingsUtils
 import com.novel.ui.theme.ThemeManager
@@ -12,6 +13,7 @@ import javax.inject.Inject
  * 处理复杂的业务逻辑组合，整合所有Settings相关的UseCase
  * 仿照Home模块的UseCase模式，不使用Flow，直接返回结果
  */
+@Stable
 class SettingsCompositeUseCase @Inject constructor(
     private val settingsUtils: SettingsUtils,
     private val themeManager: ThemeManager

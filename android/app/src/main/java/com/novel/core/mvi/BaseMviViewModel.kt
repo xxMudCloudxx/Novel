@@ -1,8 +1,10 @@
 package com.novel.core.mvi
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novel.utils.TimberLogger
+import com.novel.utils.asStable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,6 +28,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * @param S State类型
  * @param E Effect类型
  */
+@Stable
 abstract class BaseMviViewModel<I : MviIntent, S : MviState, E : MviEffect> : ViewModel() {
 
     companion object {
@@ -34,24 +37,31 @@ abstract class BaseMviViewModel<I : MviIntent, S : MviState, E : MviEffect> : Vi
     }
 
     /** Intent处理的互斥锁，确保状态变更的原子性 */
+    @Stable
     private val stateMutex = Mutex()
     
     /** Intent处理队列 */
+    @Stable
     private val intentChannel = Channel<I>(Channel.UNLIMITED)
     
     /** 内部状态流 */
+    @Stable
     private val _state = MutableStateFlow(createInitialState())
     
     /** 对外暴露的状态流，只读 */
-    val state: StateFlow<S> = _state.asStateFlow()
+    @Stable
+    val state: StateFlow<S> = _state.asStateFlow().asStable()
     
     /** 内部副作用流 */
+    @Stable
     private val _effect = MutableSharedFlow<E>()
     
     /** 对外暴露的副作用流，只读 */
+    @Stable
     val effect: SharedFlow<E> = _effect.asSharedFlow()
     
     /** Intent防抖处理 */
+    @Stable
     private val debouncedIntents = MutableSharedFlow<I>()
     
     init {

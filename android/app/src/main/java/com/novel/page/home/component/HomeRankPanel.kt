@@ -34,6 +34,7 @@ import com.novel.page.component.rememberBookClickHandler
 import androidx.compose.ui.graphics.Color
 import com.novel.page.component.RankingNumber
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 首页榜单面板组件 - 连续滚动但带精确距离控制，支持3D翻书动画
@@ -48,16 +49,12 @@ fun HomeRankPanel(
     // 翻书动画控制器
     flipBookController: FlipBookAnimationController? = null
 ) {
-    // 优化：使用derivedStateOf预计算榜单类型，避免重复创建
-    val rankTypes by remember {
-        derivedStateOf {
-            listOf(
-                CategoryInfo(HomeRepository.RANK_TYPE_VISIT, "点击榜"),
-                CategoryInfo(HomeRepository.RANK_TYPE_UPDATE, "更新榜"),
-                CategoryInfo(HomeRepository.RANK_TYPE_NEWEST, "新书榜")
-            )
-        }
-    }
+    // 静态常量列表，无需 remember 包装
+    val rankTypes = kotlinx.collections.immutable.persistentListOf(
+        CategoryInfo(HomeRepository.RANK_TYPE_VISIT, "点击榜"),
+        CategoryInfo(HomeRepository.RANK_TYPE_UPDATE, "更新榜"),
+        CategoryInfo(HomeRepository.RANK_TYPE_NEWEST, "新书榜")
+    )
 
     Card(
         modifier = modifier
@@ -83,7 +80,7 @@ fun HomeRankPanel(
             // 榜单书籍连续滚动列表 - 最多16本书，每列4本
             // 优化：预计算限制后的书籍列表
             val limitedBooks = remember(rankBooks) {
-                rankBooks.take(16)
+                rankBooks.take(16).toImmutableList()
             }
 
             if (limitedBooks.isNotEmpty()) {
@@ -107,16 +104,14 @@ fun HomeRankPanel(
 @SuppressLint("RememberReturnType")
 @Composable
 private fun RankBooksScrollableGrid(
-    books: List<BookService.BookRank>,
+    books: ImmutableList<BookService.BookRank>,
     selectedRankType: String,
     onBookClick: (Long, Offset, Size) -> Unit,
     modifier: Modifier = Modifier,
     flipBookController: FlipBookAnimationController? = null
 ) {
-    // 优化：使用derivedStateOf预计算书籍分组，避免重复计算
-    val bookColumns by remember {
-        derivedStateOf { books.chunked(4) }
-    }
+    // 使用 derivedStateOf 优化书籍分组计算，仅在 books 变化时重新计算
+    val bookColumns by remember { derivedStateOf { books.chunked(4).map { it.toImmutableList() } } }
     
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -162,7 +157,7 @@ private fun RankBooksScrollableGrid(
  */
 @Composable
 private fun RankBookColumn(
-    books: List<BookService.BookRank>,
+    books: ImmutableList<BookService.BookRank>,
     startRank: Int,
     onBookClick: (Long, Offset, Size) -> Unit,
     modifier: Modifier = Modifier,
@@ -198,7 +193,7 @@ private fun RankBookColumn(
  */
 @Composable
 private fun RankFilterBar(
-    rankTypes: List<CategoryInfo>,
+    rankTypes: ImmutableList<CategoryInfo>,
     selectedRankType: String,
     onRankTypeSelected: (String) -> Unit,
     modifier: Modifier = Modifier

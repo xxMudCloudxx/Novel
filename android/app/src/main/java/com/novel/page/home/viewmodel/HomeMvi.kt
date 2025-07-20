@@ -26,6 +26,26 @@ data class CategoryInfo(
 )
 
 /**
+ * React Native 数据传输类型
+ */
+@Stable
+sealed interface ReactNativeData
+
+@Stable
+data class UserData(
+    val uid: String,
+    val token: String,
+    val nickname: String,
+    val photo: String,
+    val sex: String? = null
+) : ReactNativeData
+
+@Stable
+data class BookListData(
+    val books: ImmutableList<HomeService.HomeBook>
+) : ReactNativeData
+
+/**
  * 推荐书籍项接口 - 替代 ImmutableList<Any> 提供类型安全
  */
 @Stable
@@ -293,7 +313,8 @@ sealed class HomeEffect : MviEffect {
     data class NavigateToFullRanking(val rankType: String) : HomeEffect()
 
     /** 发送数据到React Native */
-    data class SendToReactNative(val data: Any) : HomeEffect()
+    @Stable
+    data class SendToReactNative(@Stable val data: ReactNativeData) : HomeEffect()
 }
 
 /**
@@ -603,4 +624,4 @@ class HomeReducer : MviReducerWithEffect<HomeIntent, HomeState, HomeEffect> {
             }
         }
     }
-} 
+}

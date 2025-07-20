@@ -1,5 +1,6 @@
 package com.novel.page.read.service
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.repository.ReadingProgressData
 import com.novel.page.read.repository.ReadingProgressRepository
 import com.novel.page.read.service.common.*
@@ -28,6 +29,7 @@ import javax.inject.Singleton
  * - 基于全书页数缓存的统一进度体系
  */
 @Singleton
+@Stable
 class ProgressService @Inject constructor(
     private val readingProgressRepository: ReadingProgressRepository,
     dispatchers: DispatcherProvider,

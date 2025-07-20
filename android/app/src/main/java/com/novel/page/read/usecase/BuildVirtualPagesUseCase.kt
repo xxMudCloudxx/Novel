@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
@@ -32,12 +33,14 @@ class BuildVirtualPagesUseCase @Inject constructor(
     override fun getServiceTag(): String = TAG
 
     sealed class BuildResult {
+        @Stable
         data class Success(
             val virtualPages: List<VirtualPage>,
             val newVirtualPageIndex: Int,
             val loadedChapterData: Map<String, PageData>
         ) : BuildResult()
-        
+
+        @Stable
         data class Failure(val error: Throwable) : BuildResult()
     }
 

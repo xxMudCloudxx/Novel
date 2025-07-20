@@ -1,5 +1,6 @@
 package com.novel.utils
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import dagger.hilt.android.scopes.ActivityRetainedScoped
 import java.time.Clock
@@ -31,10 +32,13 @@ import com.novel.R
  * - 异常安全处理机制
  * - ActivityRetainedScoped生命周期管理
  */
+@Stable
 @ActivityRetainedScoped
 class NovelDateFormatter
 @Inject constructor(
+    @Stable
     private val clock: Clock,                            // 可注入FakeClock进行单元测试
+    @Stable
     private val stringProvider: StringProvider           // 国际化文本提供者
 ) {
     
@@ -43,9 +47,13 @@ class NovelDateFormatter
     }
     
     // 线程安全、可复用的DateTimeFormatter
+    @Stable
     private val parseFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+    @Stable
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    @Stable
     private val monthDayFormatter = DateTimeFormatter.ofPattern("M月d日")
+    @Stable
     private val fullFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
     /**

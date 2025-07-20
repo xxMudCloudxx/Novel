@@ -47,7 +47,10 @@ fun HomeFilterBar(
         contentPadding = PaddingValues(horizontal = 15.wdp)
     ) {
         // 3. 使用 itemsIndexed，获取每个 FilterChip 的索引 index
-        itemsIndexed(filters) { index, filter ->
+        itemsIndexed(
+            items = filters,
+            key = { _, filter -> filter.id } // 为分类过滤器添加稳定 key
+        ) { index, filter ->
             FilterChip(
                 filter = filter.name,
                 isSelected = (filter.name == selectedFilter),

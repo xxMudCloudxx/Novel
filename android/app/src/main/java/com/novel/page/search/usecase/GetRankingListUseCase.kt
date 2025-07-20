@@ -3,6 +3,7 @@ package com.novel.page.search.usecase
 import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.RankingData
 import com.novel.page.search.service.SearchService
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
@@ -63,9 +64,9 @@ class GetRankingListUseCase @Inject constructor(
             
             // 等待所有请求完成并聚合结果
             val result = RankingData(
-                novelRanking = novelRankingDeferred.await(),
-                dramaRanking = dramaRankingDeferred.await(),
-                newBookRanking = newBookRankingDeferred.await()
+                novelRanking = novelRankingDeferred.await().toImmutableList(),
+                dramaRanking = dramaRankingDeferred.await().toImmutableList(),
+                newBookRanking = newBookRankingDeferred.await().toImmutableList()
             )
             
             TimberLogger.d(TAG, "所有榜单数据获取完成")

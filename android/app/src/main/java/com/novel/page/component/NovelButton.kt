@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.Dp
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * 主要按钮组件（渐变背景）
@@ -35,7 +37,7 @@ fun NovelMainButton(
     onClick: () -> Unit,
     round: Dp = 24.wdp,
     enabldeClicke: Boolean = true,
-    colors: List<Color> = listOf(NovelColors.NovelMain, NovelColors.NovelMainLight)
+    colors: ImmutableList<Color> = persistentListOf(NovelColors.NovelMain, NovelColors.NovelMainLight)
 ) {
     Box(
         modifier = modifier

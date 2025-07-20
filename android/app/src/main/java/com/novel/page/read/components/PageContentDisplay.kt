@@ -26,6 +26,7 @@ import com.novel.page.book.components.BookReviewsSection
 import com.novel.page.book.viewmodel.BookDetailUiState
 import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.debounceClickable
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 通用页面内容显示组件（供PageCurl等新组件使用）
@@ -210,6 +211,6 @@ private fun BookDetailContent(
             description = uiStateBookInfo.bookDesc
         )
 
-        BookReviewsSection(reviews = reviews)
+        BookReviewsSection(reviews = reviews.toImmutableList())
     }
 }

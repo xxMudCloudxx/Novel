@@ -1,6 +1,7 @@
 package com.novel.utils.Store.UserDefaults
 
 import android.content.SharedPreferences
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -110,8 +111,10 @@ interface NovelUserDefaults {
  * - 类型安全的配置读取和写入
  * - 完善的异常处理和日志记录
  */
+@Stable
 @Singleton
 class SharedPrefsUserDefaults @Inject constructor(
+    @Stable
     private val prefs: SharedPreferences
 ) : NovelUserDefaults {
 

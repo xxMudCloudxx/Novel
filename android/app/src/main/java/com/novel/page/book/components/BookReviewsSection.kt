@@ -17,13 +17,14 @@ import com.novel.page.component.NovelText
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import kotlinx.collections.immutable.ImmutableList
 
 /**
  * 书评区域组件
  * 展示热门书评列表，包含评分和阅读时长
  */
 @Composable
-fun BookReviewsSection(reviews: List<BookDetailUiState.BookReview>) {
+fun BookReviewsSection(reviews: ImmutableList<BookDetailUiState.BookReview>) {
     val TAG = "BookReviewsSection"
     
     // 记录书评数量

@@ -28,6 +28,7 @@ import com.novel.utils.wdp
 import com.novel.utils.ssp
 import com.novel.utils.NavViewModel
 import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.collections.immutable.ImmutableList
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
@@ -42,9 +43,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SearchResultPage(
     initialQuery: String,
-    viewModel: SearchResultViewModel = hiltViewModel(),
     globalFlipBookController: com.novel.page.component.FlipBookAnimationController = com.novel.page.component.rememberFlipBookAnimationController()
 ) {
+    val viewModel: SearchResultViewModel = hiltViewModel()
     val uiState by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
 
@@ -248,7 +249,7 @@ fun SearchResultPage(
  */
 @Composable
 private fun CategoryFilterRow(
-    categories: List<com.novel.page.search.viewmodel.CategoryFilter>,
+    categories: ImmutableList<com.novel.page.search.viewmodel.CategoryFilter>,
     selectedCategoryId: Int?,
     onCategorySelected: (Int?) -> Unit,
     onFilterClick: () -> Unit

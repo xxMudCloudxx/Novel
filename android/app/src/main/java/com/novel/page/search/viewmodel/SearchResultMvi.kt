@@ -4,6 +4,8 @@ import androidx.compose.runtime.Stable
 import com.novel.core.mvi.MviIntent
 import com.novel.core.mvi.MviState
 import com.novel.core.mvi.MviEffect
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * SearchResult模块MVI契约定义
@@ -69,8 +71,8 @@ data class SearchResultState(
     
     /** 搜索查询内容 */
     val query: String = "",
-    /** 搜索结果书籍列表 */
-    val books: List<BookInfoRespDto> = emptyList(),
+    /** 搜索结果列表 */
+    val books: ImmutableList<BookInfoRespDto> = persistentListOf(),
     /** 总结果数量 */
     val totalResults: Int = 0,
     /** 是否还有更多数据 */
@@ -78,7 +80,7 @@ data class SearchResultState(
     /** 当前选中的分类ID */
     val selectedCategoryId: Int? = null,
     /** 分类筛选器列表 */
-    val categoryFilters: List<CategoryFilter> = emptyList(),
+    val categoryFilters: ImmutableList<CategoryFilter> = persistentListOf(),
     /** 当前筛选条件 */
     val filters: FilterState = FilterState(),
     /** 筛选面板是否打开 */

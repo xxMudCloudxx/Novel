@@ -18,11 +18,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.collections.immutable.toImmutableList
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.novel.page.component.NovelText
 import com.novel.page.search.viewmodel.*
 import com.novel.ui.theme.NovelColors
+import kotlinx.collections.immutable.ImmutableList
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
@@ -151,7 +153,7 @@ fun SearchFilterBottomSheet(
                         ) {
                             FilterSection("更新状态") {
                                 ThreeColumnFilterGrid(
-                                    items = UpdateStatus.entries.drop(1), // 不含 ALL
+                                    items = UpdateStatus.entries.drop(1).toImmutableList(), // 不含 ALL
                                     selectedItem = currentFilters.updateStatus,
                                     defaultItem = UpdateStatus.ALL,
                                     onItemSelected = {
@@ -164,7 +166,7 @@ fun SearchFilterBottomSheet(
 
                             FilterSection("是否VIP") {
                                 ThreeColumnFilterGrid(
-                                    items = VipStatus.entries.drop(1),
+                                    items = VipStatus.entries.drop(1).toImmutableList(),
                                     selectedItem = currentFilters.isVip,
                                     defaultItem = VipStatus.ALL,
                                     onItemSelected = {
@@ -177,7 +179,7 @@ fun SearchFilterBottomSheet(
 
                             FilterSection("字数篇幅") {
                                 ThreeColumnFilterGrid(
-                                    items = WordCountRange.entries.drop(1),
+                                    items = WordCountRange.entries.drop(1).toImmutableList(),
                                     selectedItem = currentFilters.wordCountRange,
                                     defaultItem = WordCountRange.ALL,
                                     onItemSelected = {
@@ -191,7 +193,7 @@ fun SearchFilterBottomSheet(
 
                             FilterSection("排序方式") {
                                 ThreeColumnFilterGrid(
-                                    items = SortBy.entries.drop(1),
+                                    items = SortBy.entries.drop(1).toImmutableList(),
                                     selectedItem = currentFilters.sortBy,
                                     defaultItem = SortBy.NULL,
                                     onItemSelected = {
@@ -273,7 +275,7 @@ fun SearchFilterBottomSheet(
  */
 @Composable
 private fun <T> ThreeColumnFilterGrid(
-    items: List<T>,
+    items: ImmutableList<T>,
     selectedItem: T,
     defaultItem: T,
     onItemSelected: (T) -> Unit,

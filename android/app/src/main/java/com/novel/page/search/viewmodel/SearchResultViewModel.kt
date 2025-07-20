@@ -14,7 +14,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
+import androidx.compose.runtime.Stable
 
 /**
  * 搜索结果页面ViewModel - MVI架构重构版
@@ -60,7 +63,9 @@ class SearchResultViewModel @Inject constructor(
     private var isLoadingMore = false
     
     /** 搜索防抖处理 */
+    @Stable
     private val searchQueryChannel = Channel<SearchParams>(Channel.UNLIMITED)
+    @Stable
     private var searchJob: Job? = null
     
     /** 当前搜索参数，用于重试 */
@@ -360,13 +365,13 @@ class SearchResultViewModel @Inject constructor(
                     onSuccess = { filters ->
                         val newState = reducer.handleCategoryFiltersLoaded(
                             currentState = getCurrentState(),
-                            categoryFilters = filters
+                            categoryFilters = filters.toImmutableList()
                         )
                         updateState(newState)
                     },
                     onFailure = {
                         // 使用默认分类
-                        val defaultCategories = listOf(
+                        val defaultCategories = persistentListOf(
                             CategoryFilter(id = -1, name = "所有"),
                             CategoryFilter(id = 1, name = "武侠玄幻"),
                             CategoryFilter(id = 2, name = "都市言情"),

@@ -1,5 +1,6 @@
 package com.novel.page.login.dao
 
+import androidx.compose.runtime.Stable
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
  * - 支持模糊查询和条件筛选
  * - 按最后更新时间排序，保证数据时效性
  */
+@Stable
 @Dao
 interface UserDao {
 

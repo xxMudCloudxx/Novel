@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.Stable
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -22,6 +23,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
  * 统一管理Android原生的主题状态，确保所有组件都能响应主题变更
  * 支持主题状态持久化缓存
  */
+@Stable
 class ThemeManager private constructor(private val context: Context) : ViewModel() {
     
     companion object {
@@ -249,27 +251,4 @@ class ThemeManager private constructor(private val context: Context) : ViewModel
             println("[ThemeManager] 清除主题缓存失败: ${e.message}")
         }
     }
-}
-
-/**
- * 全局主题状态提供者
- * 在Compose中使用，自动响应主题变更
- */
-object GlobalThemeProvider {
-    private lateinit var themeManager: ThemeManager
-    
-    fun initialize(context: Context) {
-        themeManager = ThemeManager.getInstance(context)
-    }
-    
-    val isDarkMode: StateFlow<Boolean> 
-        get() = themeManager.isDarkMode
-        
-    val followSystemTheme: StateFlow<Boolean> 
-        get() = themeManager.followSystemTheme
-    
-    fun setThemeMode(mode: String) = themeManager.setThemeMode(mode)
-    fun toggleDarkMode() = themeManager.toggleDarkMode()
-    fun getCurrentThemeMode() = themeManager.getCurrentThemeMode()
-    fun clearThemeCache() = themeManager.clearThemeCache()
 }

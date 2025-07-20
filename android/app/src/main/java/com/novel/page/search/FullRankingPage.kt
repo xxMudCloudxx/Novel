@@ -102,10 +102,8 @@ fun FullRankingPage(
         }
     }
 
-    // 日期格式化 - 只计算一次
-    val currentDate = remember {
-        SimpleDateFormat("yyyy年M月d日", Locale.getDefault()).format(Date())
-    }
+    // 当前日期格式化 - 简单计算，无需 remember
+    val currentDate = SimpleDateFormat("yyyy年M月d日", Locale.getDefault()).format(Date())
 
     // 预计算动画值，避免在重组中计算
     val titleTranslationY = remember(progress, titleShiftYPx) { titleShiftYPx * progress }

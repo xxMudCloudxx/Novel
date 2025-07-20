@@ -48,10 +48,10 @@ private val defaultNavigateToCategory: (Long) -> Unit = { }
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun HomePage(
-    viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToCategory: (Long) -> Unit = defaultNavigateToCategory,
     globalFlipBookController: FlipBookAnimationController? = null
 ) {
+    val viewModel: HomeViewModel = hiltViewModel()
     val context = LocalContext.current
     val uiState by viewModel.screenState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()

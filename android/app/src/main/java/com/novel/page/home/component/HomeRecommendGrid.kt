@@ -287,8 +287,8 @@ private fun HomeBookStaggeredItem(
         maxHeight = 280
     ).wdp
 
-    // 使用derivedStateOf优化描述行数计算，避免每次重组都重新计算
-    val descriptionLines by remember {
+    // 使用 derivedStateOf 优化描述行数计算，仅在 book 变化时重新计算
+    val descriptionLines by remember(book) { 
         derivedStateOf {
             when {
                 book.bookDesc.length > 80 -> 3
@@ -433,8 +433,8 @@ private fun SearchBookStaggeredItem(
         maxHeight = 280
     ).wdp
 
-    // 使用derivedStateOf优化书名行数计算
-    val titleLines by remember {
+    // 使用 derivedStateOf 优化书名行数计算，仅在 book 变化时重新计算
+    val titleLines by remember(book) { 
         derivedStateOf {
             if (book.bookName.length > 12) 2 else 1
         }

@@ -13,6 +13,9 @@ import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.utils.TimberLogger
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import androidx.compose.runtime.Stable
@@ -42,21 +45,21 @@ open class HomeCompositeUseCase @Inject constructor(
         val categoryFilter: String? = null,
         val rankType: String? = null,
         val loadMoreRecommend: Boolean = false,
-        val categoryFilters: List<CategoryInfo> = emptyList(),
+        val categoryFilters: ImmutableList<CategoryInfo> = persistentListOf(),
         val currentPage: Int = 1
     )
     
     @Stable
     data class Result(
-        val categories: List<HomeCategoryEntity> = emptyList(),
-        val categoryFilters: List<CategoryInfo> = emptyList(),
-        val carouselBooks: List<HomeBookEntity> = emptyList(),
-        val hotBooks: List<HomeBookEntity> = emptyList(),
-        val newBooks: List<HomeBookEntity> = emptyList(),
-        val vipBooks: List<HomeBookEntity> = emptyList(),
-        val rankBooks: List<BookService.BookRank> = emptyList(),
-        val recommendBooks: List<SearchService.BookInfo> = emptyList(),
-        val homeRecommendBooks: List<HomeService.HomeBook> = emptyList(),
+        val categories: ImmutableList<HomeCategoryEntity> = persistentListOf(),
+        val categoryFilters: ImmutableList<CategoryInfo> = persistentListOf(),
+        val carouselBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+        val hotBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+        val newBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+        val vipBooks: ImmutableList<HomeBookEntity> = persistentListOf(),
+        val rankBooks: ImmutableList<BookService.BookRank> = persistentListOf(),
+        val recommendBooks: ImmutableList<SearchService.BookInfo> = persistentListOf(),
+        val homeRecommendBooks: ImmutableList<HomeService.HomeBook> = persistentListOf(),
         val hasMoreRecommend: Boolean = true,
         val totalPages: Int = 1,
         val isSuccess: Boolean = true,
@@ -128,7 +131,7 @@ open class HomeCompositeUseCase @Inject constructor(
                 ).first() // 使用first()确保获取到数据
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "获取分类筛选器失败", e)
-                listOf(CategoryInfo("0", "推荐")) // 返回默认数据
+                persistentListOf(CategoryInfo("0", "推荐")) // 返回默认数据
             }
             
             val categories = try {
@@ -137,7 +140,7 @@ open class HomeCompositeUseCase @Inject constructor(
                 ).first() // 使用first()确保获取到数据
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "获取分类数据失败", e)
-                emptyList()
+                persistentListOf()
             }
             
             val booksData = try {
@@ -146,7 +149,7 @@ open class HomeCompositeUseCase @Inject constructor(
                 ).first() // 使用first()确保获取到数据
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "获取书籍数据失败", e)
-                GetBooksDataUseCase.BooksData(emptyList(), emptyList(), emptyList(), emptyList())
+                GetBooksDataUseCase.BooksData(persistentListOf(), persistentListOf(), persistentListOf(), persistentListOf())
             }
             
             val rankBooksResult = getRankingBooksUseCase(
@@ -158,22 +161,22 @@ open class HomeCompositeUseCase @Inject constructor(
             )
             
             // 转换书籍数据为Entity
-            val carouselBooks = booksData.carouselBooks.map { it.toEntity("carousel") }
-            val hotBooks = booksData.hotBooks.map { it.toEntity("hot") }
-            val newBooks = booksData.newBooks.map { it.toEntity("new") }
-            val vipBooks = booksData.vipBooks.map { it.toEntity("vip") }
+            val carouselBooks = booksData.carouselBooks.map { it.toEntity("carousel") }.toImmutableList()
+            val hotBooks = booksData.hotBooks.map { it.toEntity("hot") }.toImmutableList()
+            val newBooks = booksData.newBooks.map { it.toEntity("new") }.toImmutableList()
+            val vipBooks = booksData.vipBooks.map { it.toEntity("vip") }.toImmutableList()
             
             TimberLogger.d(TAG, "初始数据加载完成 - 分类筛选器数量: ${categoryFilters.size}, 分类数量: ${categories.size}")
             
             Result(
-                categories = categories,
-                categoryFilters = categoryFilters,
+                categories = categories.toImmutableList(),
+                categoryFilters = categoryFilters.toImmutableList(),
                 carouselBooks = carouselBooks,
                 hotBooks = hotBooks,
                 newBooks = newBooks,
                 vipBooks = vipBooks,
-                rankBooks = rankBooksResult,
-                homeRecommendBooks = homeRecommendResult,
+                rankBooks = rankBooksResult.toImmutableList(),
+                homeRecommendBooks = homeRecommendResult.toImmutableList(),
                 isSuccess = true
             )
         } catch (e: Exception) {
@@ -203,7 +206,7 @@ open class HomeCompositeUseCase @Inject constructor(
     /**
      * 加载分类数据
      */
-    private suspend fun loadCategoryData(categoryName: String, page: Int, categoryFilters: List<CategoryInfo>): Result {
+    private suspend fun loadCategoryData(categoryName: String, page: Int, categoryFilters: ImmutableList<CategoryInfo>): Result {
         TimberLogger.d(TAG, "加载分类数据: categoryName=$categoryName, page=$page")
         
         return try {
@@ -214,7 +217,7 @@ open class HomeCompositeUseCase @Inject constructor(
                 )
                 
                 Result(
-                    homeRecommendBooks = homeRecommendBooks,
+                    homeRecommendBooks = homeRecommendBooks.toImmutableList(),
                     hasMoreRecommend = homeRecommendBooks.size >= RECOMMEND_PAGE_SIZE,
                     isSuccess = true
                 )
@@ -232,7 +235,7 @@ open class HomeCompositeUseCase @Inject constructor(
                 )
                 
                 Result(
-                    recommendBooks = booksData.list,
+                    recommendBooks = booksData.list.toImmutableList(),
                     hasMoreRecommend = booksData.list.size >= RECOMMEND_PAGE_SIZE,
                     totalPages = booksData.pages.toInt(),
                     isSuccess = true
@@ -250,7 +253,7 @@ open class HomeCompositeUseCase @Inject constructor(
     /**
      * 获取当前分类ID
      */
-    private fun getCurrentCategoryId(categoryName: String, categoryFilters: List<CategoryInfo>): Int {
+    private fun getCurrentCategoryId(categoryName: String, categoryFilters: ImmutableList<CategoryInfo>): Int {
 
         // 打印调试信息
         TimberLogger.d(TAG, "获取分类ID - 分类名称: $categoryName")
@@ -295,7 +298,7 @@ open class HomeCompositeUseCase @Inject constructor(
             )
             
             Result(
-                rankBooks = rankBooks,
+                rankBooks = rankBooks.toImmutableList(),
                 isSuccess = true
             )
         } catch (e: Exception) {
@@ -324,7 +327,7 @@ open class HomeCompositeUseCase @Inject constructor(
             TimberLogger.d(TAG, "加载更多推荐数据完成 - 页码: $page, 获取数量: ${pagedBooks.size}, 总数据量: ${homeRecommendBooks.size}")
             
             Result(
-                homeRecommendBooks = pagedBooks,
+                homeRecommendBooks = pagedBooks.toImmutableList(),
                 hasMoreRecommend = endIndex < homeRecommendBooks.size,
                 isSuccess = true
             )
@@ -353,7 +356,7 @@ open class HomeCompositeUseCase @Inject constructor(
             TimberLogger.d(TAG, "加载更多分类推荐数据完成 - 分类ID: $categoryId, 页码: $page, 获取数量: ${booksData.list.size}")
             
             Result(
-                recommendBooks = booksData.list,
+                recommendBooks = booksData.list.toImmutableList(),
                 hasMoreRecommend = booksData.list.size >= RECOMMEND_PAGE_SIZE,
                 totalPages = booksData.pages.toInt(),
                 isSuccess = true

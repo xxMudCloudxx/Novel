@@ -1,12 +1,14 @@
 package com.novel.core.adapter
 
 import androidx.compose.runtime.Stable
+import com.facebook.react.BuildConfig
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
 import com.novel.utils.TimberLogger
 import com.novel.core.mvi.MviState
+import com.novel.utils.asStable
 
 /**
  * MVI状态适配器基类
@@ -22,7 +24,7 @@ import com.novel.core.mvi.MviState
  */
 @Stable
 abstract class StateAdapter<S : MviState>(
-    val stateFlow: StateFlow<S>
+    @Stable val stateFlow: StateFlow<S>
 ) {
     
     companion object {
@@ -32,37 +34,50 @@ abstract class StateAdapter<S : MviState>(
     // region 基础状态适配
     
     /** 当前完整状态流 */
-    val currentState: StateFlow<S> = stateFlow
+    @Stable
+    val currentState: StateFlow<S> = stateFlow.asStable()
     
     /** 基础加载状态 */
-    val isLoading: Flow<Boolean> = stateFlow
+    @Stable
+    val isLoading: Flow<Boolean> = stateFlow.asStable()
         .map { it.isLoading }
         .distinctUntilChanged()
+        .asStable()
     
     /** 基础错误状态 */
-    val error: Flow<String?> = stateFlow
+    @Stable
+    val error: Flow<String?> = stateFlow.asStable()
         .map { it.error }
         .distinctUntilChanged()
+        .asStable()
     
     /** 是否处于错误状态 */
-    val hasError: Flow<Boolean> = stateFlow
+    @Stable
+    val hasError: Flow<Boolean> = stateFlow.asStable()
         .map { it.hasError }
         .distinctUntilChanged()
+        .asStable()
     
     /** 是否为空状态 */
-    val isEmpty: Flow<Boolean> = stateFlow
+    @Stable
+    val isEmpty: Flow<Boolean> = stateFlow.asStable()
         .map { it.isEmpty }
         .distinctUntilChanged()
+        .asStable()
     
     /** 是否处于成功状态 */
-    val isSuccess: Flow<Boolean> = stateFlow
+    @Stable
+    val isSuccess: Flow<Boolean> = stateFlow.asStable()
         .map { it.isSuccess }
         .distinctUntilChanged()
+        .asStable()
     
     /** 状态版本号 */
-    val version: Flow<Long> = stateFlow
+    @Stable
+    val version: Flow<Long> = stateFlow.asStable()
         .map { it.version }
         .distinctUntilChanged()
+        .asStable()
     
     // endregion
     
@@ -97,16 +112,19 @@ abstract class StateAdapter<S : MviState>(
      * 创建状态字段的Flow
      * 提供类型安全的状态字段访问
      */
+    @Stable
     inline fun <T> mapState(
         crossinline selector: (S) -> T
     ): Flow<T> = stateFlow
         .map { selector(it) }
         .distinctUntilChanged()
+        .asStable()
     
     /** 
      * 创建带条件的状态Flow
      * 根据条件过滤状态变更
      */
+    @Stable
     inline fun <T> mapStateWhen(
         crossinline condition: (S) -> Boolean,
         crossinline selector: (S) -> T,
@@ -120,26 +138,31 @@ abstract class StateAdapter<S : MviState>(
             }
         }
         .distinctUntilChanged()
+        .asStable()
     
     /** 
      * 创建组合状态Flow
      * 将多个状态字段组合成一个Flow
      */
+    @Stable
     inline fun <T> combineState(
         crossinline combiner: (S) -> T
     ): Flow<T> = stateFlow
         .map { combiner(it) }
         .distinctUntilChanged()
+        .asStable()
     
     /** 
      * 创建条件状态Flow
      * 返回布尔条件的Flow
      */
+    @Stable
     inline fun createConditionFlow(
         crossinline condition: (S) -> Boolean
     ): Flow<Boolean> = stateFlow
         .map { condition(it) }
         .distinctUntilChanged()
+        .asStable()
     
     // endregion
     
@@ -150,7 +173,7 @@ abstract class StateAdapter<S : MviState>(
      * 仅在Debug模式下启用
      */
     fun logStateChange(message: String) {
-        if (com.novel.BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG) {
             val state = getCurrentSnapshot()
             TimberLogger.d(TAG, "$message - 版本: ${state.version}, 加载: ${state.isLoading}, 错误: ${state.hasError}")
         }

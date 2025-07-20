@@ -49,9 +49,9 @@ import com.novel.utils.wdp
 @Composable
 fun SearchPage(
     onNavigateBack: () -> Unit,
-    onNavigateToBookDetail: (Long) -> Unit,
-    viewModel: SearchViewModel = hiltViewModel()
+    onNavigateToBookDetail: (Long) -> Unit
 ) {
+    val viewModel: SearchViewModel = hiltViewModel()
     val TAG = "SearchPage"
     val uiState by viewModel.state.collectAsState()
 

@@ -4,6 +4,9 @@ import com.novel.utils.TimberLogger
 import com.novel.core.mvi.MviReducerWithEffect
 import com.novel.core.mvi.ReduceResult
 import com.novel.core.mvi.MviReducer
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * 搜索结果页面状态转换器
@@ -45,7 +48,7 @@ class SearchResultReducer : MviReducer<SearchResultIntent, SearchResultState> {
                     isLoading = true,
                     error = null,
                     query = intent.query,
-                    books = emptyList(), // 清空之前的结果
+                    books = persistentListOf(), // 清空之前的结果
                     totalResults = 0,
                     hasMore = false,
                     isLoadingMore = false
@@ -95,7 +98,7 @@ class SearchResultReducer : MviReducer<SearchResultIntent, SearchResultState> {
                     version = currentState.version + 1,
                     isFilterSheetOpen = false,
                     isLoading = true,
-                    books = emptyList(), // 清空之前的结果
+                    books = persistentListOf(), // 清空之前的结果
                     totalResults = 0,
                     hasMore = false
                 )
@@ -146,7 +149,7 @@ class SearchResultReducer : MviReducer<SearchResultIntent, SearchResultState> {
      */
     fun handleSearchSuccess(
         currentState: SearchResultState,
-        books: List<BookInfoRespDto>,
+        books: ImmutableList<BookInfoRespDto>,
         totalResults: Int,
         hasMore: Boolean,
         isLoadMore: Boolean = false
@@ -155,7 +158,7 @@ class SearchResultReducer : MviReducer<SearchResultIntent, SearchResultState> {
             // 分页加载成功
             currentState.copy(
                 version = currentState.version + 1,
-                books = currentState.books + books,
+                books = (currentState.books + books).toImmutableList(),
                 hasMore = hasMore,
                 isLoadingMore = false
             )
@@ -205,7 +208,7 @@ class SearchResultReducer : MviReducer<SearchResultIntent, SearchResultState> {
      */
     fun handleCategoryFiltersLoaded(
         currentState: SearchResultState,
-        categoryFilters: List<CategoryFilter>
+        categoryFilters: ImmutableList<CategoryFilter>
     ): SearchResultState {
         return currentState.copy(
             version = currentState.version + 1,

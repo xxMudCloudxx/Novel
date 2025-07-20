@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import androidx.core.content.PermissionChecker
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -18,6 +19,7 @@ import javax.inject.Inject
  * @param phoneNumber 手机号码
  * @param operatorName 运营商名称
  */
+@Stable
 data class PhoneInfo(val phoneNumber: String, val operatorName: String)
 
 /**
@@ -38,7 +40,9 @@ data class PhoneInfo(val phoneNumber: String, val operatorName: String)
  * - TelephonyManager系统服务
  * - 协程异步IO线程处理
  */
+@Stable
 class PhoneInfoUtil @Inject constructor(
+    @Stable
     @ApplicationContext private val context: Context
 ) {
     

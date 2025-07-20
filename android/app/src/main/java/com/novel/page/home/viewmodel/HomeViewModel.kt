@@ -5,8 +5,8 @@ import com.novel.core.mvi.BaseMviViewModel
 import com.novel.core.mvi.MviReducer
 import com.novel.page.home.dao.IHomeRepository
 import com.novel.page.home.usecase.*
-import com.novel.page.component.StateHolderImpl
 import com.novel.utils.TimberLogger
+import com.novel.utils.asStable
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,8 +47,6 @@ private data class StablePagingConfig(
     )
 }
 
-
-
 /**
  * 首页ViewModel - MVI重构版本
  *
@@ -76,7 +74,28 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: IHomeRepository,
     /** 缓存书籍数据仓库 */
     @Stable
-    private val cachedBookRepository: CachedBookRepository
+    private val cachedBookRepository: CachedBookRepository,
+    /** 预初始化UseCase实例，避免Hilt泛型问题和lazy delegate的unstable问题 */
+    @Stable
+    private val homeCompositeUseCase: HomeCompositeUseCase,
+    @Stable
+    private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase,
+    @Stable
+    private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase,
+    @Stable
+    private val getRankingBooksUseCase: GetRankingBooksUseCase,
+    @Stable
+    private val refreshHomeDataUseCase: RefreshHomeDataUseCase,
+    @Stable
+    private val sendReactNativeDataUseCase: SendReactNativeDataUseCase,
+    @Stable
+    private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase,
+    @Stable
+    private val homeRecommendPagingSource: HomeRecommendPagingSource,
+    @Stable
+    private val categoryRecommendPagingSourceFactory: CategoryRecommendPagingSourceFactory,
+    @Stable
+    private val homeStatusCheckUseCase: HomeStatusCheckUseCase
 ) : BaseMviViewModel<HomeIntent, HomeState, HomeEffect>() {
 
     companion object {
@@ -84,44 +103,6 @@ class HomeViewModel @Inject constructor(
         private const val RECOMMEND_PAGE_SIZE = 8
     }
 
-    // 预初始化UseCase实例，避免Hilt泛型问题和lazy delegate的unstable问题
-    @Stable
-    private val homeCompositeUseCase: HomeCompositeUseCase = 
-        HomeCompositeUseCase(homeRepository, cachedBookRepository)
-    
-    @Stable
-    private val getHomeCategoriesUseCase: GetHomeCategoriesUseCase = 
-        GetHomeCategoriesUseCase(homeRepository)
-    
-    @Stable
-    private val getHomeRecommendBooksUseCase: GetHomeRecommendBooksUseCase = 
-        GetHomeRecommendBooksUseCase(homeRepository)
-    
-    @Stable
-    private val getRankingBooksUseCase: GetRankingBooksUseCase = 
-        GetRankingBooksUseCase(homeRepository)
-    
-    @Stable
-    private val refreshHomeDataUseCase: RefreshHomeDataUseCase = 
-        RefreshHomeDataUseCase(homeRepository)
-    
-    @Stable
-    private val sendReactNativeDataUseCase: SendReactNativeDataUseCase = 
-        SendReactNativeDataUseCase()
-    
-    @Stable
-    private val getCategoryRecommendBooksUseCase: GetCategoryRecommendBooksUseCase = 
-        GetCategoryRecommendBooksUseCase(cachedBookRepository)
-    
-    // Paging3 相关 - 预初始化以提高稳定性
-    @Stable
-    private val homeRecommendPagingSource: HomeRecommendPagingSource = 
-        HomeRecommendPagingSource(getHomeRecommendBooksUseCase)
-    
-    @Stable
-    private val categoryRecommendPagingSourceFactory: CategoryRecommendPagingSourceFactory = 
-        CategoryRecommendPagingSourceFactory(getCategoryRecommendBooksUseCase)
-    
     // Paging配置 - 使用@Stable标记
     @Stable
     private val pagingConfig: StablePagingConfig = StablePagingConfig(
@@ -130,10 +111,6 @@ class HomeViewModel @Inject constructor(
         initialLoadSize = RECOMMEND_PAGE_SIZE,
         prefetchDistance = 2
     )
-    
-    @Stable
-    private val homeStatusCheckUseCase: HomeStatusCheckUseCase = 
-        HomeStatusCheckUseCase(homeRepository)
 
     // 缓存全量首页推荐数据 - 使用@Stable标记
     @Stable
@@ -142,7 +119,7 @@ class HomeViewModel @Inject constructor(
 
     /** 新的StateAdapter实例 */
     @Stable
-    val adapter = HomeStateAdapter(state, viewModelScope)
+    val adapter = HomeStateAdapter(state.asStable(), viewModelScope)
 
     /** UI组合状态 - 提供稳定的 State<HomeScreenState> */
     @Stable
@@ -176,7 +153,7 @@ class HomeViewModel @Inject constructor(
             recommendModeText = "首页推荐",
             isRecommendMode = true
         )
-    )
+    ).asStable()
 
     // Paging3 数据流 - 使用@Stable标记
     /** 首页推荐书籍的分页数据流 */
@@ -203,7 +180,7 @@ class HomeViewModel @Inject constructor(
         scope = viewModelScope,
         started = kotlinx.coroutines.flow.SharingStarted.Lazily,
         initialValue = HomeUiState()
-    )
+    ).asStable()
 
     /** 兼容性属性：当前状态 */
     val currentState: HomeUiState get() = uiState.value

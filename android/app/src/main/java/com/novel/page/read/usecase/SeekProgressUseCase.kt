@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
@@ -19,6 +20,7 @@ import javax.inject.Inject
  * 3. 加载章节内容并分页
  * 4. 返回跳转结果
  */
+@Stable
 class SeekProgressUseCase @Inject constructor(
     private val paginationService: PaginationService,
     private val chapterService: ChapterService,
@@ -39,6 +41,7 @@ class SeekProgressUseCase @Inject constructor(
             val newPageData: PageData,
             val newPageIndex: Int
         ) : SeekResult()
+        @Stable
         data class Failure(val error: Throwable) : SeekResult()
         data object NoOp : SeekResult()
     }

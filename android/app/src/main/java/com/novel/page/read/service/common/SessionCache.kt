@@ -1,5 +1,6 @@
 package com.novel.page.read.service.common
 
+import androidx.compose.runtime.Stable
 import java.util.LinkedHashMap
 
 /**
@@ -58,6 +59,7 @@ data class CacheStats(
  * - 快速路径优化
  * - 减少锁竞争
  */
+@Stable
 class LruSessionCache<K, V>(
     private val maxSize: Int = ReaderServiceConfig.MAX_SESSION_CACHE_SIZE
 ) : SessionCache<K, V> {

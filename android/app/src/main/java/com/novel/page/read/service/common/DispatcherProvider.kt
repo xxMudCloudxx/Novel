@@ -1,5 +1,6 @@
 package com.novel.page.read.service.common
 
+import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -35,6 +36,7 @@ interface DispatcherProvider {
  * 使用标准的Kotlin协程调度器
  */
 @Singleton
+@Stable
 class DefaultDispatcherProvider @Inject constructor() : DispatcherProvider {
     override val io: CoroutineDispatcher = Dispatchers.IO
     override val default: CoroutineDispatcher = Dispatchers.Default
@@ -47,7 +49,8 @@ class DefaultDispatcherProvider @Inject constructor() : DispatcherProvider {
  * 
  * 限制并发数，避免ANR和资源争抢
  */
-@Singleton  
+@Singleton
+@Stable
 class OptimizedDispatcherProvider @Inject constructor() : DispatcherProvider {
     
     // 限制IO线程池大小，避免过度并发

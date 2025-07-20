@@ -29,6 +29,7 @@ import com.novel.page.component.pagecurl.config.PageCurlConfig
 import com.novel.page.component.pagecurl.utils.Polygon
 import com.novel.page.component.pagecurl.utils.lineLineIntersection
 import com.novel.page.component.pagecurl.utils.rotate
+import kotlinx.collections.immutable.toImmutableList
 import java.lang.Float.max
 import kotlin.math.atan2
 import androidx.core.graphics.createBitmap
@@ -179,7 +180,7 @@ private fun CacheDrawScope.prepareCurl(
             } else {
                 yieldEndSideInterception()
             }
-        }.toList()
+        }.toList().toImmutableList()
     )
 
     // 计算X轴与卷曲线之间的弧度角，用于将镜像内容旋转到卷曲背页的正确位置

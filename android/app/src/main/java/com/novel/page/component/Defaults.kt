@@ -1,5 +1,7 @@
 package com.novel.page.component
 
+import androidx.compose.runtime.Stable
+
 /**
  * 默认值配置基类
  * 
@@ -28,6 +30,7 @@ abstract class Defaults {
      * @param T 默认值类型，必须继承自Defaults
      * @param defaults 初始默认值实例
      */
+    @Stable
     abstract class Target<T : Defaults>(defaults: T) {
 
         /** 当前默认值实例 */

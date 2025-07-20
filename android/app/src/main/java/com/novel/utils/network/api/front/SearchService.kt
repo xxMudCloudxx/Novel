@@ -1,5 +1,6 @@
 package com.novel.utils.network.api.front
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
@@ -14,6 +15,7 @@ import javax.inject.Singleton
 class SearchService @Inject constructor() {
     
     // region 数据结构
+    @Stable
     data class BookSearchResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -21,6 +23,7 @@ class SearchService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class PageResponse<T>(
         @SerializedName("pageNum") val pageNum: Long,
         @SerializedName("pageSize") val pageSize: Long,
@@ -29,6 +32,7 @@ class SearchService @Inject constructor() {
         @SerializedName("pages") val pages: Long
     )
 
+    @Stable
     data class BookInfo(
         @SerializedName("id") val id: Long,
         @SerializedName("categoryId") val categoryId: Long,
@@ -250,4 +254,4 @@ class SearchService @Inject constructor() {
         }
     }
     // endregion
-} 
+}

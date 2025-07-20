@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.toArgb
 import com.novel.page.read.service.SettingsService
 import com.novel.page.read.service.common.DispatcherProvider
@@ -21,6 +22,7 @@ import javax.inject.Inject
  * 3. 重新分页并恢复阅读进度
  * 4. 处理分页失败的回退逻辑
  */
+@Stable
 class UpdateSettingsUseCase @Inject constructor(
     private val settingsService: SettingsService,
     private val paginateChapterUseCase: PaginateChapterUseCase,

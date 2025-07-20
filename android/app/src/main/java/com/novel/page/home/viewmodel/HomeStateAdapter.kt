@@ -2,6 +2,7 @@ package com.novel.page.home.viewmodel
 
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import com.novel.page.home.dao.HomeBookEntity
 import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.utils.network.api.front.BookService
@@ -31,8 +32,7 @@ import kotlinx.coroutines.flow.stateIn
 class HomeStateAdapter(
     stateFlow: StateFlow<HomeState>,
     @Stable
-    @Volatile
-    private var scope: kotlinx.coroutines.CoroutineScope
+    private val scope: kotlinx.coroutines.CoroutineScope
 ) : StateAdapter<HomeState>(stateFlow) {
     
     // region StateFlow 映射扩展函数
@@ -50,11 +50,21 @@ class HomeStateAdapter(
     // region 分类相关状态适配
     
     /** 书籍分类列表 */
-    val categories: StableStateFlow<ImmutableList<HomeCategoryEntity>> = mapStateAsStateFlow { it.categories }.asStable()
+    @Stable
+    val categories: StateFlow<ImmutableList<HomeCategoryEntity>> = stateFlow.map { it.categories }.stateIn(
+        scope = scope,
+        started = kotlinx.coroutines.flow.SharingStarted.Lazily,
+        initialValue = persistentListOf()
+    )
 
     
     /** 分类筛选器列表 */
-    val categoryFilters: StableStateFlow<ImmutableList<CategoryInfo>> = mapStateAsStateFlow { it.categoryFilters }.asStable()
+    @Stable
+    val categoryFilters: StateFlow<ImmutableList<CategoryInfo>> = stateFlow.map { it.categoryFilters }.stateIn(
+        scope = scope,
+        started = kotlinx.coroutines.flow.SharingStarted.Lazily,
+        initialValue = persistentListOf()
+    )
 
 
     // endregion
@@ -229,18 +239,6 @@ data class HomeScreenState(
     val recommendModeText: String,
     val isRecommendMode: Boolean
 )
-
-@Stable
-class StableStateFlow<T>(
-    @Stable
-    @Volatile
-    private var delegate: StateFlow<T>
-) : StateFlow<T> by delegate
-
-// 扩展函数：方便调用
-@Stable
-fun <T> StateFlow<T>.asStable(): StableStateFlow<T> =
-    StableStateFlow(this)
 
 /**
  * 将HomeState转换为UI友好的组合状态

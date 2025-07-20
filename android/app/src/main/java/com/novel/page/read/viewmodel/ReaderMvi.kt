@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.novel.core.mvi.MviIntent
 import com.novel.core.mvi.MviState
 import com.novel.core.mvi.MviEffect
@@ -72,7 +74,7 @@ data class ReaderState(
     
     // 基础状态
     val bookId: String = "",
-    val chapterList: List<Chapter> = emptyList(),
+    val chapterList: ImmutableList<Chapter> = persistentListOf(),
     val currentChapter: Chapter? = null,
     val currentChapterIndex: Int = 0,
     val bookContent: String = "",
@@ -89,7 +91,7 @@ data class ReaderState(
     val density: Density? = null,
     
     // 统一翻页模式所需的状态
-    val virtualPages: List<VirtualPage> = emptyList(),
+    val virtualPages: ImmutableList<VirtualPage> = persistentListOf(),
     val virtualPageIndex: Int = 0,
     val loadedChapterData: Map<String, PageData> = emptyMap(),
     
@@ -250,7 +252,7 @@ data class PageData(
     val chapterId: String,
     val chapterName: String,
     val content: String,
-    val pages: List<String>,
+    val pages: ImmutableList<String>,
     val isFirstPage: Boolean = false,
     val isLastPage: Boolean = false,
     val isFirstChapter: Boolean = false,

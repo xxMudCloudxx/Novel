@@ -1,5 +1,6 @@
 package com.novel.rn.settings.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.rn.settings.SettingsUtils
 import com.novel.ui.theme.ThemeManager
@@ -15,6 +16,7 @@ import javax.inject.Inject
  * - 读取自动切换配置
  * - 时间设置获取
  */
+@Stable
 class GetUserSettingsUseCase @Inject constructor(
     private val settingsUtils: SettingsUtils,
     private val themeManager: ThemeManager

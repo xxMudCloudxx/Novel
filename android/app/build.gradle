@@ -124,11 +124,7 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
         useLiveLiterals = false  // 生产环境禁用LiveLiterals提升性能
     }
-    
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug

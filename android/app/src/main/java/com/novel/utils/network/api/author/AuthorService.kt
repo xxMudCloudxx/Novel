@@ -1,10 +1,12 @@
 package com.novel.utils.network.api.author
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_AUTHOR
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -12,10 +14,20 @@ import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 作者服务类
+ * 
+ * 功能：
+ * - 作者书籍管理
+ * - 章节CRUD操作
+ * - 章节内容管理
+ * - 作者数据统计
+ */
 @Singleton
 class AuthorService @Inject constructor() {
     
     // region 数据结构
+    @Stable
     data class BaseResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -82,11 +94,12 @@ class AuthorService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class PageResponse<T>(
         @SerializedName("pageNum") val pageNum: Long,
         @SerializedName("pageSize") val pageSize: Long,
         @SerializedName("total") val total: Long,
-        @SerializedName("list") val list: List<T>,
+        @SerializedName("list") val list: ImmutableList<T>,
         @SerializedName("pages") val pages: Long
     )
 

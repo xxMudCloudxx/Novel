@@ -16,6 +16,8 @@ import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 搜索历史记录区域组件
@@ -30,7 +32,7 @@ import com.novel.utils.wdp
  */
 @Composable
 fun SearchHistorySection(
-    history: List<String>,
+    history: ImmutableList<String>,
     isExpanded: Boolean,
     onHistoryClick: (String) -> Unit,
     onToggleExpansion: () -> Unit
@@ -93,7 +95,7 @@ fun SearchHistorySection(
 
         // 历史记录网格
         HistoryGrid(
-            history = if (isExpanded) history else history.take(4),
+            history = if (isExpanded) history.toImmutableList() else history.take(4).toImmutableList(),
             onItemClick = onHistoryClick
         )
     }
@@ -112,7 +114,7 @@ fun SearchHistorySection(
  */
 @Composable
 fun HistoryGrid(
-    history: List<String>,
+    history: ImmutableList<String>,
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -196,4 +198,4 @@ private fun HistoryItem(
                 .clickable { onClick() },
         )
     }
-} 
+}

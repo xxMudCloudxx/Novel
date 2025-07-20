@@ -3,6 +3,7 @@ package com.novel.page.read.viewmodel
 import com.novel.core.mvi.MviReducerWithEffect
 import com.novel.core.mvi.ReduceResult
 import com.novel.utils.TimberLogger
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Reader模块的Reducer
@@ -292,7 +293,7 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
             version = currentState.version + 1,
             isLoading = false,
             error = null,
-            chapterList = chapterList,
+            chapterList = chapterList.toImmutableList(),
             currentChapter = initialChapter,
             currentChapterIndex = initialChapterIndex,
             currentPageData = initialPageData,
@@ -346,7 +347,7 @@ class ReaderReducer : MviReducerWithEffect<ReaderIntent, ReaderState, ReaderEffe
     ): ReaderState {
         return currentState.copy(
             version = currentState.version + 1,
-            virtualPages = virtualPages,
+            virtualPages = virtualPages.toImmutableList(),
             virtualPageIndex = virtualPageIndex,
             loadedChapterData = loadedChapterData
         )

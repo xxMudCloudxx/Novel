@@ -1,5 +1,6 @@
 package com.novel.utils.network.interceptor
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.TokenProvider
 import kotlinx.coroutines.runBlocking
@@ -20,7 +21,9 @@ import javax.inject.Inject
  * - 适配所有API请求的认证需求
  * - 支持Token过期自动重试机制
  */
+@Stable
 class AuthInterceptor @Inject constructor(
+    @Stable
     private val tokenProvider: TokenProvider
 ) : Interceptor {
 

@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.repository.ProgressiveCalculationState
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
@@ -18,6 +19,7 @@ import javax.inject.Inject
  * 2. 记录分页进度变化
  * 3. 提供进度监控功能
  */
+@Stable
 class ObservePaginationProgressUseCase @Inject constructor(
     private val paginationService: PaginationService,
     dispatchers: DispatcherProvider,

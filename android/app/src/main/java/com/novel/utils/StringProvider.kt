@@ -1,6 +1,7 @@
 package com.novel.utils
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,8 +38,9 @@ interface StringProvider {
  * - 生产环境默认实现
  */
 @Singleton
+@Stable
 class AndroidStringProvider @Inject constructor(
-    private val context: Context
+    @Stable private val context: Context
 ) : StringProvider {
     
     /**

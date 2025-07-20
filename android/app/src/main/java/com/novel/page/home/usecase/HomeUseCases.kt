@@ -12,6 +12,9 @@ import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
 import com.novel.rn.ReactNativeBridge
 import com.novel.utils.TimberLogger
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.catch
@@ -225,10 +228,10 @@ class GetBooksDataUseCase @Inject constructor(
     
     @Stable
     data class BooksData(
-        val carouselBooks: List<HomeService.HomeBook>,
-        val hotBooks: List<HomeService.HomeBook>,
-        val newBooks: List<HomeService.HomeBook>,
-        val vipBooks: List<HomeService.HomeBook>
+        val carouselBooks: ImmutableList<HomeService.HomeBook>,
+        val hotBooks: ImmutableList<HomeService.HomeBook>,
+        val newBooks: ImmutableList<HomeService.HomeBook>,
+        val vipBooks: ImmutableList<HomeService.HomeBook>
     )
     
     override suspend fun execute(params: Params): Flow<BooksData> = flow {
@@ -241,16 +244,16 @@ class GetBooksDataUseCase @Inject constructor(
         // 合并所有Flow
         kotlinx.coroutines.flow.combine(carouselFlow, hotFlow, newFlow, vipFlow) { carousel, hot, new, vip ->
             BooksData(
-                carouselBooks = carousel,
-                hotBooks = hot,
-                newBooks = new,
-                vipBooks = vip
+                carouselBooks = carousel.toImmutableList(),
+                hotBooks = hot.toImmutableList(),
+                newBooks = new.toImmutableList(),
+                vipBooks = vip.toImmutableList()
             )
         }.collect { booksData ->
             emit(booksData)
         }
     }.catch { e ->
         TimberLogger.e("GetBooksDataUseCase", "获取书籍数据失败", e)
-        emit(BooksData(emptyList(), emptyList(), emptyList(), emptyList()))
+        emit(BooksData(persistentListOf(), persistentListOf(), persistentListOf(), persistentListOf()))
     }
-} 
+}

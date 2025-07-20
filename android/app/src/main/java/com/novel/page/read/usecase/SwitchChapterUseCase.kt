@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
@@ -21,6 +22,7 @@ import javax.inject.Inject
  * 4. 触发预加载相邻章节
  * 5. 根据翻页方向确定初始页面位置
  */
+@Stable
 class SwitchChapterUseCase @Inject constructor(
     private val chapterService: ChapterService,
     private val paginateChapterUseCase: PaginateChapterUseCase,
@@ -43,6 +45,7 @@ class SwitchChapterUseCase @Inject constructor(
             val pageData: PageData,
             val initialPageIndex: Int = 0
         ) : SwitchResult()
+        @Stable
         data class Failure(val error: Throwable) : SwitchResult()
         data object NoOp : SwitchResult()
     }

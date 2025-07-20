@@ -1,5 +1,6 @@
 package com.novel.utils
 
+import androidx.compose.runtime.Stable
 import com.novel.BuildConfig
 import timber.log.Timber
 
@@ -27,6 +28,7 @@ import timber.log.Timber
  * }
  * ```
  */
+@Stable
 object TimberLogger {
     
     /**
@@ -94,4 +96,4 @@ object TimberLogger {
             Timber.tag(tag).d("Performance: $operationName took ${durationMs}ms")
         }
     }
-} 
+}

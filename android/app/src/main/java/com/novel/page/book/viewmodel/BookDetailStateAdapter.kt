@@ -2,6 +2,9 @@ package com.novel.page.book.viewmodel
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.Immutable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -30,24 +33,31 @@ class BookDetailStateAdapter(
     // region 基础状态适配
     
     /** 书籍基本信息 */
+    @Stable
     val bookInfo = mapState { it.bookInfo }
     
     /** 最新章节信息 */
+    @Stable
     val lastChapter = mapState { it.lastChapter }
     
     /** 用户评价列表 */
+    @Stable
     val reviews = mapState { it.reviews }
     
     /** 简介是否展开 */
+    @Stable
     val isDescriptionExpanded = mapState { it.isDescriptionExpanded }
     
     /** 是否在书架中 */
+    @Stable
     val isInBookshelf = mapState { it.isInBookshelf }
     
     /** 是否关注作者 */
+    @Stable
     val isAuthorFollowed = mapState { it.isAuthorFollowed }
     
     /** 当前书籍ID */
+    @Stable
     val currentBookId = mapState { it.currentBookId }
     
     // endregion
@@ -55,27 +65,35 @@ class BookDetailStateAdapter(
     // region 书籍信息相关状态适配
     
     /** 书籍名称 */
+    @Stable
     val bookName = mapState { it.bookInfo?.bookName }
     
     /** 作者名称 */
+    @Stable
     val authorName = mapState { it.bookInfo?.authorName }
     
     /** 书籍描述 */
+    @Stable
     val bookDesc = mapState { it.bookInfo?.bookDesc }
     
     /** 书籍封面URL */
+    @Stable
     val picUrl = mapState { it.bookInfo?.picUrl }
     
     /** 访问次数 */
+    @Stable
     val visitCount = mapState { it.bookInfo?.visitCount ?: 0L }
     
     /** 字数统计 */
+    @Stable
     val wordCount = mapState { it.bookInfo?.wordCount ?: 0 }
     
     /** 分类名称 */
+    @Stable
     val categoryName = mapState { it.bookInfo?.categoryName }
     
     /** 是否有书籍信息 */
+    @Stable
     val hasBookInfo = createConditionFlow { it.bookInfo != null }
     
     // endregion
@@ -83,12 +101,15 @@ class BookDetailStateAdapter(
     // region 章节相关状态适配
     
     /** 最新章节名称 */
+    @Stable
     val lastChapterName = mapState { it.lastChapter?.chapterName }
     
     /** 最新章节更新时间 */
+    @Stable
     val lastChapterUpdateTime = mapState { it.lastChapter?.chapterUpdateTime }
     
     /** 是否有最新章节信息 */
+    @Stable
     val hasLastChapter = createConditionFlow { it.lastChapter != null }
     
     // endregion
@@ -96,12 +117,15 @@ class BookDetailStateAdapter(
     // region 评价相关状态适配
     
     /** 评价数量 */
+    @Stable
     val reviewCount = mapState { it.reviews.size }
     
     /** 是否有评价 */
+    @Stable
     val hasReviews = createConditionFlow { it.reviews.isNotEmpty() }
     
     /** 平均评分 */
+    @Stable
     val averageRating = mapState { state ->
         val reviews = state.reviews
         if (reviews.isEmpty()) {
@@ -112,13 +136,15 @@ class BookDetailStateAdapter(
     }
     
     /** 高评分评价（4星及以上） */
+    @Stable
     val highRatingReviews = mapState { state ->
-        state.reviews.filter { it.rating >= 4 }
+        state.reviews.filter { it.rating >= 4 }.toImmutableList()
     }
     
     /** 最新评价（前3条） */
+    @Stable
     val latestReviews = mapState { state ->
-        state.reviews.take(3)
+        state.reviews.take(3).toImmutableList()
     }
     
     // endregion
@@ -325,7 +351,7 @@ class BookDetailStateAdapter(
                         readTime = review.readTime,
                         userName = review.userName
                     )
-                },
+                }.toImmutableList(),
                 isDescriptionExpanded = state.isDescriptionExpanded
             ),
             isLoading = state.isLoading,
@@ -354,7 +380,7 @@ data class BookDetailScreenState(
     val error: String?,
     val bookInfo: BookDetailState.BookInfo?,
     val lastChapter: BookDetailState.LastChapter?,
-    val reviews: List<BookDetailState.BookReview>,
+    val reviews: ImmutableList<BookDetailState.BookReview>,
     val isDescriptionExpanded: Boolean,
     val isInBookshelf: Boolean,
     val isAuthorFollowed: Boolean,
@@ -467,7 +493,7 @@ data class BookDetailUiState(
     /** 最新章节信息 */
     val lastChapter: LastChapter? = null,
     /** 用户评价列表 */
-    val reviews: List<BookReview> = emptyList(),
+    val reviews: ImmutableList<BookReview> = persistentListOf(),
     /** 简介是否展开 */
     val isDescriptionExpanded: Boolean = false
 ) {
@@ -506,4 +532,4 @@ data class BookDetailUiState(
         val readTime: String,
         val userName: String
     )
-} 
+}

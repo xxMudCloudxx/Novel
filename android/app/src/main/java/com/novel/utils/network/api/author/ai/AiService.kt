@@ -1,5 +1,6 @@
 package com.novel.utils.network.api.author.ai
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_AI
@@ -14,6 +15,7 @@ import javax.inject.Singleton
 class AiService @Inject constructor() {
     
     // region 数据结构
+    @Stable
     data class AiResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -21,20 +23,24 @@ class AiService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class PolishRequest(
         val text: String
     )
 
+    @Stable
     data class ExpandRequest(
         val text: String,
         val ratio: Double
     )
 
+    @Stable
     data class ContinueRequest(
         val text: String,
         val length: Int
     )
 
+    @Stable
     data class CondenseRequest(
         val text: String,
         val ratio: Int
@@ -304,4 +310,4 @@ class AiService @Inject constructor() {
         }
     }
     // endregion
-} 
+}

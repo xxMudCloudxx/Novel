@@ -1,5 +1,7 @@
 package com.novel.core.mvi
 
+import androidx.compose.runtime.Stable
+
 /**
  * MVI架构中的Reducer基础接口
  * 
@@ -48,6 +50,7 @@ interface MviReducerWithEffect<I : MviIntent, S : MviState, E : MviEffect> {
  * @param newState 新的状态
  * @param effect 可选的副作用
  */
+@Stable
 data class ReduceResult<S : MviState, E : MviEffect>(
     val newState: S,
     val effect: E? = null

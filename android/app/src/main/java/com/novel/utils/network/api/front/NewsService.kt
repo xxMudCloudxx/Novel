@@ -1,5 +1,6 @@
 package com.novel.utils.network.api.front
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
@@ -34,6 +35,7 @@ class NewsService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class NewsListResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,

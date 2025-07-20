@@ -13,6 +13,8 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
+import kotlinx.collections.immutable.toImmutableList
+import androidx.compose.runtime.Stable
 
 /**
  * 搜索页面ViewModel - MVI架构重构版
@@ -61,7 +63,9 @@ class SearchViewModel @Inject constructor(
     val adapter = SearchStateAdapter(state)
 
     /** 搜索防抖处理 */
+    @Stable
     private val searchQueryChannel = Channel<String>(Channel.UNLIMITED)
+    @Stable
     private var searchJob: Job? = null
     
     /** 榜单数据缓存 */
@@ -197,7 +201,7 @@ class SearchViewModel @Inject constructor(
                 
                 val newState = reducer.handleLoadInitialDataSuccess(
                     currentState = getCurrentState(),
-                    searchHistory = historyDeferred,
+                    searchHistory = historyDeferred.toImmutableList(),
                     novelRanking = rankingData.novelRanking,
                     dramaRanking = rankingData.dramaRanking,
                     newBookRanking = rankingData.newBookRanking

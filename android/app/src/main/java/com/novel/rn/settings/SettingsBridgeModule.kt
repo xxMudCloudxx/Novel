@@ -1,5 +1,6 @@
 package com.novel.rn.settings
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.facebook.react.bridge.*
 import androidx.lifecycle.ViewModelProvider
@@ -15,6 +16,7 @@ import com.novel.ComposeMainActivity
  * - 时间设置管理
  * - 自动主题切换
  */
+@Stable
 class SettingsBridgeModule(
     private val reactContext: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactContext) {

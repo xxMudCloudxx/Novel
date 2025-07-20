@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.core.adapter.StateAdapter
+import kotlinx.collections.immutable.ImmutableList
 
 /**
  * SearchResult状态适配器
@@ -279,7 +280,7 @@ data class SearchResultScreenState(
     val isLoading: Boolean,
     val error: String?,
     val query: String,
-    val books: List<BookInfoRespDto>,
+    val books: ImmutableList<BookInfoRespDto>,
     val hasResults: Boolean,
     val resultsText: String,
     val hasActiveFilters: Boolean,
@@ -287,7 +288,7 @@ data class SearchResultScreenState(
     val canLoadMore: Boolean,
     val loadMoreText: String,
     val isFilterSheetOpen: Boolean,
-    val categoryFilters: List<CategoryFilter>,
+    val categoryFilters: ImmutableList<CategoryFilter>,
     val currentFilters: FilterState,
     val paginationInfo: PaginationInfo,
     val searchStatusSummary: String,
@@ -332,6 +333,7 @@ fun SearchResultStateAdapter.toScreenState(): SearchResultScreenState {
  * 筛选条件建造者
  * 简化筛选条件的构建
  */
+@Stable
 class FilterBuilder {
     private var updateStatus: UpdateStatus = UpdateStatus.ALL
     private var isVip: VipStatus = VipStatus.ALL
@@ -367,7 +369,7 @@ class SearchResultStateListener(
 ) {
     
     /** 监听搜索结果变更 */
-    fun onBooksChanged(action: (List<BookInfoRespDto>) -> Unit) = adapter.books.map { books ->
+    fun onBooksChanged(action: (ImmutableList<BookInfoRespDto>) -> Unit) = adapter.books.map { books ->
         action(books)
         books
     }
@@ -398,4 +400,4 @@ class SearchResultStateListener(
  */
 fun SearchResultStateAdapter.createSearchResultListener(): SearchResultStateListener {
     return SearchResultStateListener(this)
-} 
+}

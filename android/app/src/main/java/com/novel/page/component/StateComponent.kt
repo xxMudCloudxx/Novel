@@ -21,7 +21,7 @@ sealed class ViewState {
 
     data object Empty : ViewState()
 
-    data class Error(val ex: Throwable) : ViewState()
+    data class Error(@Stable val ex: Throwable) : ViewState()
 }
 
 @Stable

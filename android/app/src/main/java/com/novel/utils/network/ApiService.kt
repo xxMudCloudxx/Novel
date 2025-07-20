@@ -1,5 +1,6 @@
 package com.novel.utils.network
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.interceptor.AuthInterceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -97,6 +98,7 @@ interface ApiServiceInterface {
  * - 自动认证拦截器集成
  * - 多BaseURL支持
  */
+@Stable
 object RetrofitClient {
 
     private const val TAG = "RetrofitClient"
@@ -167,6 +169,7 @@ object RetrofitClient {
  * - 统一错误处理
  * - 完整的请求生命周期日志
  */
+@Stable
 object ApiService {
     /** 各个服务的基础URL配置 */
     const val BASE_URL_FRONT = "http://47.110.147.60:8080/api/front/"

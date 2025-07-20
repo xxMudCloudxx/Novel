@@ -1,5 +1,6 @@
 package com.novel.utils
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import androidx.lifecycle.ViewModel
 import com.novel.utils.Store.NovelKeyChain.NovelKeyChain
@@ -23,11 +24,14 @@ import javax.inject.Inject
  * - 实时Token过期检查
  * - 为全局认证逻辑提供统一入口
  */
+@Stable
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     /** 安全密钥链存储，用于Token等敏感信息 */
+    @Stable
     private val keyChain: NovelKeyChain,
     /** 用户配置存储，用于Token过期时间等配置 */
+    @Stable
     private val userDefaults: NovelUserDefaults
 ) : ViewModel() {
 

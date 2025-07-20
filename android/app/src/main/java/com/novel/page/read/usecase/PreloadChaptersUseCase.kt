@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
@@ -11,6 +12,7 @@ import com.novel.page.read.viewmodel.Chapter
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -27,6 +29,7 @@ import javax.inject.Inject
  * 3. 预加载状态检查和优化
  * 4. 响应式预加载触发
  */
+@Stable
 class PreloadChaptersUseCase @Inject constructor(
     private val chapterService: ChapterService,
     private val paginationService: PaginationService,
@@ -215,7 +218,7 @@ class PreloadChaptersUseCase @Inject constructor(
                     chapterId = chapter.id,
                     chapterName = chapter.chapterName,
                     content = cachedChapter.content,
-                    pages = pages,
+                    pages = pages.toImmutableList(),
                     isFirstChapter = index == 0,
                     isLastChapter = index == totalChapters - 1
                 )
@@ -340,6 +343,7 @@ class PreloadChaptersUseCase @Inject constructor(
     /**
      * 预加载状态数据类
      */
+    @Stable
     data class PreloadStatus(
         val isPreloading: Boolean,
         val preloadingChapters: Set<String>,

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.runtime.Stable
 import com.novel.ui.theme.ThemeManager
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.TimberLogger
@@ -32,9 +33,12 @@ import javax.inject.Singleton
  * - 主题状态统一管理
  * - 定时器自动管理主题切换
  */
+@Stable
 @Singleton
 class SettingsUtils @Inject constructor(
+    @Stable
     @ApplicationContext private val context: Context,
+    @Stable
     private val novelUserDefaults: NovelUserDefaults
 ) {
 

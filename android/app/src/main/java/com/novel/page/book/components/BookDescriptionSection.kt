@@ -60,10 +60,8 @@ fun BookDescriptionSection(
     // 性能优化：使用remember缓存TextMeasurer
     val textMeasurer = rememberTextMeasurer()
     
-    // 性能优化：使用remember缓存文本样式
-    val textStyle = remember {
-        TextStyle(fontSize = 14.ssp, fontFamily = PingFangFamily)
-    }
+    // 文本样式 - 静态常量，无需 remember
+    val textStyle = TextStyle(fontSize = 14.ssp, fontFamily = PingFangFamily)
     
     // 性能优化：使用derivedStateOf计算布局信息
     val layoutInfo = remember(cleaned, containerWidthPx, textStyle) {

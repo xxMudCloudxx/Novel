@@ -3,6 +3,7 @@ package com.novel
 import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Bundle
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -42,6 +43,7 @@ import timber.log.Timber
  * 3. SoLoader原生库加载
  * 4. React Native引擎初始化
  */
+@Stable
 @HiltAndroidApp
 class MainApplication : Application(), ReactApplication {
     
@@ -52,18 +54,23 @@ class MainApplication : Application(), ReactApplication {
         fun getInstance(): MainApplication? = instance
     }
 
+    @Stable
     @Inject
     lateinit var authInterceptor: AuthInterceptor
 
+    @Stable
     @Inject
     lateinit var tokenProvider: TokenProvider
     
+    @Stable
     @Inject
     lateinit var settingsUtils: SettingsUtils
 
     // 添加ReactRootView缓存管理
+    @Stable
     private val reactRootViewCache = ConcurrentHashMap<String, ReactRootView>()
-    
+
+    @get:Stable
     override val reactNativeHost: ReactNativeHost =
         object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> =

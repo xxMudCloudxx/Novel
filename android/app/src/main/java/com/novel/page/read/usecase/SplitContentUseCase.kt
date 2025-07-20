@@ -1,11 +1,13 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
+import kotlinx.collections.immutable.toImmutableList
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderState
 import javax.inject.Inject
@@ -19,6 +21,7 @@ import javax.inject.Inject
  * 3. 进度恢复和页面索引计算
  * 4. 书籍信息加载（首章）
  */
+@Stable
 class SplitContentUseCase @Inject constructor(
     private val paginationService: PaginationService,
     private val chapterService: ChapterService,
@@ -37,7 +40,8 @@ class SplitContentUseCase @Inject constructor(
             val pageData: PageData,
             val safePageIndex: Int
         ) : SplitResult()
-        
+
+        @Stable
         data class Failure(val error: Throwable) : SplitResult()
     }
 
@@ -76,11 +80,11 @@ class SplitContentUseCase @Inject constructor(
         logger.logDebug("章节分页完成: 页数=${pages.size}", TAG)
 
         // 2. 创建基础PageData
-        var pageData = PageData(
+        var currentPageData = PageData(
             chapterId = currentChapter.id,
             chapterName = currentChapter.chapterName,
             content = chapterContent,
-            pages = pages,
+            pages = pages.toImmutableList(),
             isFirstChapter = state.isFirstChapter,
             isLastChapter = state.isLastChapter,
             hasBookDetailPage = state.isFirstChapter
@@ -91,7 +95,7 @@ class SplitContentUseCase @Inject constructor(
             logger.logDebug("加载书籍信息", TAG)
             val bookInfo = chapterService.loadBookInfo(state.bookId)
             if (bookInfo != null) {
-                pageData = pageData.copy(bookInfo = bookInfo)
+                currentPageData = currentPageData.copy(bookInfo = bookInfo)
                 logger.logDebug("书籍信息加载成功: ${bookInfo.bookName}", TAG)
             } else {
                 logger.logWarning("书籍信息加载失败", TAG)
@@ -102,7 +106,7 @@ class SplitContentUseCase @Inject constructor(
         if (includeAdjacentChapters) {
             logger.logDebug("开始加载相邻章节数据", TAG)
             val (previousChapterData, nextChapterData) = loadAdjacentChapterData(state)
-            pageData = pageData.copy(
+            currentPageData = currentPageData.copy(
                 previousChapterData = previousChapterData,
                 nextChapterData = nextChapterData
             )
@@ -110,14 +114,14 @@ class SplitContentUseCase @Inject constructor(
         }
 
         // 5. 计算安全的页面索引
-        val safePageIndex = calculateSafePageIndex(state, pageData, restoreProgress)
+        val safePageIndex = calculateSafePageIndex(state, currentPageData, restoreProgress)
         
         logger.logDebug("内容分割成功: 最终页面索引=$safePageIndex", TAG)
         
         // 6. 更新章节缓存中的分页数据
-        chapterService.setCachedChapterPageData(currentChapter.id, pageData)
+        chapterService.setCachedChapterPageData(currentChapter.id, currentPageData)
 
-            val result = SplitResult.Success(pageData, safePageIndex)
+            val result = SplitResult.Success(currentPageData, safePageIndex)
             logOperationComplete("内容分割", "分割完成，页数=${pages.size}，页面索引=$safePageIndex")
             result
         }.getOrElse { throwable ->
@@ -157,7 +161,7 @@ class SplitContentUseCase @Inject constructor(
                         chapterId = prevChapter.id,
                         chapterName = prevChapter.chapterName,
                         content = prevContent.content,
-                        pages = prevPages,
+                        pages = prevPages.toImmutableList(),
                         isFirstChapter = prevIndex == 0,
                         isLastChapter = false
                     )
@@ -191,7 +195,7 @@ class SplitContentUseCase @Inject constructor(
                         chapterId = nextChapter.id,
                         chapterName = nextChapter.chapterName,
                         content = nextContent.content,
-                        pages = nextPages,
+                        pages = nextPages.toImmutableList(),
                         isFirstChapter = false,
                         isLastChapter = nextIndex == chapterList.size - 1
                     )

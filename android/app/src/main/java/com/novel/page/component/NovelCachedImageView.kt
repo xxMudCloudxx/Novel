@@ -61,8 +61,10 @@ interface MemoryCache {
  * 使用最近最少使用算法管理内存，防止内存溢出
  */
 @Singleton
+@Stable
 class LruMemoryCache @Inject constructor(): MemoryCache {
-    private val cache = LruCache<String, Bitmap>(20 * 1024 * 1024) // 20MB缓存
+    @Stable
+    private val cache: LruCache<String, Bitmap> = LruCache<String, Bitmap>(20 * 1024 * 1024) // 20MB缓存
     override fun get(key: String) = cache[key]
     override fun put(key: String, bitmap: Bitmap) {
         cache.put(key, bitmap)
@@ -84,9 +86,13 @@ interface ImageLoaderService {
  * 提供高性能的图片加载体验
  */
 @Singleton
+@Stable
 class HttpImageLoaderService @Inject constructor(
+    @Stable
     private val client: OkHttpClient,
+    @Stable
     private val memoryCache: MemoryCache,
+    @Stable
     private val tokenProvider: TokenProvider
 ) : ImageLoaderService {
     
@@ -180,9 +186,12 @@ object NetworkingModule {
  * 封装加载过程中的不同状态
  */
 sealed class LoadState {
+    @Stable
     data object Loading : LoadState()
+    @Stable
     data object Error   : LoadState()
-    data class Success(val image: ImageBitmap) : LoadState()
+    @Stable
+    data class Success(@Stable val image: ImageBitmap) : LoadState()
 }
 
 /**

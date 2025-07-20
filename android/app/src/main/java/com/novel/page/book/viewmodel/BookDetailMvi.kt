@@ -2,6 +2,8 @@ package com.novel.page.book.viewmodel
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.Immutable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.novel.core.mvi.MviIntent
 import com.novel.core.mvi.MviState
 import com.novel.core.mvi.MviEffect
@@ -94,9 +96,10 @@ sealed class BookDetailIntent : MviIntent {
     /**
      * 内部Intent：书籍基本信息加载成功
      */
+    @Stable
     data class BookInfoLoadSuccess(
         val bookInfo: BookDetailState.BookInfo,
-        val reviews: List<BookDetailState.BookReview>
+        val reviews: ImmutableList<BookDetailState.BookReview>
     ) : BookDetailIntent()
     
     /**
@@ -122,7 +125,7 @@ data class BookDetailState(
     override val error: String? = null,
     val bookInfo: BookInfo? = null,
     val lastChapter: LastChapter? = null,
-    val reviews: List<BookReview> = emptyList(),
+    val reviews: ImmutableList<BookReview> = persistentListOf(),
     val isDescriptionExpanded: Boolean = false,
     val isInBookshelf: Boolean = false,
     val isAuthorFollowed: Boolean = false,

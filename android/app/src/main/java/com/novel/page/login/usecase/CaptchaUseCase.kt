@@ -1,5 +1,6 @@
 package com.novel.page.login.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.page.login.utils.CaptchaService
 import com.novel.utils.TimberLogger
@@ -11,6 +12,7 @@ import javax.inject.Inject
  * 封装验证码相关业务逻辑，包括加载、刷新、清理等
  * 基于现有CaptchaService重构，保持业务逻辑不变
  */
+@Stable
 class CaptchaUseCase @Inject constructor(
     private val captchaService: CaptchaService
 ) : BaseUseCase<Unit, CaptchaUseCase.Result>() {

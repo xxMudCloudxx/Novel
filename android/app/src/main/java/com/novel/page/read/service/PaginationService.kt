@@ -1,5 +1,6 @@
 package com.novel.page.read.service
 
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import com.novel.page.read.repository.BookCacheData
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.*
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 分页服务类 - 重构优化版
@@ -35,6 +36,7 @@ import kotlinx.coroutines.*
  * - 可配置的分页参数
  */
 @Singleton
+@Stable
 class PaginationService @Inject constructor(
     private val bookCacheManager: BookCacheManager,
     private val cachedBookRepository: CachedBookRepository,
@@ -320,8 +322,8 @@ class PaginationService @Inject constructor(
 
             val newBookCacheData = BookCacheData(
                 bookId = bookId,
-                chapters = cachedChapters,
-                chapterIds = cachedChapters.map { it.chapterId },
+                chapters = cachedChapters.toImmutableList(),
+                chapterIds = cachedChapters.map { it.chapterId }.toImmutableList(),
                 cacheTime = System.currentTimeMillis(),
                 bookInfo = bookInfoForCache
             )

@@ -1,6 +1,7 @@
 package com.novel.page.read.repository
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Density
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -24,13 +27,15 @@ import javax.inject.Singleton
 /**
  * 全书缓存数据
  */
+@Stable
 data class BookCacheData(
     val bookId: String,
-    val chapters: List<ChapterContentData>,
-    val chapterIds: List<String>, // 章节ID列表，用于增量更新
+    val chapters: ImmutableList<ChapterContentData>,
+    val chapterIds: ImmutableList<String>, // 章节ID列表，用于增量更新
     val cacheTime: Long, // 缓存时间
     val bookInfo: BookInfo? = null
 ) {
+    @Stable
     data class ChapterContentData(
         val chapterId: String,
         val chapterName: String,
@@ -38,6 +43,7 @@ data class BookCacheData(
         val chapterNum: Int
     )
     
+    @Stable
     data class BookInfo(
         val bookName: String,
         val authorName: String,
@@ -52,14 +58,16 @@ data class BookCacheData(
 /**
  * 页数缓存数据
  */
+@Stable
 data class PageCountCacheData(
     val bookId: String,
     val fontSize: Int,
     val containerSize: IntSize,
     val totalPages: Int,
-    val chapterPageRanges: List<ChapterPageRange>, // 每章节的页数范围
+    val chapterPageRanges: ImmutableList<ChapterPageRange>, // 每章节的页数范围
     val cacheTime: Long
 ) {
+    @Stable
     data class ChapterPageRange(
         val chapterId: String,
         val startPage: Int,
@@ -112,6 +120,7 @@ data class ChapterPageCountData(
  * - 分片计算减少内存占用
  */
 @Singleton
+@Stable
 class BookCacheManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
@@ -362,7 +371,7 @@ class BookCacheManager @Inject constructor(
             fontSize = readerSettings.fontSize,
             containerSize = containerSize,
             totalPages = currentCalculatedPages,
-            chapterPageRanges = chapterPageRanges,
+            chapterPageRanges = chapterPageRanges.toImmutableList(),
             cacheTime = System.currentTimeMillis()
         )
         

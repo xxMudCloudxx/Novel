@@ -1,5 +1,6 @@
 package com.novel.utils.dao
 
+import androidx.compose.runtime.Stable
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.novel.page.home.dao.HomeDao
@@ -22,6 +23,7 @@ import com.novel.page.login.dao.UserEntity
  * - 版本4，支持数据迁移
  * - 多实体统一管理
  */
+@Stable
 @Database(
     entities = [
         UserEntity::class,         // 用户信息

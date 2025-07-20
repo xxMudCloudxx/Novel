@@ -1,6 +1,7 @@
 package com.novel.rn.settings.usecase
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.rn.settings.SettingsUtils
 import com.novel.ui.theme.ThemeManager
@@ -20,6 +21,7 @@ import javax.inject.Inject
  * - 验证备份文件
  * - 恢复用户配置
  */
+@Stable
 class ImportUserDataUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsUtils: SettingsUtils,

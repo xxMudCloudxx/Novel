@@ -1,5 +1,6 @@
 package com.novel.page.search.repository
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
@@ -7,6 +8,9 @@ import com.google.gson.Gson
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.page.search.viewmodel.BookInfoRespDto
 import com.novel.page.search.viewmodel.FilterState
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -21,13 +25,14 @@ import com.novel.utils.network.repository.CachedBookRepository
  * 
  * 包含三种类型榜单的完整数据
  */
+@Stable
 data class RankingData(
     /** 小说榜单列表 */
-    val novelRanking: List<SearchRankingItem> = emptyList(),
+    val novelRanking: ImmutableList<SearchRankingItem> = persistentListOf(),
     /** 短剧榜单列表 */
-    val dramaRanking: List<SearchRankingItem> = emptyList(),
+    val dramaRanking: ImmutableList<SearchRankingItem> = persistentListOf(),
     /** 新书榜单列表 */
-    val newBookRanking: List<SearchRankingItem> = emptyList()
+    val newBookRanking: ImmutableList<SearchRankingItem> = persistentListOf()
 )
 
 /**
@@ -35,6 +40,7 @@ data class RankingData(
  * 
  * 标准分页数据结构，包含分页信息和书籍列表
  */
+@Stable
 data class PageRespDtoBookInfoRespDto(
     /** 当前页码 */
     val pageNum: Long? = null,
@@ -43,7 +49,7 @@ data class PageRespDtoBookInfoRespDto(
     /** 总记录数 */
     val total: Long? = null,
     /** 书籍信息列表 */
-    val list: List<BookInfoRespDto> = emptyList(),
+    val list: ImmutableList<BookInfoRespDto> = persistentListOf(),
     /** 总页数 */
     val pages: Long? = null
 )
@@ -51,6 +57,7 @@ data class PageRespDtoBookInfoRespDto(
 /**
  * 搜索参数数据类
  */
+@Stable
 data class SearchParams(
     val query: String,
     val page: Int,
@@ -62,11 +69,11 @@ data class SearchParams(
 /**
  * 缓存的搜索结果
  */
+@Stable
 data class CachedSearchResult(
-    val books: List<BookInfoRespDto>,
-    val totalResults: Int,
-    val hasMore: Boolean,
-    val timestamp: Long
+    val params: SearchParams,
+    val result: PageRespDtoBookInfoRespDto,
+    val cacheTime: Long
 )
 
 /**
@@ -94,12 +101,14 @@ data class CachedSearchResult(
  * - 搜索结果缓存限制为20条，5分钟过期
  */
 @Singleton
+@Stable
 class SearchRepository @Inject constructor(
     /** 搜索服务，提供网络搜索功能 */
     private val searchService: SearchService,
     /** 用户配置存储，管理本地设置 */
     private val userDefaults: NovelUserDefaults,
     /** JSON序列化工具 */
+    @Stable
     private val gson: Gson,
     /** 网络缓存管理器 */
     private val cacheManager: NetworkCacheManager,
@@ -124,7 +133,8 @@ class SearchRepository @Inject constructor(
     }
     
     /** 搜索结果缓存 */
-    private val searchResultCache = mutableMapOf<String, CachedSearchResult>()
+    @Stable
+    private val searchResultCache: MutableMap<String, CachedSearchResult> = mutableMapOf<String, CachedSearchResult>()
     
     // region 搜索结果缓存管理
     
@@ -139,7 +149,7 @@ class SearchRepository @Inject constructor(
      * 检查缓存是否有效（5分钟内）
      */
     private fun isCacheValid(cached: CachedSearchResult): Boolean {
-        return (System.currentTimeMillis() - cached.timestamp) < SEARCH_CACHE_DURATION_MS
+        return (System.currentTimeMillis() - cached.cacheTime) < SEARCH_CACHE_DURATION_MS
     }
     
     /**
@@ -167,10 +177,15 @@ class SearchRepository @Inject constructor(
     fun cacheSearchResult(params: SearchParams, books: List<BookInfoRespDto>, totalResults: Int, hasMore: Boolean) {
         val cacheKey = generateCacheKey(params)
         val cachedResult = CachedSearchResult(
-            books = books,
-            totalResults = totalResults,
-            hasMore = hasMore,
-            timestamp = System.currentTimeMillis()
+            params = params,
+            result = PageRespDtoBookInfoRespDto(
+                pageNum = params.page.toLong(),
+                pageSize = 20L,
+                total = totalResults.toLong(),
+                list = books.toImmutableList(),
+                pages = if (hasMore) (params.page + 1).toLong() else params.page.toLong()
+            ),
+            cacheTime = System.currentTimeMillis()
         )
         
         // 清理过期缓存
@@ -179,7 +194,7 @@ class SearchRepository @Inject constructor(
             
             // 如果清理后仍然满了，移除最旧的
             if (searchResultCache.size >= SEARCH_CACHE_SIZE) {
-                val oldestKey = searchResultCache.minByOrNull { it.value.timestamp }?.key
+                val oldestKey = searchResultCache.minByOrNull { it.value.cacheTime }?.key
                 oldestKey?.let { 
                     searchResultCache.remove(it)
                     TimberLogger.d(TAG, "移除最旧的缓存项: $it")
@@ -197,7 +212,7 @@ class SearchRepository @Inject constructor(
     private fun cleanExpiredCache() {
         val currentTime = System.currentTimeMillis()
         val expiredKeys = searchResultCache.filter { 
-            (currentTime - it.value.timestamp) >= SEARCH_CACHE_DURATION_MS 
+            (currentTime - it.value.cacheTime) >= SEARCH_CACHE_DURATION_MS 
         }.keys
         
         expiredKeys.forEach { key ->
@@ -313,7 +328,7 @@ class SearchRepository @Inject constructor(
     /**
      * 获取推荐榜单数据 - 使用缓存优先策略
      */
-    private suspend fun getNovelRanking(): List<SearchRankingItem> {
+    private suspend fun getNovelRanking(): ImmutableList<SearchRankingItem> {
         return try {
             TimberLogger.d(TAG, "获取推荐榜单数据")
             val rankBooks = cachedBookRepository.getVisitRankBooks(CacheStrategy.CACHE_FIRST)
@@ -342,9 +357,9 @@ class SearchRepository @Inject constructor(
                         )
                     )
                 }
-                testData
+                testData.toImmutableList()
             } else {
-                realData
+                realData.toImmutableList()
             }
         } catch (e: Exception) {
             TimberLogger.e(TAG, "获取推荐榜单失败", e)
@@ -356,14 +371,14 @@ class SearchRepository @Inject constructor(
                     author = "测试作者$i",
                     rank = i
                 )
-            }
+            }.toImmutableList()
         }
     }
     
     /**
      * 获取热搜短剧榜数据 - 使用缓存优先策略
      */
-    private suspend fun getDramaRanking(): List<SearchRankingItem> {
+    private suspend fun getDramaRanking(): ImmutableList<SearchRankingItem> {
         return try {
             TimberLogger.d(TAG, "获取热搜短剧榜数据")
             val rankBooks = cachedBookRepository.getUpdateRankBooks(CacheStrategy.CACHE_FIRST)
@@ -392,9 +407,9 @@ class SearchRepository @Inject constructor(
                         )
                     )
                 }
-                testData
+                testData.toImmutableList()
             } else {
-                realData
+                realData.toImmutableList()
             }
         } catch (e: Exception) {
             TimberLogger.e(TAG, "获取热搜短剧榜失败", e)
@@ -406,14 +421,14 @@ class SearchRepository @Inject constructor(
                     author = "短剧作者$i",
                     rank = i
                 )
-            }
+            }.toImmutableList()
         }
     }
     
     /**
      * 获取新书榜单数据 - 使用缓存优先策略
      */
-    private suspend fun getNewBookRanking(): List<SearchRankingItem> {
+    private suspend fun getNewBookRanking(): ImmutableList<SearchRankingItem> {
         return try {
             TimberLogger.d(TAG, "获取新书榜单数据")
             val rankBooks = cachedBookRepository.getNewestRankBooks(CacheStrategy.CACHE_FIRST)
@@ -442,9 +457,9 @@ class SearchRepository @Inject constructor(
                         )
                     )
                 }
-                testData
+                testData.toImmutableList()
             } else {
-                realData
+                realData.toImmutableList()
             }
         } catch (e: Exception) {
             TimberLogger.e(TAG, "获取新书榜单失败", e)
@@ -456,7 +471,7 @@ class SearchRepository @Inject constructor(
                     author = "新人作者$i",
                     rank = i
                 )
-            }
+            }.toImmutableList()
         }
     }
     
@@ -498,13 +513,7 @@ class SearchRepository @Inject constructor(
                 val cached = getCachedSearchResult(params)
                 if (cached != null) {
                     TimberLogger.d(TAG, "使用缓存搜索结果: ${params.query}")
-                    return PageRespDtoBookInfoRespDto(
-                        pageNum = params.page.toLong(),
-                        pageSize = 20L,
-                        total = cached.totalResults.toLong(),
-                        list = cached.books,
-                        pages = if (cached.hasMore) (params.page + 1).toLong() else params.page.toLong()
-                    )
+                    return cached.result
                 }
             }
             
@@ -569,7 +578,7 @@ class SearchRepository @Inject constructor(
                     pageNum = response.data.pageNum,
                     pageSize = response.data.pageSize,
                     total = response.data.total,
-                    list = books,
+                    list = books.toImmutableList(),
                     pages = response.data.pages
                 )
             } else {
@@ -691,4 +700,4 @@ class SearchRepository @Inject constructor(
     }
     
     // endregion
-} 
+}

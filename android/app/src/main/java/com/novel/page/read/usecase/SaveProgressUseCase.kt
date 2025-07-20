@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.ProgressService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
@@ -17,6 +18,7 @@ import javax.inject.Inject
  * 3. 保存页面翻转效果设置
  * 4. 保存页数缓存信息
  */
+@Stable
 class SaveProgressUseCase @Inject constructor(
     private val progressService: ProgressService,
     dispatchers: DispatcherProvider,

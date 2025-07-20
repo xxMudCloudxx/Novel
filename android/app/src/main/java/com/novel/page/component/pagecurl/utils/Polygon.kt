@@ -1,7 +1,10 @@
 package com.novel.page.component.pagecurl.utils
 
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 多边形工具类
@@ -11,7 +14,8 @@ import androidx.compose.ui.graphics.Path
  *
  * @param points 多边形的顶点列表，按顺序连接
  */
-internal class Polygon(private val points: List<Offset>) {
+@Stable
+internal class Polygon(@Stable private val points: ImmutableList<Offset>) {
 
     /**
      * 转换为Compose Path对象
@@ -78,7 +82,7 @@ internal class Polygon(private val points: List<Offset>) {
      * @return 平移后的新多边形
      */
     fun translate(offset: Offset): Polygon {
-        return Polygon(points.map { it + offset })
+        return Polygon(points.map { it + offset }.toImmutableList())
     }
 
     /**
@@ -116,7 +120,7 @@ internal class Polygon(private val points: List<Offset>) {
             expandedPoints.add(current + avgNormal * value)
         }
         
-        return Polygon(expandedPoints)
+        return Polygon(expandedPoints.toImmutableList())
     }
 }
 

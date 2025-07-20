@@ -5,6 +5,8 @@ import com.novel.core.mvi.MviIntent
 import com.novel.core.mvi.MviState
 import com.novel.core.mvi.MviEffect
 import com.novel.page.search.component.SearchRankingItem
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Search模块MVI契约定义
@@ -59,18 +61,18 @@ data class SearchState(
     // 搜索相关
     /** 当前搜索查询内容 */
     val searchQuery: String = "",
-    /** 搜索历史记录列表 */
-    val searchHistory: List<String> = emptyList(),
+    /** 搜索历史记录 */
+    val searchHistory: ImmutableList<String> = persistentListOf(),
     /** 历史记录是否展开显示 */
     val isHistoryExpanded: Boolean = false,
     
     // 推荐榜单
     /** 小说榜单数据 */
-    val novelRanking: List<SearchRankingItem> = emptyList(),
+    val novelRanking: ImmutableList<SearchRankingItem> = persistentListOf(),
     /** 剧本榜单数据 */
-    val dramaRanking: List<SearchRankingItem> = emptyList(),
+    val dramaRanking: ImmutableList<SearchRankingItem> = persistentListOf(),
     /** 新书榜单数据 */
-    val newBookRanking: List<SearchRankingItem> = emptyList(),
+    val newBookRanking: ImmutableList<SearchRankingItem> = persistentListOf(),
     
     /** 榜单数据加载状态 */
     val rankingLoading: Boolean = false

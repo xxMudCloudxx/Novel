@@ -1,5 +1,6 @@
 package com.novel.page.search.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.SearchRepository
 import javax.inject.Inject
@@ -11,6 +12,7 @@ import javax.inject.Inject
  * - 控制搜索历史的展开/收起状态
  * - 持久化用户的展开偏好
  */
+@Stable
 class ToggleHistoryExpansionUseCase @Inject constructor(
     private val searchRepository: SearchRepository
 ) {

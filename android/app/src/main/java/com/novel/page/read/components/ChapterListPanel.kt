@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.novel.page.read.viewmodel.Chapter
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
+import kotlinx.collections.immutable.ImmutableList
 
 /**
  * 章节列表侧滑面板组件
@@ -39,7 +40,7 @@ import com.novel.utils.wdp
  */
 @Composable
 fun ChapterListPanel(
-    chapters: List<Chapter>,
+    chapters: ImmutableList<Chapter>,
     currentChapterId: String,
     backgroundColor: Color,
     onChapterSelected: (Chapter) -> Unit,
@@ -207,4 +208,4 @@ private fun ChapterItem(
             )
         }
     }
-} 
+}

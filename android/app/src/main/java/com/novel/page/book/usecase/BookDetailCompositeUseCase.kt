@@ -1,9 +1,12 @@
 package com.novel.page.book.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.core.domain.ComposeUseCase
 import com.novel.page.book.viewmodel.BookDetailState
 import com.novel.utils.TimberLogger
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 
 /**
@@ -22,14 +25,16 @@ class BookDetailCompositeUseCase @Inject constructor(
         private const val TAG = "BookDetailCompositeUseCase"
     }
     
+    @Stable
     data class Params(
         val bookId: String,
         val useCache: Boolean = true
     )
-    
+
+    @Stable
     data class Result(
         val bookInfo: BookDetailState.BookInfo?,
-        val reviews: List<BookDetailState.BookReview>,
+        val reviews: ImmutableList<BookDetailState.BookReview>,
         val lastChapter: BookDetailState.LastChapter?,
         val isInBookshelf: Boolean
     )
@@ -47,7 +52,7 @@ class BookDetailCompositeUseCase @Inject constructor(
             
             Result(
                 bookInfo = bookDetailResult.bookInfo,
-                reviews = bookDetailResult.reviews,
+                reviews = bookDetailResult.reviews.toImmutableList(),
                 lastChapter = lastChapterResult.lastChapter,
                 isInBookshelf = bookshelfResult.isInShelf
             )
@@ -71,11 +76,13 @@ class BookDetailStatusCheckUseCase @Inject constructor(
         private const val TAG = "BookDetailStatusCheckUseCase"
     }
     
+    @Stable
     data class Params(
         val bookId: String,
         val authorName: String
     )
     
+    @Stable
     data class Result(
         val isInBookshelf: Boolean,
         val isAuthorFollowed: Boolean
@@ -105,4 +112,4 @@ class BookDetailStatusCheckUseCase @Inject constructor(
             )
         }
     }
-} 
+}

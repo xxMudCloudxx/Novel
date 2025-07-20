@@ -1,5 +1,7 @@
 package com.novel.page.component
 
+import androidx.compose.runtime.Stable
+
 /**
  * 通用状态持有者
  * 
@@ -13,6 +15,7 @@ package com.novel.page.component
  * @param isLoading 是否正在加载
  * @param error 错误信息
  */
+@Stable
 data class StateHolderImpl<T>(
     val data: T,
     val isLoading: Boolean = false,

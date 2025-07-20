@@ -5,11 +5,13 @@ import androidx.compose.animation.core.AnimationVector4D
 import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.keyframes
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -48,17 +50,27 @@ fun rememberPageCurlState(
     }
 
 /**
- * PageCurl的状态管理类
+ * 翻页状态管理器
  * 
- * 管理翻页的当前状态、动画进度以及内部状态
- *
+ * 用于管理翻页组件的状态，包括：
+ * - 当前页面索引
+ * - 翻页动画状态
+ * - 页面总数管理
+ * - 内部动画控制
+ * 
+ * 特点：
+ * - 支持向前向后翻页
+ * - 平滑的动画过渡
+ * - 自动边界处理
+ * - 响应式状态更新
+ * 
+ * @param initialCurrent 初始页面索引
  * @param initialMax 初始最大页面数
- * @param initialCurrent 初始当前页面索引
  */
-@ExperimentalPageCurlApi
+@Stable
 class PageCurlState(
-    initialMax: Int = 0,
     initialCurrent: Int = 0,
+    initialMax: Int = 0
 ) {
     /**
      * 可观察的当前页面索引

@@ -4,6 +4,8 @@ import com.novel.utils.TimberLogger
 import com.novel.core.mvi.MviReducerWithEffect
 import com.novel.core.mvi.ReduceResult
 import com.novel.core.mvi.MviReducer
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 搜索页面状态转换器
@@ -97,10 +99,10 @@ class SearchReducer : MviReducer<SearchIntent, SearchState> {
      */
     fun handleLoadInitialDataSuccess(
         currentState: SearchState,
-        searchHistory: List<String>,
-        novelRanking: List<com.novel.page.search.component.SearchRankingItem>,
-        dramaRanking: List<com.novel.page.search.component.SearchRankingItem>,
-        newBookRanking: List<com.novel.page.search.component.SearchRankingItem>
+        searchHistory: ImmutableList<String>,
+        novelRanking: ImmutableList<com.novel.page.search.component.SearchRankingItem>,
+        dramaRanking: ImmutableList<com.novel.page.search.component.SearchRankingItem>,
+        newBookRanking: ImmutableList<com.novel.page.search.component.SearchRankingItem>
     ): SearchState {
         return currentState.copy(
             version = currentState.version + 1,
@@ -140,7 +142,7 @@ class SearchReducer : MviReducer<SearchIntent, SearchState> {
     ): SearchState {
         return currentState.copy(
             version = currentState.version + 1,
-            searchHistory = updatedHistory
+            searchHistory = updatedHistory.toImmutableList()
         )
     }
     
@@ -157,4 +159,4 @@ class SearchReducer : MviReducer<SearchIntent, SearchState> {
             isHistoryExpanded = newExpansionState
         )
     }
-} 
+}

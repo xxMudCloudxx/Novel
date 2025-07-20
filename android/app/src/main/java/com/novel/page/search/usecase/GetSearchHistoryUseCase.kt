@@ -1,5 +1,6 @@
 package com.novel.page.search.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.SearchRepository
 import javax.inject.Inject
@@ -11,6 +12,7 @@ import javax.inject.Inject
  * - 获取用户搜索历史记录
  * - 支持历史记录展示
  */
+@Stable
 class GetSearchHistoryUseCase @Inject constructor(
     private val searchRepository: SearchRepository
 ) {

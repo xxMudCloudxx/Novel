@@ -1,5 +1,8 @@
 package com.novel.page.book.usecase
 
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.novel.core.domain.BaseUseCase
 import com.novel.page.book.viewmodel.BookDetailState
 import com.novel.utils.network.repository.CachedBookRepository
@@ -18,14 +21,16 @@ class GetBookDetailUseCase @Inject constructor(
         private const val TAG = "GetBookDetailUseCase"
     }
     
+    @Stable
     data class Params(
         val bookId: String,
         val useCache: Boolean = true
     )
-    
+
+    @Stable
     data class Result(
         val bookInfo: BookDetailState.BookInfo?,
-        val reviews: List<BookDetailState.BookReview>
+        val reviews: ImmutableList<BookDetailState.BookReview>
     )
     
     override suspend fun execute(params: Params): Result {
@@ -60,8 +65,8 @@ class GetBookDetailUseCase @Inject constructor(
         )
     }
     
-    private fun generateMockReviews(): List<BookDetailState.BookReview> {
-        return listOf(
+    private fun generateMockReviews(): ImmutableList<BookDetailState.BookReview> {
+        return persistentListOf(
             BookDetailState.BookReview(
                 id = "1",
                 content = "这个职业(老板)无敌了，全天下的天才为之打工。",
@@ -98,8 +103,10 @@ class GetLastChapterUseCase @Inject constructor(
         private const val TAG = "GetLastChapterUseCase"
     }
     
+    @Stable
     data class Params(val bookId: String)
     
+    @Stable
     data class Result(val lastChapter: BookDetailState.LastChapter?)
     
     override suspend fun execute(params: Params): Result {
@@ -133,8 +140,10 @@ class AddToBookshelfUseCase @Inject constructor(
         private const val TAG = "AddToBookshelfUseCase"
     }
     
+    @Stable
     data class Params(val bookId: String)
     
+    @Stable
     data class Result(val success: Boolean, val message: String = "")
     
     override suspend fun execute(params: Params): Result {
@@ -166,8 +175,10 @@ class RemoveFromBookshelfUseCase @Inject constructor(
         private const val TAG = "RemoveFromBookshelfUseCase"
     }
     
+    @Stable
     data class Params(val bookId: String)
     
+    @Stable
     data class Result(val success: Boolean, val message: String = "")
     
     override suspend fun execute(params: Params): Result {
@@ -199,8 +210,10 @@ class CheckBookInShelfUseCase @Inject constructor(
         private const val TAG = "CheckBookInShelfUseCase"
     }
     
+    @Stable
     data class Params(val bookId: String)
     
+    @Stable
     data class Result(val isInShelf: Boolean)
     
     override suspend fun execute(params: Params): Result {
@@ -223,8 +236,10 @@ class FollowAuthorUseCase @Inject constructor(
         private const val TAG = "FollowAuthorUseCase"
     }
     
+    @Stable
     data class Params(val authorName: String)
     
+    @Stable
     data class Result(val success: Boolean, val message: String = "")
     
     override suspend fun execute(params: Params): Result {
@@ -243,4 +258,4 @@ class FollowAuthorUseCase @Inject constructor(
             Result(success = false, message = "关注失败，请重试")
         }
     }
-} 
+}

@@ -1,6 +1,7 @@
 package com.novel.rn.settings.usecase
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.rn.settings.SettingsUtils
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
@@ -22,6 +23,7 @@ import javax.inject.Inject
  * - 生成备份文件
  * - 数据打包压缩
  */
+@Stable
 class ExportUserDataUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsUtils: SettingsUtils,
@@ -40,6 +42,7 @@ class ExportUserDataUseCase @Inject constructor(
     )
 
     @Serializable
+    @Stable
     data class UserDataBackup(
         val exportTime: String,
         val appVersion: String,
@@ -48,6 +51,7 @@ class ExportUserDataUseCase @Inject constructor(
     )
 
     @Serializable
+    @Stable
     data class SettingsBackup(
         val themeMode: String,
         val followSystemTheme: Boolean,

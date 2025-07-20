@@ -1,5 +1,6 @@
 package com.novel.page.login.utils
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.page.login.dao.UserRepository
 import com.novel.rn.ReactNativeBridge
@@ -35,6 +36,7 @@ import javax.inject.Singleton
  * - 统一错误处理，提升用户体验
  */
 @Singleton
+@Stable
 class AuthService @Inject constructor(
     /** 用户网络服务 */
     private val userService: UserService,

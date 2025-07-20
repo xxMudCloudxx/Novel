@@ -2,6 +2,7 @@ package com.novel.page.login.utils
 
 import android.content.Context
 import android.util.Base64
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.api.front.resource.ResourceService
 import com.novel.utils.security.SecurityConfig
@@ -23,6 +24,7 @@ import javax.inject.Singleton
  * 确保验证码文件的安全性和及时清理
  */
 @Singleton
+@Stable
 class CaptchaService @Inject constructor(
     private val resourceService: ResourceService,
     private val securityConfig: SecurityConfig,

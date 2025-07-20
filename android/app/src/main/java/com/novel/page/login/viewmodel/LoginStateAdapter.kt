@@ -22,18 +22,23 @@ class LoginStateAdapter(
     // region 基础状态适配
     
     /** 是否为登录模式 */
+    @Stable
     val isLoginMode = mapState { it.isLoginMode }
     
     /** 是否为注册模式 */
+    @Stable
     val isRegisterMode = mapState { !it.isLoginMode }
     
     /** 是否正在提交 */
+    @Stable
     val isSubmitting = mapState { it.isSubmitting }
     
     /** 提交错误信息 */
+    @Stable
     val submitError = mapState { it.submitError }
     
     /** 协议是否已同意 */
+    @Stable
     val isAgreementAccepted = mapState { it.isAgreementAccepted }
     
     // endregion
@@ -41,15 +46,19 @@ class LoginStateAdapter(
     // region 表单状态适配
     
     /** 当前激活的表单数据 */
+    @Stable
     val activeForm = mapState { it.activeForm }
     
     /** 登录表单 */
+    @Stable
     val loginForm = mapState { it.loginForm }
     
     /** 注册表单 */
+    @Stable
     val registerForm = mapState { it.registerForm }
     
     /** 验证结果 */
+    @Stable
     val validationResults = mapState { it.validationResults }
     
     // endregion
@@ -57,21 +66,27 @@ class LoginStateAdapter(
     // region 验证码状态适配
     
     /** 验证码状态 */
+    @Stable
     val captchaState = mapState { it.captchaState }
     
     /** 验证码图片路径 */
+    @Stable
     val captchaImagePath = mapState { it.captchaState.imagePath }
     
     /** 验证码会话ID */
+    @Stable
     val captchaSessionId = mapState { it.captchaState.sessionId }
     
     /** 验证码是否正在加载 */
+    @Stable
     val isCaptchaLoading = mapState { it.captchaState.isLoading }
     
     /** 验证码错误信息 */
+    @Stable
     val captchaError = mapState { it.captchaState.error }
     
     /** 是否有有效验证码 */
+    @Stable
     val hasValidCaptcha = createConditionFlow { it.captchaState.hasValidCaptcha }
     
     // endregion
@@ -79,15 +94,19 @@ class LoginStateAdapter(
     // region 手机信息状态适配
     
     /** 手机信息 */
+    @Stable
     val phoneInfo = mapState { it.phoneInfo }
     
     /** 手机号码 */
+    @Stable
     val phoneNumber = mapState { it.phoneInfo.phoneNumber }
     
     /** 运营商名称 */
+    @Stable
     val operatorName = mapState { it.phoneInfo.operatorName }
     
     /** 脱敏手机号 */
+    @Stable
     val maskedPhoneNumber = mapState { it.phoneInfo.maskedPhoneNumber }
     
     // endregion
@@ -252,4 +271,4 @@ fun LoginStateAdapter.toScreenState(): LoginScreenState {
  */
 fun LoginStateAdapter.createLoginListener(): LoginStateListener {
     return LoginStateListener(this)
-} 
+}

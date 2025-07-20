@@ -41,10 +41,10 @@ import android.widget.Toast
 @Composable
 fun BookDetailPage(
     bookId: String,
-    viewModel: BookDetailViewModel = hiltViewModel(),
     flipBookController: FlipBookAnimationController? = null,
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
 ) {
+    val viewModel: BookDetailViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     rememberCoroutineScope()

@@ -1,6 +1,8 @@
 package com.novel.page.read.service
 
 import android.annotation.SuppressLint
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Density
 import com.novel.page.read.service.common.*
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.Chapter
@@ -8,6 +10,7 @@ import com.novel.page.read.viewmodel.ChapterCache
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderSettings
 import com.novel.utils.network.repository.CachedBookRepository
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -151,9 +154,9 @@ class ChapterService @Inject constructor(
      */
     suspend fun preloadChapter(
         chapterId: String,
-        containerSize: androidx.compose.ui.unit.IntSize? = null,
+        containerSize: IntSize? = null,
         readerSettings: ReaderSettings? = null,
-        density: androidx.compose.ui.unit.Density? = null
+        density: Density? = null
     ) {
         safeIo {
             withPerformanceMonitoring("preloadChapter") {
@@ -180,7 +183,7 @@ class ChapterService @Inject constructor(
                             chapterId = cachedChapter.chapter.id,
                             chapterName = cachedChapter.chapter.chapterName,
                             content = cachedChapter.content,
-                            pages = pages,
+                            pages = pages.toImmutableList(),
                             isFirstChapter = false, // 这里简化处理
                             isLastChapter = false   // 这里简化处理
                         )
@@ -232,7 +235,7 @@ class ChapterService @Inject constructor(
                             chapterId = chapter.id,
                             chapterName = chapter.chapterName,
                             content = contentData.bookContent,
-                            pages = pages,
+                            pages = pages.toImmutableList(),
                             isFirstChapter = false, // 这里简化处理
                             isLastChapter = false   // 这里简化处理
                         )

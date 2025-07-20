@@ -1,16 +1,14 @@
 package com.novel.page.book.viewmodel
 
-import com.novel.utils.TimberLogger
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.viewModelScope
 import com.novel.core.mvi.BaseMviViewModel
 import com.novel.page.book.usecase.*
 import com.novel.page.component.StateHolderImpl
+import com.novel.utils.TimberLogger
 import com.novel.utils.network.repository.CachedBookRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,24 +37,12 @@ class BookDetailViewModel @Inject constructor(
 ) : BaseMviViewModel<BookDetailIntent, BookDetailState, BookDetailEffect>() {
     
     // 手动创建UseCase实例，避免Hilt泛型问题
-    private val getBookDetailUseCase: GetBookDetailUseCase by lazy {
-        GetBookDetailUseCase(cachedBookRepository)
-    }
-    private val getLastChapterUseCase: GetLastChapterUseCase by lazy {
-        GetLastChapterUseCase(cachedBookRepository)
-    }
-    private val addToBookshelfUseCase: AddToBookshelfUseCase by lazy {
-        AddToBookshelfUseCase()
-    }
-    private val removeFromBookshelfUseCase: RemoveFromBookshelfUseCase by lazy {
-        RemoveFromBookshelfUseCase()
-    }
-    private val checkBookInShelfUseCase: CheckBookInShelfUseCase by lazy {
-        CheckBookInShelfUseCase()
-    }
-    private val followAuthorUseCase: FollowAuthorUseCase by lazy {
-        FollowAuthorUseCase()
-    }
+    private val getBookDetailUseCase: GetBookDetailUseCase = GetBookDetailUseCase(cachedBookRepository)
+    private val getLastChapterUseCase: GetLastChapterUseCase = GetLastChapterUseCase(cachedBookRepository)
+    private val addToBookshelfUseCase: AddToBookshelfUseCase = AddToBookshelfUseCase()
+    private val removeFromBookshelfUseCase: RemoveFromBookshelfUseCase = RemoveFromBookshelfUseCase()
+    private val checkBookInShelfUseCase: CheckBookInShelfUseCase = CheckBookInShelfUseCase()
+    private val followAuthorUseCase: FollowAuthorUseCase = FollowAuthorUseCase()
     
     companion object {
         private const val TAG = "BookDetailViewModel"
@@ -66,6 +52,7 @@ class BookDetailViewModel @Inject constructor(
     val adapter = BookDetailStateAdapter(state)
     
     /** 兼容性属性：UI状态流，适配原有的UI层期望格式 */
+    @Stable
     val uiState: StateFlow<StateHolderImpl<BookDetailUiState>> = state.map { mviState ->
         adapter.toUiState()
     }.stateIn(
@@ -291,4 +278,4 @@ class BookDetailViewModel @Inject constructor(
             }
         }
     }
-} 
+}

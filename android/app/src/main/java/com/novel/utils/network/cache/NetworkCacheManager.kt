@@ -50,8 +50,11 @@ enum class CacheStrategy {
 /**
  * 缓存结果
  */
+@Stable
 sealed class CacheResult<T> {
+    @Stable
     data class Success<T>(val data: T, val fromCache: Boolean) : CacheResult<T>()
+    @Stable
     data class Error<T>(val error: Throwable, val cachedData: T? = null) : CacheResult<T>()
 }
 
@@ -83,14 +86,18 @@ class NetworkCacheManager @Inject constructor(
         private const val TAG = "NetworkCacheManager"
         private const val CACHE_DIR_NAME = "network_cache"
     }
-    
+
+    @Stable
     private val cacheDir = File(context.cacheDir, CACHE_DIR_NAME)
     
     // 内存缓存
+    @Stable
     private val memoryCache = mutableMapOf<String, CacheEntry<*>>()
     
     // 缓存更新状态
+    @Stable
     private val _cacheUpdateState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    @Stable
     val cacheUpdateState: StateFlow<Map<String, Boolean>> = _cacheUpdateState.asStateFlow()
     
     init {

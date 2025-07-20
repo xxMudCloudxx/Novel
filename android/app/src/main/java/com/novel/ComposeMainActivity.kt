@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import com.novel.page.component.ImageLoaderService
 import com.novel.page.component.LocalImageLoaderService
@@ -31,6 +32,7 @@ import javax.inject.Inject
  * 
  * 采用Hilt进行依赖注入，确保组件间的松耦合
  */
+@Stable
 @AndroidEntryPoint
 class ComposeMainActivity : ComponentActivity() {
     
@@ -39,20 +41,21 @@ class ComposeMainActivity : ComponentActivity() {
     }
 
     /** 图片加载服务 - 用于全局图片缓存和加载优化 */
+    @Stable
     @Inject
     lateinit var imageLoaderService: ImageLoaderService
 
     /** React Native实例管理器 - 用于混合开发中的RN模块管理 */
-    private val rim by lazy {
-        (application as MainApplication).reactNativeHost.reactInstanceManager
-    }
+    @Stable
+    private val rim: com.facebook.react.ReactInstanceManager?
+        get() = (application as MainApplication).reactNativeHost.reactInstanceManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         TimberLogger.d(TAG, "Activity创建开始")
         
         // 在后台初始化React Native上下文，避免阻塞UI线程
-        rim.createReactContextInBackground()
+        rim?.createReactContextInBackground()
 
         setContent {
             // 应用主题包装器，提供统一的视觉风格
@@ -84,21 +87,21 @@ class ComposeMainActivity : ComponentActivity() {
         super.onResume()
         TimberLogger.d(TAG, "Activity恢复可见")
         // 恢复React Native实例状态
-        rim.onHostResume(this)
+        rim?.onHostResume(this)
     }
 
     override fun onPause() {
         super.onPause()
         TimberLogger.d(TAG, "Activity暂停")
         // 暂停React Native实例
-        rim.onHostPause(this)
+        rim?.onHostPause(this)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         TimberLogger.d(TAG, "Activity销毁")
         // 清理React Native实例资源
-        rim.onHostDestroy(this)
+        rim?.onHostDestroy(this)
         
         // 清理ReactRootView缓存
         (application as MainApplication).clearAllReactRootViewCache()

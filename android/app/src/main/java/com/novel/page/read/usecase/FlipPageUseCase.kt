@@ -1,5 +1,6 @@
 package com.novel.page.read.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
@@ -22,6 +23,7 @@ import javax.inject.Inject
  * 5. BookDetailPage和ContentPage的切换
  * 6. 到达虚拟列表边界时的章节切换
  */
+@Stable
 class FlipPageUseCase @Inject constructor(
     private val switchChapterUseCase: SwitchChapterUseCase,
     private val preloadChaptersUseCase: PreloadChaptersUseCase,
@@ -51,6 +53,7 @@ class FlipPageUseCase @Inject constructor(
         data class ChapterChanged(val switchResult: SwitchChapterUseCase.SwitchResult) : FlipResult()
         
         /** 操作失败 */
+        @Stable
         data class Failure(val error: Throwable) : FlipResult()
         
         /** 无操作（已到边界或其他原因） */

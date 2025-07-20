@@ -1,9 +1,11 @@
 package com.novel.page.search.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.page.search.repository.SearchRepository
 import com.novel.page.search.repository.PageRespDtoBookInfoRespDto
 import com.novel.page.search.viewmodel.FilterState
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 
 /**
@@ -20,6 +22,7 @@ import javax.inject.Inject
  * - Repository模式数据访问
  * - Result包装错误处理
  */
+@Stable
 class SearchBooksUseCase @Inject constructor(
     private val searchRepository: SearchRepository
 ) {
@@ -84,13 +87,13 @@ class SearchBooksUseCase @Inject constructor(
                             visitCount = searchBook.visitCount,
                             wordCount = searchBook.wordCount,
                             commentCount = searchBook.commentCount,
+                            updateTime = searchBook.updateTime,
                             firstChapterId = searchBook.firstChapterId,
                             lastChapterId = searchBook.lastChapterId,
-                            lastChapterName = searchBook.lastChapterName,
-                            updateTime = searchBook.updateTime
+                            lastChapterName = searchBook.lastChapterName
                         )
                         bookInfoRespDto
-                    },
+                    }.toImmutableList(),
                     pages = response.data.pages
                 )
                 Result.success(pageResp)

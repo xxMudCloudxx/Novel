@@ -63,9 +63,9 @@ val LocalReaderInfo = staticCompositionLocalOf<ReaderInfo> {
 fun ReaderPage(
     flipBookController: FlipBookAnimationController? = null,
     bookId: String,
-    chapterId: String? = null,
-    viewModel: ReaderViewModel = hiltViewModel()
+    chapterId: String? = null
 ) {
+    val viewModel: ReaderViewModel = hiltViewModel()
     val activeController = flipBookController ?: NavViewModel.currentFlipBookController()
 
     val adapter = viewModel.adapter
@@ -489,7 +489,7 @@ private fun ReaderContent(
         verticalArrangement = Arrangement.spacedBy(8.wdp)
     ) {
         // 章节标题
-        item {
+        item(key = "chapter_title") {
             Text(
                 text = state.currentChapter?.chapterName ?: "",
                 fontSize = (state.readerSettings.fontSize + 4).sp,
@@ -503,7 +503,7 @@ private fun ReaderContent(
         }
 
         // 章节内容
-        item {
+        item(key = "chapter_content") {
             Text(
                 text = state.bookContent.replace("<br/><br/>", "\n\n").replace("<br/>", "\n"),
                 fontSize = state.readerSettings.fontSize.sp,

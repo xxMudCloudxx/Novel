@@ -16,6 +16,8 @@ import com.novel.ui.theme.NovelColors
 import com.novel.utils.debounceClickable
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import kotlinx.collections.immutable.ImmutableList
+import androidx.compose.runtime.Stable
 
 /**
  * 推荐榜单区域组件
@@ -31,9 +33,9 @@ import com.novel.utils.wdp
  */
 @Composable
 fun RankingSection(
-    novelRanking: List<SearchRankingItem>,
-    dramaRanking: List<SearchRankingItem>,
-    newBookRanking: List<SearchRankingItem>,
+    novelRanking: ImmutableList<SearchRankingItem>,
+    dramaRanking: ImmutableList<SearchRankingItem>,
+    newBookRanking: ImmutableList<SearchRankingItem>,
     onRankingItemClick: (Long) -> Unit,
     onViewFullRanking: (String) -> Unit
 ) {
@@ -45,10 +47,10 @@ fun RankingSection(
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.wdp),
     ) {
-        item {
+        item(key = "spacer_start") {
             Spacer(modifier = Modifier.width(8.wdp))
         }
-        item {
+        item(key = "ranking_novel") {
             RankingSectionItem(
                 title = "点击榜",
                 items = novelRanking,
@@ -59,7 +61,7 @@ fun RankingSection(
                 }
             )
         }
-        item {
+        item(key = "ranking_drama") {
             RankingSectionItem(
                 title = "推荐榜",
                 items = dramaRanking,
@@ -70,7 +72,7 @@ fun RankingSection(
                 }
             )
         }
-        item {
+        item(key = "ranking_newbook") {
             RankingSectionItem(
                 title = "新书榜",
                 items = newBookRanking,
@@ -81,7 +83,7 @@ fun RankingSection(
                 }
             )
         }
-        item {
+        item(key = "spacer_end") {
             Spacer(modifier = Modifier.width(8.wdp))
         }
     }
@@ -101,7 +103,7 @@ fun RankingSection(
 @Composable
 private fun RankingSectionItem(
     title: String,
-    items: List<SearchRankingItem>,
+    items: ImmutableList<SearchRankingItem>,
     onItemClick: (Long) -> Unit,
     onViewFullRanking: () -> Unit
 ) {
@@ -147,6 +149,7 @@ private fun RankingSectionItem(
  * @param author 作者名字
  * @param rank 排名序号
  */
+@Stable
 data class SearchRankingItem(
     val id: Long,
     val title: String,
@@ -168,7 +171,7 @@ data class SearchRankingItem(
  */
 @Composable
 fun RankingList(
-    items: List<SearchRankingItem>,
+    items: ImmutableList<SearchRankingItem>,
     onItemClick: (Long) -> Unit,
     onViewFullRanking: () -> Unit,
     modifier: Modifier = Modifier

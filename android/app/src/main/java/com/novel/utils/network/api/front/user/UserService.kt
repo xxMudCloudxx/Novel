@@ -1,5 +1,6 @@
 package com.novel.utils.network.api.front.user
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_USER
@@ -43,6 +44,7 @@ import javax.inject.Singleton
 class UserService @Inject constructor() {
     
     // region 数据结构
+    @Stable
     data class BaseResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -51,11 +53,13 @@ class UserService @Inject constructor() {
     )
 
     // 登录相关数据结构
+    @Stable
     data class LoginRequest(
         @SerializedName("username") val username: String,
         @SerializedName("password") val password: String
     )
 
+    @Stable
     data class LoginResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("msg") val msg: String?,
@@ -63,6 +67,7 @@ class UserService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class LoginData(
         @SerializedName("uid") val uid: Int,
         @SerializedName("nickName") val nickName: String,
@@ -70,6 +75,7 @@ class UserService @Inject constructor() {
     )
 
     // 注册相关数据结构
+    @Stable
     data class RegisterRequest(
         @SerializedName("username") val username: String,
         @SerializedName("password") val password: String,
@@ -77,6 +83,7 @@ class UserService @Inject constructor() {
         @SerializedName("velCode") val velCode: String
     )
 
+    @Stable
     data class RegisterResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("msg") val msg: String?,
@@ -84,12 +91,14 @@ class UserService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class RegisterData(
         @SerializedName("uid") val uid: Int,
         @SerializedName("token") val token: String,
     )
 
     // 用户信息相关数据结构
+    @Stable
     data class UserInfoResponse(
         @SerializedName("code") val code: String,
         @SerializedName("msg") val msg: String,
@@ -97,12 +106,14 @@ class UserService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class UserInfoData(
         @SerializedName("nickName") val nickName: String,
         @SerializedName("userPhoto") val userPhoto: String,
         @SerializedName("userSex") val userSex: Int,
     )
 
+    @Stable
     data class UserInfoUpdateRequest(
         @SerializedName("userId") val userId: Long?,
         @SerializedName("nickName") val nickName: String?,
@@ -123,6 +134,7 @@ class UserService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class PageResponse<T>(
         @SerializedName("pageNum") val pageNum: Long,
         @SerializedName("pageSize") val pageSize: Long,
@@ -533,4 +545,4 @@ class UserService @Inject constructor() {
         }
     }
     // endregion
-} 
+}

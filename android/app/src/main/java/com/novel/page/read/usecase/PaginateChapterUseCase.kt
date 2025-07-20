@@ -1,7 +1,8 @@
 package com.novel.page.read.usecase
 
-import androidx.compose.ui.unit.Density
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Density
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
@@ -10,6 +11,7 @@ import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.Chapter
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderSettings
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 
 /**
@@ -21,6 +23,7 @@ import javax.inject.Inject
  * 3. 设置章节边界标记
  * 4. 记录分页耗时和结果
  */
+@Stable
 class PaginateChapterUseCase @Inject constructor(
     private val paginationService: PaginationService,
     dispatchers: DispatcherProvider,
@@ -70,7 +73,7 @@ class PaginateChapterUseCase @Inject constructor(
                 chapterId = chapter.id,
                 chapterName = chapter.chapterName,
                 content = content,
-                pages = pages,
+                pages = pages.toImmutableList(),
                 isFirstChapter = isFirstChapter,
                 isLastChapter = isLastChapter,
                 hasBookDetailPage = isFirstChapter

@@ -14,6 +14,7 @@ import com.novel.utils.TimberLogger
 import androidx.compose.ui.graphics.toArgb
 import com.novel.page.read.viewmodel.BackgroundTheme
 import com.novel.page.read.viewmodel.ReaderSettings
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * 阅读器设置面板组件
@@ -38,7 +39,7 @@ fun ReaderSettingsPanel(
     modifier: Modifier = Modifier
 ) {
     // 预定义的背景主题列表，经过护眼性和可读性优化
-    val backgroundThemes = listOf(
+    val backgroundThemes = persistentListOf(
         BackgroundTheme("护眼绿", Color(0xFFCCE8CC), Color(0xFF2E2E2E)),  // 护眼绿色，减缓视觉疲劳
         BackgroundTheme("经典白", Color(0xFFFFFFFF), Color(0xFF2E2E2E)),  // 经典白色，适合明亮环境
         BackgroundTheme("温暖黄", Color(0xFFF5F5DC), Color(0xFF2E2E2E)),  // 温暖米黄，最佳护眼效果

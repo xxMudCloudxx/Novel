@@ -19,6 +19,7 @@ import com.novel.page.read.viewmodel.BackgroundTheme
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import kotlinx.collections.immutable.ImmutableList
 
 /**
  * 背景颜色控制组件
@@ -38,7 +39,7 @@ import com.novel.utils.wdp
  */
 @Composable
 fun BackgroundColorControl(
-    backgroundThemes: List<BackgroundTheme>,
+    backgroundThemes: ImmutableList<BackgroundTheme>,
     currentBackgroundColor: Color,
     onThemeChange: (BackgroundTheme) -> Unit
 ) {

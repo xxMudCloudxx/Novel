@@ -1,11 +1,13 @@
 package com.novel.page.search.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.page.search.repository.SearchRepository
 import javax.inject.Inject
 
 /**
  * 添加搜索历史UseCase
  */
+@Stable
 class AddSearchHistoryUseCase @Inject constructor(
     private val searchRepository: SearchRepository
 ) {

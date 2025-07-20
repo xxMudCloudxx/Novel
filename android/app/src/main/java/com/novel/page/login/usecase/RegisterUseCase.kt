@@ -1,5 +1,6 @@
 package com.novel.page.login.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.core.domain.BaseUseCase
 import com.novel.page.login.utils.AuthResult
 import com.novel.page.login.utils.AuthService
@@ -13,6 +14,7 @@ import javax.inject.Inject
  * 封装注册业务逻辑，提供统一的注册接口
  * 基于现有AuthService重构，保持业务逻辑不变
  */
+@Stable
 class RegisterUseCase @Inject constructor(
     private val authService: AuthService
 ) : BaseUseCase<RegisterUseCase.Params, RegisterUseCase.Result>() {

@@ -1,10 +1,12 @@
 package com.novel.utils.network.api.front
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.network.ApiService
 import com.novel.utils.network.ApiService.BASE_URL_FRONT
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.Exception
 import javax.inject.Inject
@@ -28,6 +30,7 @@ import javax.inject.Singleton
 class BookService @Inject constructor() {
     
     // region 数据结构
+    @Stable
     data class BookInfoResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -54,6 +57,7 @@ class BookService @Inject constructor() {
         @SerializedName("updateTime") val updateTime: String
     )
 
+    @Stable
     data class BookListResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -61,6 +65,7 @@ class BookService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookRankResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -68,6 +73,7 @@ class BookService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookRank(
         @SerializedName("id") val id: Long,
         @SerializedName("categoryId") val categoryId: Long,
@@ -81,6 +87,7 @@ class BookService @Inject constructor() {
         @SerializedName("lastChapterUpdateTime") val lastChapterUpdateTime: String
     )
 
+    @Stable
     data class BookChapterResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -111,6 +118,7 @@ class BookService @Inject constructor() {
         @SerializedName("bookContent") val bookContent: String
     )
 
+    @Stable
     data class BookCommentResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -118,6 +126,7 @@ class BookService @Inject constructor() {
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookComment(
         @SerializedName("commentTotal") val commentTotal: Long,
         @SerializedName("comments") val comments: List<CommentInfo>
@@ -132,6 +141,7 @@ class BookService @Inject constructor() {
         @SerializedName("commentTime") val commentTime: String
     )
 
+    @Stable
     data class BookCategoryResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -164,6 +174,7 @@ class BookService @Inject constructor() {
         @SerializedName("contentSummary") val contentSummary: String
     )
 
+    @Stable
     data class BaseResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -543,4 +554,4 @@ class BookService @Inject constructor() {
         }
     }
     // endregion
-} 
+}

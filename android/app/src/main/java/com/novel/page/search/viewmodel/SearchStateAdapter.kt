@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.core.adapter.StateAdapter
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Search状态适配器
@@ -28,18 +30,23 @@ class SearchStateAdapter(
     // region 搜索相关状态适配
     
     /** 当前搜索查询内容 */
+    @Stable
     val searchQuery = mapState { it.searchQuery }
     
     /** 搜索历史记录列表 */
+    @Stable
     val searchHistory = mapState { it.searchHistory }
     
     /** 历史记录是否展开显示 */
+    @Stable
     val isHistoryExpanded = mapState { it.isHistoryExpanded }
     
     /** 是否有搜索历史 */
+    @Stable
     val hasSearchHistory = createConditionFlow { it.searchHistory.isNotEmpty() }
     
     /** 显示的搜索历史（根据展开状态限制数量） */
+    @Stable
     val displayedSearchHistory = mapState { state ->
         if (state.isHistoryExpanded) {
             state.searchHistory
@@ -53,18 +60,23 @@ class SearchStateAdapter(
     // region 榜单相关状态适配
     
     /** 小说榜单数据 */
+    @Stable
     val novelRanking = mapState { it.novelRanking }
     
     /** 剧本榜单数据 */
+    @Stable
     val dramaRanking = mapState { it.dramaRanking }
     
     /** 新书榜单数据 */
+    @Stable
     val newBookRanking = mapState { it.newBookRanking }
     
     /** 榜单数据加载状态 */
+    @Stable
     val rankingLoading = mapState { it.rankingLoading }
     
     /** 是否有榜单数据 */
+    @Stable
     val hasRankingData = createConditionFlow { state ->
         state.novelRanking.isNotEmpty() || 
         state.dramaRanking.isNotEmpty() || 
@@ -72,8 +84,9 @@ class SearchStateAdapter(
     }
     
     /** 所有榜单数据（合并） */
+    @Stable
     val allRankingData = mapState { state ->
-        buildList {
+        persistentListOf<RankingSection>().builder().apply {
             if (state.novelRanking.isNotEmpty()) {
                 add(RankingSection("小说榜", state.novelRanking))
             }
@@ -83,7 +96,7 @@ class SearchStateAdapter(
             if (state.newBookRanking.isNotEmpty()) {
                 add(RankingSection("新书榜", state.newBookRanking))
             }
-        }
+        }.build()
     }
     
     // endregion
@@ -172,7 +185,7 @@ class SearchStateAdapter(
 @Stable
 data class RankingSection(
     val title: String,
-    val items: List<SearchRankingItem>
+    val items: ImmutableList<SearchRankingItem>
 )
 
 /**
@@ -253,13 +266,13 @@ class SearchStateListener(
     }
     
     /** 监听历史记录变更 */
-    fun onHistoryChanged(action: (List<String>) -> Unit) = adapter.searchHistory.map { history ->
+    fun onHistoryChanged(action: (ImmutableList<String>) -> Unit) = adapter.searchHistory.map { history ->
         action(history)
         history
     }
     
     /** 监听榜单数据变更 */
-    fun onRankingDataChanged(action: (List<RankingSection>) -> Unit) = adapter.allRankingData.map { ranking ->
+    fun onRankingDataChanged(action: (ImmutableList<RankingSection>) -> Unit) = adapter.allRankingData.map { ranking ->
         action(ranking)
         ranking
     }
@@ -270,4 +283,4 @@ class SearchStateListener(
  */
 fun SearchStateAdapter.createSearchListener(): SearchStateListener {
     return SearchStateListener(this)
-} 
+}

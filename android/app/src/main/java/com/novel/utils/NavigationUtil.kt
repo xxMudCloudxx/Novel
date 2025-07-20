@@ -2,6 +2,7 @@ package com.novel.utils
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
@@ -156,6 +157,7 @@ fun NavigationSetup() {
     }
 }
 
+@Stable
 object NavViewModel : ViewModel() {
     val navController = MutableLiveData<NavHostController>()
 

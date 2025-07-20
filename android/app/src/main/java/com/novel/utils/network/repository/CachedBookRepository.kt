@@ -2,6 +2,7 @@ package com.novel.utils.network.repository
 
 import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
+import com.novel.utils.asStable
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -17,6 +18,9 @@ import com.novel.utils.network.cache.getBookCategoriesCached
 import com.novel.utils.network.cache.searchBooksCached
 import com.novel.utils.network.cache.onSuccess
 import com.novel.utils.network.cache.onError
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,28 +60,28 @@ class CachedBookRepository @Inject constructor(
     
     // 数据状态流
     private val _bookInfo = MutableStateFlow<BookService.BookInfo?>(null)
-    val bookInfo: StateFlow<BookService.BookInfo?> = _bookInfo.asStateFlow()
+    val bookInfo: StateFlow<BookService.BookInfo?> = _bookInfo.asStateFlow().asStable()
     
-    private val _bookChapters = MutableStateFlow<List<BookService.BookChapter>>(emptyList())
-    val bookChapters: StateFlow<List<BookService.BookChapter>> = _bookChapters.asStateFlow()
+    private val _bookChapters = MutableStateFlow<ImmutableList<BookService.BookChapter>>(persistentListOf())
+    val bookChapters: StateFlow<ImmutableList<BookService.BookChapter>> = _bookChapters.asStateFlow().asStable()
     
-    private val _visitRankBooks = MutableStateFlow<List<BookService.BookRank>>(emptyList())
-    val visitRankBooks: StateFlow<List<BookService.BookRank>> = _visitRankBooks.asStateFlow()
+    private val _visitRankBooks = MutableStateFlow<ImmutableList<BookService.BookRank>>(persistentListOf())
+    val visitRankBooks: StateFlow<ImmutableList<BookService.BookRank>> = _visitRankBooks.asStateFlow().asStable()
     
-    private val _updateRankBooks = MutableStateFlow<List<BookService.BookRank>>(emptyList())
-    val updateRankBooks: StateFlow<List<BookService.BookRank>> = _updateRankBooks.asStateFlow()
+    private val _updateRankBooks = MutableStateFlow<ImmutableList<BookService.BookRank>>(persistentListOf())
+    val updateRankBooks: StateFlow<ImmutableList<BookService.BookRank>> = _updateRankBooks.asStateFlow().asStable()
     
-    private val _newestRankBooks = MutableStateFlow<List<BookService.BookRank>>(emptyList())
-    val newestRankBooks: StateFlow<List<BookService.BookRank>> = _newestRankBooks.asStateFlow()
+    private val _newestRankBooks = MutableStateFlow<ImmutableList<BookService.BookRank>>(persistentListOf())
+    val newestRankBooks: StateFlow<ImmutableList<BookService.BookRank>> = _newestRankBooks.asStateFlow().asStable()
     
-    private val _bookCategories = MutableStateFlow<List<BookService.BookCategory>>(emptyList())
-    val bookCategories: StateFlow<List<BookService.BookCategory>> = _bookCategories.asStateFlow()
+    private val _bookCategories = MutableStateFlow<ImmutableList<BookService.BookCategory>>(persistentListOf())
+    val bookCategories: StateFlow<ImmutableList<BookService.BookCategory>> = _bookCategories.asStateFlow().asStable()
     
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow().asStable()
     
     private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    val error: StateFlow<String?> = _error.asStateFlow().asStable()
     
     /**
      * 增强的数据获取方法，支持自动重试和兜底机制
@@ -186,7 +190,7 @@ class CachedBookRepository @Inject constructor(
     suspend fun getBookChapters(
         bookId: Long,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
-    ): List<BookService.BookChapter> {
+    ): ImmutableList<BookService.BookChapter> {
         return executeWithLoading {
             getDataWithFallback(
                 operation = {
@@ -195,16 +199,17 @@ class CachedBookRepository @Inject constructor(
                         cacheManager = cacheManager,
                         strategy = strategy,
                         onCacheUpdate = { response ->
-                            response.data?.let { _bookChapters.value = it }
+                            response.data?.let { _bookChapters.value = it.toImmutableList() }
                             TimberLogger.d(TAG, "Book chapters cache updated for bookId: $bookId")
                         }
                     )
                 },
                 extractData = { response -> response.data },
-                updateState = { data -> _bookChapters.value = (data as? List<BookService.BookChapter>) ?: emptyList() },
+                updateState = { data -> _bookChapters.value = (data as? List<BookService.BookChapter>)?.toImmutableList()
+                    ?: persistentListOf() },
                 operationName = "getBookChapters(bookId=$bookId)"
-            )?.data
-        } ?: emptyList()
+            )?.data?.toImmutableList() ?: persistentListOf()
+        } ?: persistentListOf()
     }
     
     /**
@@ -238,52 +243,52 @@ class CachedBookRepository @Inject constructor(
      */
     suspend fun getVisitRankBooks(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
-    ): List<BookService.BookRank> {
+    ): ImmutableList<BookService.BookRank> {
         return executeWithLoading {
             try {
                 bookService.getVisitRankBooksCached(
                     cacheManager = cacheManager,
                     strategy = strategy,
                     onCacheUpdate = { response ->
-                        response.data?.let { _visitRankBooks.value = it }
+                        response.data?.let { _visitRankBooks.value = it.toImmutableList() }
                         TimberLogger.d(TAG, "Visit rank books cache updated")
                     }
                 ).onSuccess { response, fromCache ->
-                    response.data?.let { _visitRankBooks.value = it }
+                    response.data?.let { _visitRankBooks.value = it.toImmutableList() }
                     TimberLogger.d(TAG, "Visit rank books loaded from ${if (fromCache) "cache" else "network"}")
                 }.onError { error, cachedData ->
                     TimberLogger.e(TAG, "Failed to load visit rank books", error)
-                    cachedData?.data?.let { _visitRankBooks.value = it }
+                    cachedData?.data?.let { _visitRankBooks.value = it.toImmutableList() }
                     _error.value = error.message
                 }.let { result ->
                     when (result) {
-                        is CacheResult.Success -> result.data.data ?: emptyList()
-                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                        is CacheResult.Success -> result.data.data?.toImmutableList() ?: persistentListOf()
+                        is CacheResult.Error -> result.cachedData?.data?.toImmutableList() ?: persistentListOf()
                     }
                 }
             } catch (e: ClassCastException) {
                 TimberLogger.e(TAG, "ClassCastException in getVisitRankBooks, clearing cache and retrying", e)
                 // 清理相关缓存
                 cacheManager.clearCache("visit_rank_books")
-                _visitRankBooks.value = emptyList()
+                _visitRankBooks.value = persistentListOf()
                 try {
                     // 直接从网络获取数据
                     val response = bookService.getVisitRankBooksBlocking()
                     response.data?.let { books ->
-                        _visitRankBooks.value = books
-                        books
-                    } ?: emptyList()
+                        _visitRankBooks.value = books.toImmutableList()
+                        books.toImmutableList()
+                    } ?: persistentListOf()
                 } catch (networkError: Exception) {
                     TimberLogger.e(TAG, "Network fallback also failed for visit rank books", networkError)
                     _error.value = networkError.message
-                    emptyList()
+                    persistentListOf()
                 }
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "Unexpected error in getVisitRankBooks", e)
                 _error.value = e.message
-                emptyList()
+                persistentListOf()
             }
-        } ?: emptyList()
+        } ?: persistentListOf()
     }
     
     /**
@@ -291,52 +296,52 @@ class CachedBookRepository @Inject constructor(
      */
     suspend fun getUpdateRankBooks(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
-    ): List<BookService.BookRank> {
+    ): ImmutableList<BookService.BookRank> {
         return executeWithLoading {
             try {
                 bookService.getUpdateRankBooksCached(
                     cacheManager = cacheManager,
                     strategy = strategy,
                     onCacheUpdate = { response ->
-                        response.data?.let { _updateRankBooks.value = it }
+                        response.data?.let { _updateRankBooks.value = it.toImmutableList() }
                         TimberLogger.d(TAG, "Update rank books cache updated")
                     }
                 ).onSuccess { response, fromCache ->
-                    response.data?.let { _updateRankBooks.value = it }
+                    response.data?.let { _updateRankBooks.value = it.toImmutableList() }
                     TimberLogger.d(TAG, "Update rank books loaded from ${if (fromCache) "cache" else "network"}")
                 }.onError { error, cachedData ->
                     TimberLogger.e(TAG, "Failed to load update rank books", error)
-                    cachedData?.data?.let { _updateRankBooks.value = it }
+                    cachedData?.data?.let { _updateRankBooks.value = it.toImmutableList() }
                     _error.value = error.message
                 }.let { result ->
                     when (result) {
-                        is CacheResult.Success -> result.data.data ?: emptyList()
-                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                        is CacheResult.Success -> result.data.data?.toImmutableList() ?: persistentListOf()
+                        is CacheResult.Error -> result.cachedData?.data?.toImmutableList() ?: persistentListOf()
                     }
                 }
             } catch (e: ClassCastException) {
                 TimberLogger.e(TAG, "ClassCastException in getUpdateRankBooks, clearing cache and retrying", e)
                 // 清理相关缓存
                 cacheManager.clearCache("update_rank_books")
-                _updateRankBooks.value = emptyList()
+                _updateRankBooks.value = persistentListOf()
                 try {
                     // 直接从网络获取数据
                     val response = bookService.getUpdateRankBooksBlocking()
                     response.data?.let { books ->
-                        _updateRankBooks.value = books
-                        books
-                    } ?: emptyList()
+                        _updateRankBooks.value = books.toImmutableList()
+                        books.toImmutableList()
+                    } ?: persistentListOf()
                 } catch (networkError: Exception) {
                     TimberLogger.e(TAG, "Network fallback also failed for update rank books", networkError)
                     _error.value = networkError.message
-                    emptyList()
+                    persistentListOf()
                 }
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "Unexpected error in getUpdateRankBooks", e)
                 _error.value = e.message
-                emptyList()
+                persistentListOf()
             }
-        } ?: emptyList()
+        } ?: persistentListOf()
     }
     
     /**
@@ -344,27 +349,27 @@ class CachedBookRepository @Inject constructor(
      */
     suspend fun getNewestRankBooks(
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
-    ): List<BookService.BookRank> {
+    ): ImmutableList<BookService.BookRank> {
         return executeWithLoading {
             try {
                 bookService.getNewestRankBooksCached(
                     cacheManager = cacheManager,
                     strategy = strategy,
                     onCacheUpdate = { response ->
-                        response.data?.let { _newestRankBooks.value = it }
+                        response.data?.let { _newestRankBooks.value = it.toImmutableList() }
                         TimberLogger.d(TAG, "Newest rank books cache updated")
                     }
                 ).onSuccess { response, fromCache ->
-                    response.data?.let { _newestRankBooks.value = it }
+                    response.data?.let { _newestRankBooks.value = it.toImmutableList() }
                     TimberLogger.d(TAG, "Newest rank books loaded from ${if (fromCache) "cache" else "network"}")
                 }.onError { error, cachedData ->
                     TimberLogger.e(TAG, "Failed to load newest rank books", error)
-                    cachedData?.data?.let { _newestRankBooks.value = it }
+                    cachedData?.data?.let { _newestRankBooks.value = it.toImmutableList() }
                     _error.value = error.message
                 }.let { result ->
                     when (result) {
-                        is CacheResult.Success -> result.data.data ?: emptyList()
-                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                        is CacheResult.Success -> result.data.data?.toImmutableList() ?: persistentListOf()
+                        is CacheResult.Error -> result.cachedData?.data?.toImmutableList() ?: persistentListOf()
                     }
                 }
             } catch (e: ClassCastException) {
@@ -375,20 +380,20 @@ class CachedBookRepository @Inject constructor(
                     // 直接从网络获取数据
                     val response = bookService.getNewestRankBooksBlocking()
                     response.data?.let { books ->
-                        _newestRankBooks.value = books
-                        books
-                    } ?: emptyList()
+                        _newestRankBooks.value = books.toImmutableList()
+                        books.toImmutableList()
+                    } ?: persistentListOf()
                 } catch (networkError: Exception) {
                     TimberLogger.e(TAG, "Network fallback also failed for newest rank books", networkError)
                     _error.value = networkError.message
-                    emptyList()
+                    persistentListOf()
                 }
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "Unexpected error in getNewestRankBooks", e)
                 _error.value = e.message
-                emptyList()
+                persistentListOf()
             }
-        } ?: emptyList()
+        } ?: persistentListOf()
     }
     
     /**
@@ -397,7 +402,7 @@ class CachedBookRepository @Inject constructor(
     suspend fun getBookCategories(
         workDirection: Int,
         strategy: CacheStrategy = CacheStrategy.CACHE_FIRST
-    ): List<BookService.BookCategory> {
+    ): ImmutableList<BookService.BookCategory> {
         return executeWithLoading {
             try {
                 bookService.getBookCategoriesCached(
@@ -405,45 +410,45 @@ class CachedBookRepository @Inject constructor(
                     cacheManager = cacheManager,
                     strategy = strategy,
                     onCacheUpdate = { response ->
-                        response.data?.let { _bookCategories.value = it }
+                        response.data?.let { _bookCategories.value = it.toImmutableList() }
                         TimberLogger.d(TAG, "Book categories cache updated for workDirection: $workDirection")
                     }
                 ).onSuccess { response, fromCache ->
-                    response.data?.let { _bookCategories.value = it }
+                    response.data?.let { _bookCategories.value = it.toImmutableList() }
                     TimberLogger.d(TAG, "Book categories loaded from ${if (fromCache) "cache" else "network"} for workDirection: $workDirection")
                 }.onError { error, cachedData ->
                     TimberLogger.e(TAG, "Failed to load book categories for workDirection: $workDirection", error)
-                    cachedData?.data?.let { _bookCategories.value = it }
+                    cachedData?.data?.let { _bookCategories.value = it.toImmutableList() }
                     _error.value = error.message
                 }.let { result ->
                     when (result) {
-                        is CacheResult.Success -> result.data.data ?: emptyList()
-                        is CacheResult.Error -> result.cachedData?.data ?: emptyList()
+                        is CacheResult.Success -> result.data.data?.toImmutableList() ?: persistentListOf()
+                        is CacheResult.Error -> result.cachedData?.data?.toImmutableList() ?: persistentListOf()
                     }
                 }
             } catch (e: ClassCastException) {
                 TimberLogger.e(TAG, "ClassCastException in getBookCategories, clearing cache and retrying", e)
                 // 清理相关缓存
                 cacheManager.clearCache("book_categories_$workDirection")
-                _bookCategories.value = emptyList()
+                _bookCategories.value = persistentListOf()
                 try {
                     // 直接从网络获取数据
                     val response = bookService.getBookCategoriesBlocking(workDirection)
                     response.data?.let { categories ->
-                        _bookCategories.value = categories
-                        categories
-                    } ?: emptyList()
+                        _bookCategories.value = categories.toImmutableList()
+                        categories.toImmutableList()
+                    } ?: persistentListOf()
                 } catch (networkError: Exception) {
                     TimberLogger.e(TAG, "Network fallback also failed for book categories", networkError)
                     _error.value = networkError.message
-                    emptyList()
+                    persistentListOf()
                 }
             } catch (e: Exception) {
                 TimberLogger.e(TAG, "Unexpected error in getBookCategories", e)
                 _error.value = e.message
-                emptyList()
+                persistentListOf()
             }
-        } ?: emptyList()
+        } ?: persistentListOf()
     }
     
     /**
@@ -470,7 +475,7 @@ class CachedBookRepository @Inject constructor(
      */
     suspend fun clearNewestRankCache() {
         cacheManager.clearCache("newest_rank_books")
-        _newestRankBooks.value = emptyList()
+        _newestRankBooks.value = persistentListOf()
         TimberLogger.d(TAG, "Newest rank cache cleared")
     }
     

@@ -2,6 +2,7 @@ package com.novel.utils.Store.NovelKeyChain
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -71,6 +72,7 @@ interface NovelKeyChain {
  * - 异常安全处理，避免应用崩溃
  */
 @Singleton
+@Stable
 class EncryptedNovelKeyChain @Inject constructor(
     @ApplicationContext private val context: Context
 ) : NovelKeyChain {
@@ -171,6 +173,7 @@ class EncryptedNovelKeyChain @Inject constructor(
  * 
  * 抽象Token获取逻辑，便于依赖注入和单元测试
  */
+@Stable
 interface TokenProvider {
     /**
      * 获取当前有效的访问令牌
