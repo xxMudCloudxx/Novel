@@ -53,13 +53,13 @@ fun ReaderSettingsPanel(
     val window = activity?.window
 
     LaunchedEffect(brightness) {
-        window?.attributes = window?.attributes?.apply {
+        window?.attributes = window.attributes?.apply {
             screenBrightness = brightness.coerceIn(0f, 1f)
         }
     }
 
     LaunchedEffect(brightness) {
-        window?.attributes = window?.attributes?.apply {
+        window?.attributes = window.attributes?.apply {
             screenBrightness = brightness.coerceIn(0f, 1f)
         }
     }

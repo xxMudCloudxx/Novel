@@ -144,11 +144,7 @@ fun CoverFlipContainer(
                 virtualPage = targetVirtualPage,
                 uiState = uiState,
                 readerSettings = readerSettings,
-                onNavigateToReader = onNavigateToReader,
-                onSwipeBack = onSwipeBack,
-                onPageChange = onPageChange,
-                onClick = onClick,
-                isCurrentPage = false
+                onClick = onClick
             )
         }
 
@@ -169,11 +165,7 @@ fun CoverFlipContainer(
                     virtualPage = currentVirtualPage,
                     uiState = uiState,
                     readerSettings = readerSettings,
-                    onNavigateToReader = onNavigateToReader,
-                    onSwipeBack = onSwipeBack,
-                    onPageChange = onPageChange,
-                    onClick = onClick,
-                    isCurrentPage = true
+                    onClick = onClick
                 )
             }
         }
@@ -188,11 +180,7 @@ private fun PageRenderer(
     virtualPage: VirtualPage,
     uiState: ReaderState,
     readerSettings: ReaderSettings,
-    onNavigateToReader: ((String, String?) -> Unit)?,
-    onSwipeBack: (() -> Unit)?,
-    onPageChange: (FlipDirection) -> Unit,
-    onClick: () -> Unit,
-    isCurrentPage: Boolean
+    onClick: () -> Unit
 ) {
     val loadedChapters = uiState.loadedChapterData
 

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,12 +49,15 @@ fun SearchTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.wdp)
     ) {
+        // 性能优化：缓存返回按钮回调，避免每次重组都创建新 Lambda
+        val onBackClickCached = remember(onBackClick) { {
+            TimberLogger.d(TAG, "返回按钮被点击")
+            onBackClick() ?: Unit
+        } }
+        
         // 返回按钮
         IconButton(
-            onClick = {
-                TimberLogger.d(TAG, "返回按钮被点击")
-                onBackClick()
-            },
+            onClick = onBackClickCached,
             modifier = Modifier.size(40.wdp)
         ) {
             Icon(
@@ -77,12 +81,15 @@ fun SearchTopBar(
                 .clip(RoundedCornerShape(5.dp))
         )
 
+        // 性能优化：缓存搜索按钮回调，避免每次重组都创建新 Lambda
+        val onSearchClickCached = remember(onSearchClick, query) { {
+            TimberLogger.d(TAG, "搜索按钮被点击, 关键词: '$query'")
+            onSearchClick()
+        } }
+        
         // 搜索按钮
         IconButton(
-            onClick = {
-                TimberLogger.d(TAG, "搜索按钮被点击, 关键词: '$query'")
-                onSearchClick()
-            },
+            onClick = onSearchClickCached,
             modifier = Modifier.size(40.wdp)
         ) {
             Icon(

@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.novel.ui.theme.NovelColors
 import com.novel.ui.theme.PingFangFamily
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.remember
 import com.novel.utils.debounceClickable
 import com.novel.utils.wdp
 import com.novel.utils.ssp
@@ -63,6 +64,31 @@ fun AgreementSection(
         fontFamily = PingFangFamily
     )
 
+    val toggleChecked = remember(isChecked, onCheckedChange) {
+        {
+            TimberLogger.d(TAG, "切换协议同意状态: $isChecked -> ${!isChecked}")
+            onCheckedChange(!isChecked)
+        }
+    }
+    val telClick = remember(onTelServiceClick, operator) {
+        {
+            TimberLogger.d(TAG, "点击运营商认证服务协议: $operator")
+            onTelServiceClick()
+        }
+    }
+    val userClick = remember(onUserAgreementClick) {
+        {
+            TimberLogger.d(TAG, "点击用户协议")
+            onUserAgreementClick()
+        }
+    }
+    val registerClick = remember(onRegisterAgreementClick) {
+        {
+            TimberLogger.d(TAG, "点击注册协议")
+            onRegisterAgreementClick()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -76,10 +102,7 @@ fun AgreementSection(
             Box(
                 modifier = Modifier
                     .size(12.wdp)
-                    .debounceClickable(onClick = { 
-                        TimberLogger.d(TAG, "切换协议同意状态: $isChecked -> ${!isChecked}")
-                        onCheckedChange(!isChecked) 
-                    }),
+                    .debounceClickable(onClick = toggleChecked),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.matchParentSize()) {
@@ -113,10 +136,7 @@ fun AgreementSection(
                     LinkAnnotation.Clickable(
                         tag = "TEL",
                         styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
-                        linkInteractionListener = { 
-                            TimberLogger.d(TAG, "点击运营商认证服务协议: $operator")
-                            onTelServiceClick() 
-                        }
+                        linkInteractionListener = telClick
                     ),
                     start = this.length,
                     end = this.length + operator.length + "认证服务协议".length
@@ -137,10 +157,7 @@ fun AgreementSection(
                 LinkAnnotation.Clickable(
                     tag = "USER",
                     styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
-                    linkInteractionListener = { 
-                        TimberLogger.d(TAG, "点击用户协议")
-                        onUserAgreementClick() 
-                    }
+                    linkInteractionListener = userClick
                 ),
                 start = this.length,
                 end = this.length + "用户协议".length
@@ -151,10 +168,7 @@ fun AgreementSection(
                 LinkAnnotation.Clickable(
                     tag = "REGISTER",
                     styles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)),
-                    linkInteractionListener = { 
-                        TimberLogger.d(TAG, "点击注册协议")
-                        onRegisterAgreementClick() 
-                    }
+                    linkInteractionListener = registerClick
                 ),
                 start = this.length,
                 end = this.length + "注册协议".length
@@ -166,17 +180,4 @@ fun AgreementSection(
             style = textStyle
         )
     }
-}
-
-@Preview
-@Composable
-fun AgreementSectionPreview() {
-    AgreementSection(
-        operator = "中国电信",
-        isChecked = true,
-        onCheckedChange = {},
-        onTelServiceClick = {},
-        onUserAgreementClick = {},
-        onRegisterAgreementClick = {}
-    )
 }

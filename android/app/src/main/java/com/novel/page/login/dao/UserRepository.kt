@@ -1,5 +1,6 @@
 package com.novel.page.login.dao
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.utils.Store.UserDefaults.NovelUserDefaults
 import com.novel.utils.Store.UserDefaults.NovelUserDefaultsKey
@@ -19,6 +20,7 @@ import javax.inject.Singleton
  * 提供本地数据库和网络数据的统一访问接口
  * 确保数据一致性和安全性
  */
+@Stable
 @Singleton
 class UserRepository @Inject constructor(
     private val userDao: UserDao,

@@ -213,12 +213,15 @@ fun FullRankingPage(
                     items = rankingItems, 
                     key = { it.id } // 稳定的key确保重组性能
                 ) { item ->
+                    // 性能优化：使用 remember 缓存点击回调，避免每次重组都创建新 Lambda
+                    val onItemClick = remember(item.id, onNavigateToBookDetail) { {
+                        TimberLogger.d(TAG, "点击榜单条目: ${item.title} (ID: ${item.id})")
+                        onNavigateToBookDetail(item.id) 
+                    } }
+                    
                     FullRankingItem(
                         item = item, 
-                        onClick = { 
-                            TimberLogger.d(TAG, "点击榜单条目: ${item.title} (ID: ${item.id})")
-                            onNavigateToBookDetail(item.id) 
-                        }
+                        onClick = onItemClick
                     )
                 }
                 // 底部间距
@@ -259,7 +262,7 @@ private fun FullRankingItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 使用remember缓存计算结果
+    // 性能优化：使用 remember + derivedStateOf 缓存计算结果，避免每次重组都计算
     val hotSearchValue by remember(item.rank) {
         derivedStateOf {
             "${(30 - item.rank) * 1000 + kotlin.random.Random.nextInt(500)}热搜"

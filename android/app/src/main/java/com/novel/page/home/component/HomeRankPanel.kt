@@ -114,7 +114,7 @@ private fun RankBooksScrollableGrid(
 ) {
     // 使用 derivedStateOf 优化书籍分组计算，仅在 books 变化时重新计算
     val bookColumns by remember { derivedStateOf { books.chunked(4).map { it.toImmutableList() } } }
-    
+
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -177,7 +177,7 @@ private fun RankBookColumn(
             val rankNumber by remember(startRank, index) {
                 derivedStateOf { startRank + index }
             }
-            
+
             // 优化：使用稳定的key避免重组
             key(book.id) {
                 RankBookGridItem(
@@ -210,10 +210,17 @@ private fun RankFilterBar(
         rankTypes.forEach { rankType ->
             // 优化：使用稳定的key
             key(rankType.name) {
+                // 性能优化：缓存点击回调，避免每次重组都创建 Lambda
+                val onChipClick = remember(rankType.name, onRankTypeSelected) {
+                    {
+                        onRankTypeSelected(rankType.name)
+                    }
+                }
+
                 RankFilterChip(
                     filter = rankType.name,
                     isSelected = rankType.name == selectedRankType,
-                    onClick = { onRankTypeSelected(rankType.name) }
+                    onClick = onChipClick
                 )
             }
         }

@@ -65,11 +65,29 @@ fun SearchFilterBottomSheet(
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val dismissThresholdPx = with(LocalDensity.current) { 80.dp.toPx() }
 
-    Dialog(
-        onDismissRequest = {
+    val dismiss = remember(onDismiss) {
+        {
             TimberLogger.d(TAG, "弹窗被取消")
             onDismiss()
-        },
+        }
+    }
+    val clearAll = remember(onClear) {
+        {
+            TimberLogger.d(TAG, "清空所有筛选条件")
+            currentFilters = FilterState()
+            onClear()
+        }
+    }
+    val apply = remember(onApply) {
+        {
+            TimberLogger.d(TAG, "应用筛选条件: $currentFilters")
+            onFiltersChange(currentFilters)
+            onApply()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = dismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
@@ -80,10 +98,7 @@ fun SearchFilterBottomSheet(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.4f))
-                .debounceClickable(onClick = {
-                    TimberLogger.d(TAG, "点击外部区域关闭弹窗")
-                    onDismiss()
-                })
+                .debounceClickable(onClick = dismiss)
         ) {
             Column(Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.weight(1f))
@@ -136,10 +151,7 @@ fun SearchFilterBottomSheet(
                                 tint = NovelColors.NovelText,
                                 modifier = Modifier
                                     .size(40.wdp)
-                                    .debounceClickable(onClick = {
-                                        TimberLogger.d(TAG, "点击关闭按钮")
-                                        onDismiss()
-                                    })
+                                    .debounceClickable(onClick = dismiss)
                                     .align(Alignment.CenterStart)
                             )
                         }
@@ -212,11 +224,7 @@ fun SearchFilterBottomSheet(
                             horizontalArrangement = Arrangement.spacedBy(12.wdp)
                         ) {
                             OutlinedButton(
-                                onClick = {
-                                    TimberLogger.d(TAG, "清空所有筛选条件")
-                                    currentFilters = FilterState()
-                                    onClear()
-                                },
+                                onClick = clearAll,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = NovelColors.NovelTextGray),
                                 border = ButtonDefaults.outlinedButtonBorder.copy(
@@ -234,11 +242,7 @@ fun SearchFilterBottomSheet(
                             }
 
                             Button(
-                                onClick = {
-                                    TimberLogger.d(TAG, "应用筛选条件: $currentFilters")
-                                    onFiltersChange(currentFilters)
-                                    onApply()
-                                },
+                                onClick = apply,
                                 modifier = Modifier.weight(2f),
                                 colors = ButtonDefaults.buttonColors(containerColor = NovelColors.NovelMain),
                                 shape = RoundedCornerShape(8.wdp)

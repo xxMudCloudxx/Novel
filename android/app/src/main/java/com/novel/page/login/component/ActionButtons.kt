@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.novel.page.component.NovelMainButton
@@ -39,6 +40,20 @@ fun ActionButtons(
     onSecondClick: () -> Unit
 ) {
     val TAG = "ActionButtons"
+
+    val firstClick = remember(onFirstClick) {
+        {
+            TimberLogger.d(TAG, "点击主操作按钮: $firstText")
+            onFirstClick()
+        }
+    }
+    val secondClick = remember(onSecondClick) {
+        {
+            TimberLogger.d(TAG, "点击次要操作按钮: $secondText")
+            onSecondClick()
+        }
+    }
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -58,10 +73,7 @@ fun ActionButtons(
                 .width(330.wdp)
                 .height(48.wdp),
             enabldeClicke = isFirstEnabled,
-            onClick = {
-                TimberLogger.d(TAG, "点击主操作按钮: $firstText")
-                onFirstClick()
-            }
+            onClick = firstClick
         )
 
         // 次要操作按钮（注册）
@@ -77,10 +89,7 @@ fun ActionButtons(
             modifier = Modifier
                 .width(330.wdp)
                 .height(48.wdp),
-            onClick = {
-                TimberLogger.d(TAG, "点击次要操作按钮: $secondText")
-                onSecondClick()
-            }
+            onClick = secondClick
         )
     }
 }

@@ -4,6 +4,7 @@ import com.novel.utils.TimberLogger
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,6 +14,7 @@ import com.novel.page.component.NovelText
 import com.novel.page.component.SolidCircleSlider
 import com.novel.utils.ssp
 import com.novel.utils.wdp
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -45,6 +47,17 @@ fun BrightnessControl(
     
     val stepSize = 1f / STEP_COUNT
 
+    val valueChange = remember(brightness, onBrightnessChange) {
+        { raw: Float ->
+            val stepped = (raw / stepSize).roundToInt() * stepSize
+            val finalValue = stepped.coerceIn(0f, 1f)
+            if (abs(finalValue - brightness) > 0.01f) {
+                TimberLogger.d(TAG, "亮度调节: $brightness -> $finalValue (档位: ${(finalValue * STEP_COUNT).toInt()})")
+                onBrightnessChange(finalValue)
+            }
+        }
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(15.wdp)
@@ -56,17 +69,7 @@ fun BrightnessControl(
         SolidCircleSlider(
             modifier = Modifier.weight(1f),
             progress = brightness,
-            onValueChange = { rawValue ->
-                // 量化到最近的档位，避免频繁触发
-                val stepped = (rawValue / stepSize).roundToInt() * stepSize
-                val finalValue = stepped.coerceIn(0f, 1f)
-                
-                // 只有当值真正改变时才触发回调和日志
-                if (kotlin.math.abs(finalValue - brightness) > 0.01f) {
-                    TimberLogger.d(TAG, "亮度调节: $brightness -> $finalValue (档位: ${(finalValue * STEP_COUNT).toInt()})")
-                    onBrightnessChange(finalValue)
-                }
-            },
+            onValueChange = valueChange,
             // 轨道颜色：浅灰色透明
             trackColor = Color.Gray.copy(alpha = 0.1f),
             // 进度颜色：灰色半透明  

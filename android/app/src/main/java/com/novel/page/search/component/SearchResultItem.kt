@@ -41,14 +41,17 @@ fun SearchResultItem(
         mutableStateOf(Pair(androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Size.Zero))
     }
 
+    val combineClick = remember(onClick, onClickWithPosition, positionInfo) {
+        {
+            onClickWithPosition?.invoke(book, positionInfo.first, positionInfo.second)
+            onClick()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .debounceClickable(onClick = {
-                // 优先触发携带位置的回调
-                onClickWithPosition?.invoke(book, positionInfo.first, positionInfo.second)
-                onClick()
-            })
+            .debounceClickable(onClick = combineClick)
             .padding(horizontal = 16.wdp, vertical = 12.wdp)
     ) {
         Row(

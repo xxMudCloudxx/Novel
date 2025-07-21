@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,16 +71,16 @@ fun LoginPage() {
     val vm: LoginViewModel = hiltViewModel()
     val adapter = vm.adapter
 
-    // 收集状态
-    val isLoading by adapter.isLoading.collectAsState(initial = false)
-    val isLoginMode by adapter.isLoginMode.collectAsState(initial = true)
-    val isAgreementAccepted by adapter.isAgreementAccepted.collectAsState(initial = false)
-    val operatorName by adapter.operatorName.collectAsState(initial = "")
-    val maskedPhoneNumber by adapter.maskedPhoneNumber.collectAsState(initial = "")
-    val loginForm by adapter.loginForm.collectAsState(initial = LoginForm())
-    val registerForm by adapter.registerForm.collectAsState(initial = RegisterForm())
-    val validationResults by adapter.validationResults.collectAsState(initial = ValidationResults())
-    val captchaState by adapter.captchaState.collectAsState(initial = CaptchaState())
+    // 性能优化：使用 StateAdapter 的稳定状态创建方法，减少重组
+    val isLoading by adapter.createLoadingState()
+    val isLoginMode by adapter.createStableState { it.isLoginMode }
+    val isAgreementAccepted by adapter.createStableState { it.isAgreementAccepted }
+    val operatorName by adapter.createStableState { it.phoneInfo.operatorName }
+    val maskedPhoneNumber by adapter.createStableState { it.phoneInfo.maskedPhoneNumber }
+    val loginForm by adapter.createStableState { it.loginForm }
+    val registerForm by adapter.createStableState { it.registerForm }
+    val validationResults by adapter.createStableState { it.validationResults }
+    val captchaState by adapter.createStableState { it.captchaState }
 
     // 收集副作用
     LaunchedEffect(Unit) {
@@ -133,6 +134,27 @@ fun LoginPage() {
                 // 脱敏后手机号
                 PhoneSection(maskedPhoneNumber)
 
+                // 性能优化：缓存输入回调，避免每次重组都创建新 Lambda
+                val onPhoneInput = remember(vm) { { phone: String ->
+                    vm.sendIntent(LoginIntent.InputPhone(phone))
+                } }
+                
+                val onPasswordInput = remember(vm) { { password: String ->
+                    vm.sendIntent(LoginIntent.InputPassword(password))
+                } }
+                
+                val onPasswordConfirmInput = remember(vm) { { passwordConfirm: String ->
+                    vm.sendIntent(LoginIntent.InputPasswordConfirm(passwordConfirm))
+                } }
+                
+                val onVerifyCodeInput = remember(vm) { { code: String ->
+                    vm.sendIntent(LoginIntent.InputVerifyCode(code))
+                } }
+                
+                val onRefreshCaptcha = remember(vm) { {
+                    vm.sendIntent(LoginIntent.RefreshCaptcha) ?: Unit
+                } }
+
                 // 输入框
                 InputSection(
                     isLoginMode = isLoginMode,
@@ -140,11 +162,11 @@ fun LoginPage() {
                     registerForm = registerForm,
                     validationResults = validationResults,
                     captchaState = captchaState,
-                    onPhoneInput = { vm.sendIntent(LoginIntent.InputPhone(it)) },
-                    onPasswordInput = { vm.sendIntent(LoginIntent.InputPassword(it)) },
-                    onPasswordConfirmInput = { vm.sendIntent(LoginIntent.InputPasswordConfirm(it)) },
-                    onVerifyCodeInput = { vm.sendIntent(LoginIntent.InputVerifyCode(it)) },
-                    onRefreshCaptcha = { vm.sendIntent(LoginIntent.RefreshCaptcha) }
+                    onPhoneInput = onPhoneInput,
+                    onPasswordInput = onPasswordInput,
+                    onPasswordConfirmInput = onPasswordConfirmInput,
+                    onVerifyCodeInput = onVerifyCodeInput,
+                    onRefreshCaptcha = onRefreshCaptcha
                 )
 
                 // 构建注册模式切换的 Transition
@@ -176,24 +198,29 @@ fun LoginPage() {
                 }
 
                 // 按钮区：在登录/注册两种模式下都保持可见，但切换时做淡入淡出+展开收缩
+                // 性能优化：缓存按钮回调，避免每次重组都创建新 Lambda
+                val onFirstClick = remember(vm, isLoginMode) { {
+                    if (!isLoginMode) {
+                        vm.sendIntent(LoginIntent.SubmitRegister) ?: Unit
+                    } else {
+                        vm.sendIntent(LoginIntent.SubmitLogin) ?: Unit
+                    }
+                } }
+                
+                val onSecondClick = remember(vm, isLoginMode) { { 
+                    if (isLoginMode) {
+                        vm.sendIntent(LoginIntent.SwitchToRegister) ?: Unit
+                    } else {
+                        vm.sendIntent(LoginIntent.SwitchToLogin) ?: Unit
+                    }
+                } }
+
                 ActionButtons(
                     firstText = if (!isLoginMode) "注册" else "登录",
                     secondText = if (!isLoginMode) "返回登录" else "暂无账号，去注册",
-                    onFirstClick = {
-                        if (!isLoginMode) {
-                            vm.sendIntent(LoginIntent.SubmitRegister)
-                        } else {
-                            vm.sendIntent(LoginIntent.SubmitLogin)
-                        }
-                    },
+                    onFirstClick = onFirstClick,
                     isFirstEnabled = adapter.canSubmit(),
-                    onSecondClick = { 
-                        if (isLoginMode) {
-                            vm.sendIntent(LoginIntent.SwitchToRegister)
-                        } else {
-                            vm.sendIntent(LoginIntent.SwitchToLogin)
-                        }
-                    },
+                    onSecondClick = onSecondClick,
                     modifier = Modifier
                         .offset(y = buttonOffset)
                         .alpha(buttonAlpha)
@@ -231,13 +258,30 @@ fun LoginPage() {
                                 )
                             )
                 ) {
+                    // 性能优化：缓存协议相关回调，避免每次重组都创建新 Lambda
+                    val onCheckedChange = remember(vm) { { accepted: Boolean ->
+                        vm.sendIntent(LoginIntent.ToggleAgreement(accepted)) ?: Unit
+                    } }
+                    
+                    val onTelServiceClick = remember(vm) { {
+                        vm.sendIntent(LoginIntent.NavigateToTelService) ?: Unit
+                    } }
+                    
+                    val onUserAgreementClick = remember(vm) { {
+                        vm.sendIntent(LoginIntent.NavigateToPrivacyPolicy) ?: Unit
+                    } }
+                    
+                    val onRegisterAgreementClick = remember(vm) { {
+                        vm.sendIntent(LoginIntent.NavigateToTermsOfService) ?: Unit
+                    } }
+
                     AgreementSection(
                         operator = operatorName,
                         isChecked = isAgreementAccepted,
-                        onCheckedChange = { vm.sendIntent(LoginIntent.ToggleAgreement(it)) },
-                        onTelServiceClick = { vm.sendIntent(LoginIntent.NavigateToTelService) },
-                        onUserAgreementClick = { vm.sendIntent(LoginIntent.NavigateToPrivacyPolicy) },
-                        onRegisterAgreementClick = { vm.sendIntent(LoginIntent.NavigateToTermsOfService) },
+                        onCheckedChange = onCheckedChange,
+                        onTelServiceClick = onTelServiceClick,
+                        onUserAgreementClick = onUserAgreementClick,
+                        onRegisterAgreementClick = onRegisterAgreementClick,
                         modifier = Modifier
                             .offset(y = buttonOffset)
                             .padding(top = 16.wdp)

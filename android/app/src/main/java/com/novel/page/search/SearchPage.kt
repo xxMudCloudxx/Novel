@@ -54,30 +54,49 @@ fun SearchPage(
 ) {
     val viewModel: SearchViewModel = hiltViewModel()
     val TAG = "SearchPage"
-    val uiState by viewModel.state.collectAsState()
+    // 性能优化：使用 StateAdapter 创建稳定状态
+    val adapter = viewModel.adapter
+    val uiState by adapter.currentState.collectAsState()
 
+    // 性能优化：缓存副作用处理回调
+    val handleNavigateToBookDetail = remember(onNavigateToBookDetail) { { bookId: Long ->
+        TimberLogger.d(TAG, "导航到书籍详情: $bookId")
+        onNavigateToBookDetail(bookId)
+    } }
+    
+    val handleNavigateToSearchResult = remember { { query: String ->
+        TimberLogger.d(TAG, "导航到搜索结果: $query")
+        NavViewModel.navigateToSearchResult(query)
+    } }
+    
+    val handleNavigateBack = remember(onNavigateBack) { {
+        TimberLogger.d(TAG, "返回上级页面")
+        onNavigateBack()
+    } }
+    
+    val handleShowToast = remember { { message: String ->
+        TimberLogger.d(TAG, "显示Toast: $message")
+        // TODO: 集成Toast显示组件
+    } }
+    
     // 处理一次性副作用（导航、Toast等）
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
                 is SearchEffect.NavigateToBookDetail -> {
-                    TimberLogger.d(TAG, "导航到书籍详情: ${effect.bookId}")
-                    onNavigateToBookDetail(effect.bookId)
+                    handleNavigateToBookDetail(effect.bookId)
                 }
 
                 is SearchEffect.NavigateToSearchResult -> {
-                    TimberLogger.d(TAG, "导航到搜索结果: ${effect.query}")
-                    NavViewModel.navigateToSearchResult(effect.query)
+                    handleNavigateToSearchResult(effect.query)
                 }
 
                 is SearchEffect.NavigateBack -> {
-                    TimberLogger.d(TAG, "返回上级页面")
-                    onNavigateBack()
+                    handleNavigateBack()
                 }
 
                 is SearchEffect.ShowToast -> {
-                    TimberLogger.d(TAG, "显示Toast: ${effect.message}")
-                    // TODO: 集成Toast显示组件
+                    handleShowToast(effect.message)
                 }
             }
         }
@@ -89,10 +108,17 @@ fun SearchPage(
         viewModel.sendIntent(SearchIntent.LoadInitialData)
     }
 
+    // 性能优化：缓存重试回调
+    val handleLoadingRetry = remember(viewModel) { {
+        TimberLogger.d(TAG, "重试加载搜索页面数据")
+        viewModel.sendIntent(SearchIntent.LoadInitialData)
+    } }
+    
     // LoadingStateComponent适配器，统一管理加载和错误状态
     val loadingStateComponent = remember(
         uiState.isLoading,
-        uiState.error
+        uiState.error,
+        handleLoadingRetry
     ) {
         object : LoadingStateComponent {
             override val loading: Boolean get() = uiState.isLoading
@@ -107,8 +133,7 @@ fun SearchPage(
             override fun cancelLoading() {}
             override fun showViewState(viewState: ViewState) {}
             override fun retry() {
-                TimberLogger.d(TAG, "重试加载搜索页面数据")
-                viewModel.sendIntent(SearchIntent.LoadInitialData)
+                handleLoadingRetry()
             }
         }
     }
@@ -152,21 +177,28 @@ fun SearchPageContent(
             .fillMaxSize()
             .background(NovelColors.NovelBackground)
     ) {
+        // 性能优化：缓存搜索栏的回调函数
+        val onQueryChange = remember(onIntent) { { query: String ->
+            onIntent(SearchIntent.UpdateSearchQuery(query))
+        } }
+        
+        val onBackClick = remember(onIntent) { {
+            onIntent(SearchIntent.NavigateBack)
+        } }
+        
+        val onSearchClick = remember(onIntent, uiState.searchQuery) { {
+            if (uiState.searchQuery.isNotBlank()) {
+                TimberLogger.d(TAG, "执行搜索: ${uiState.searchQuery}")
+                onIntent(SearchIntent.PerformSearch(uiState.searchQuery))
+            }
+        } }
+        
         // 顶部搜索栏
         SearchTopBar(
             query = uiState.searchQuery,
-            onQueryChange = { query ->
-                onIntent(SearchIntent.UpdateSearchQuery(query))
-            },
-            onBackClick = {
-                onIntent(SearchIntent.NavigateBack)
-            },
-            onSearchClick = {
-                if (uiState.searchQuery.isNotBlank()) {
-                    TimberLogger.d(TAG, "执行搜索: ${uiState.searchQuery}")
-                    onIntent(SearchIntent.PerformSearch(uiState.searchQuery))
-                }
-            }
+            onQueryChange = onQueryChange,
+            onBackClick = onBackClick,
+            onSearchClick = onSearchClick
         )
 
         // 主要内容区域 - 可滚动
@@ -178,41 +210,52 @@ fun SearchPageContent(
             // 搜索历史记录区域
             if (uiState.searchHistory.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.wdp))
+                
+                // 性能优化：缓存历史记录回调函数
+                val onHistoryClick = remember(onIntent) { { query: String ->
+                    // 点击历史记录执行搜索
+                    onIntent(SearchIntent.UpdateSearchQuery(query))
+                    onIntent(SearchIntent.PerformSearch(query))
+                } }
+                
+                val onToggleExpansion = remember(onIntent) { {
+                    onIntent(SearchIntent.ToggleHistoryExpansion)
+                } }
+                
                 SearchHistorySection(
                     history = uiState.searchHistory,
                     isExpanded = uiState.isHistoryExpanded,
-                    onHistoryClick = { query ->
-                        // 点击历史记录执行搜索
-                        onIntent(SearchIntent.UpdateSearchQuery(query))
-                        onIntent(SearchIntent.PerformSearch(query))
-                    },
-                    onToggleExpansion = {
-                        onIntent(SearchIntent.ToggleHistoryExpansion)
-                    }
+                    onHistoryClick = onHistoryClick,
+                    onToggleExpansion = onToggleExpansion
                 )
             }
 
             Spacer(modifier = Modifier.height(24.wdp))
 
+            // 性能优化：缓存榜单区域回调函数
+            val onRankingItemClick = remember(onIntent) { { bookId: Long ->
+                onIntent(SearchIntent.NavigateToBookDetail(bookId))
+            } }
+            
+            val onViewFullRanking = remember(onIntent, uiState.novelRanking, uiState.dramaRanking, uiState.newBookRanking) { { rankingType: String ->
+                // 根据榜单类型获取对应数据
+                val rankingItems = when (rankingType) {
+                    "点击榜" -> uiState.novelRanking
+                    "推荐榜" -> uiState.dramaRanking
+                    "新书榜" -> uiState.newBookRanking
+                    else -> emptyList()
+                }
+                TimberLogger.d(TAG, "查看完整榜单: $rankingType, 项目数: ${rankingItems.size}")
+                NavViewModel.navigateToFullRanking(rankingType, rankingItems)
+            } }
+            
             // 推荐榜单区域
             RankingSection(
                 novelRanking = uiState.novelRanking,
                 dramaRanking = uiState.dramaRanking,
                 newBookRanking = uiState.newBookRanking,
-                onRankingItemClick = { bookId ->
-                    onIntent(SearchIntent.NavigateToBookDetail(bookId))
-                },
-                onViewFullRanking = { rankingType ->
-                    // 根据榜单类型获取对应数据
-                    val rankingItems = when (rankingType) {
-                        "点击榜" -> uiState.novelRanking
-                        "推荐榜" -> uiState.dramaRanking
-                        "新书榜" -> uiState.newBookRanking
-                        else -> emptyList()
-                    }
-                    TimberLogger.d(TAG, "查看完整榜单: $rankingType, 项目数: ${rankingItems.size}")
-                    NavViewModel.navigateToFullRanking(rankingType, rankingItems)
-                }
+                onRankingItemClick = onRankingItemClick,
+                onViewFullRanking = onViewFullRanking
             )
             Spacer(modifier = Modifier.height(24.wdp))
         }

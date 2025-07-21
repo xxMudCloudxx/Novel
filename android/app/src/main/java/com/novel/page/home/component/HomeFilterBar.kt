@@ -51,21 +51,24 @@ fun HomeFilterBar(
             items = filters,
             key = { _, filter -> filter.id } // 为分类过滤器添加稳定 key
         ) { index, filter ->
+            // 性能优化：使用 remember 缓存点击回调，避免每次重组都创建新 Lambda
+            val onFilterClick = remember(filter.name, onFilterSelected, index, coroutineScope, listState) { {
+                // 4. 点击时先回调外部状态，再决定是否要滚动
+                onFilterSelected(filter.name)
+
+                // 5. 当索引 >= 2（即第三个及之后的项），让列表滚动到 index-1
+                if (index >= 3) {
+                    coroutineScope.launch {
+                        // 6. animateScrollToItem 会将目标 item 滚到视口最左侧（或根据偏移量滚动） :contentReference[oaicite:1]{index=1}
+                        listState.animateScrollToItem(index = index - 2)
+                    }
+                }
+            } }
+
             FilterChip(
                 filter = filter.name,
                 isSelected = (filter.name == selectedFilter),
-                onClick = {
-                    // 4. 点击时先回调外部状态，再决定是否要滚动
-                    onFilterSelected(filter.name)
-
-                    // 5. 当索引 >= 2（即第三个及之后的项），让列表滚动到 index-1
-                    if (index >= 3) {
-                        coroutineScope.launch {
-                            // 6. animateScrollToItem 会将目标 item 滚到视口最左侧（或根据偏移量滚动） :contentReference[oaicite:1]{index=1}
-                            listState.animateScrollToItem(index = index - 2)
-                        }
-                    }
-                }
+                onClick = onFilterClick
             )
         }
     }

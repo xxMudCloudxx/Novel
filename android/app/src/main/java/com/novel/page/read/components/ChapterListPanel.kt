@@ -86,11 +86,14 @@ fun ChapterListPanel(
                     color = NovelColors.NovelText
                 )
                 
+                // 性能优化：缓存关闭回调，避免每次重组都创建新 Lambda
+                val onDismissClick = remember(onDismiss) { {
+                    TimberLogger.d(TAG, "关闭章节列表面板")
+                    onDismiss()
+                } }
+                
                 IconButton(
-                    onClick = {
-                        TimberLogger.d(TAG, "关闭章节列表面板")
-                        onDismiss()
-                    },
+                    onClick = onDismissClick,
                     modifier = Modifier.size(24.wdp)
                 ) {
                     Icon(
@@ -113,13 +116,16 @@ fun ChapterListPanel(
                 contentPadding = PaddingValues(vertical = 8.wdp)
             ) {
                 items(chapters, key = { it.id }) { chapter ->
+                    // 性能优化：缓存点击回调，避免每次重组都创建 Lambda
+                    val onChapterClick = remember(chapter.id, onChapterSelected) { {
+                        TimberLogger.d(TAG, "选择章节: ${chapter.chapterName}")
+                        onChapterSelected(chapter) 
+                    } }
+                    
                     ChapterItem(
                         chapter = chapter,
                         isSelected = chapter.id == currentChapterId,
-                        onClick = { 
-                            TimberLogger.d(TAG, "选择章节: ${chapter.chapterName}")
-                            onChapterSelected(chapter) 
-                        }
+                        onClick = onChapterClick
                     )
                 }
             }

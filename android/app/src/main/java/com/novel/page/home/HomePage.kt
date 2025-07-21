@@ -30,11 +30,8 @@ import com.novel.utils.NavViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.novel.page.component.FlipBookAnimationController
+import com.novel.utils.StableCallbacks
 import kotlinx.coroutines.flow.distinctUntilChanged
-
-// 稳定的默认回调引用 - 避免cache(false)问题
-@Stable
-private val defaultNavigateToCategory: (Long) -> Unit = { }
 
 /**
  * 新版首页 - 支持下拉刷新、上拉加载和3D翻书动画
@@ -48,7 +45,7 @@ private val defaultNavigateToCategory: (Long) -> Unit = { }
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun HomePage(
-    onNavigateToCategory: (Long) -> Unit = defaultNavigateToCategory,
+    onNavigateToCategory: (Long) -> Unit = StableCallbacks.DefaultNavigateToCategory,
     globalFlipBookController: FlipBookAnimationController? = null
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
@@ -89,15 +86,47 @@ fun HomePage(
         }
     }
     
-    // 稳定的回调函数集合 - 使用一个稳定的对象来避免多个remember调用
-    val callbacks = remember(viewModel) {
+    // 性能优化：使用 StateAdapter 的稳定状态创建方法，避免多个 collectAsState
+    val adapter = viewModel.adapter
+    val isLoading by adapter.createLoadingState()
+    val error by adapter.createErrorState()
+    val isSuccess by adapter.createSuccessState()
+    
+    // 性能优化：使用稳定回调，避免每次重组都创建新Lambda对象
+    val navigateToSearch = StableCallbacks.rememberUnitCallback("navigateToSearch") {
+        viewModel.sendIntent(HomeIntent.NavigateToSearch(""))
+    }
+    
+    val navigateToCategoryPage = StableCallbacks.rememberUnitCallback("navigateToCategoryPage") {
+        viewModel.sendIntent(HomeIntent.NavigateToCategory(1L))
+    }
+    
+    val filterSelected = StableCallbacks.rememberCallback<String>("filterSelected") { filter ->
+        viewModel.sendIntent(HomeIntent.SelectCategoryFilter(filter))
+    }
+    
+    val rankTypeSelected = StableCallbacks.rememberCallback<String>("rankTypeSelected") { rankType ->
+        viewModel.sendIntent(HomeIntent.SelectRankType(rankType))
+    }
+    
+    val bookClick = StableCallbacks.rememberCallback<Long>("bookClick") { bookId ->
+        viewModel.sendIntent(HomeIntent.NavigateToBookDetail(bookId))
+    }
+    
+    val refresh = StableCallbacks.rememberUnitCallback("refresh") {
+        viewModel.sendIntent(HomeIntent.RefreshData)
+    }
+    
+    // 稳定的回调函数集合 - 使用稳定的对象封装，避免多个参数传递
+    val callbacks = remember(navigateToSearch, navigateToCategoryPage, filterSelected, rankTypeSelected, bookClick, refresh) {
+        @Stable
         object {
-            val navigateToSearch: () -> Unit = { viewModel.sendIntent(HomeIntent.NavigateToSearch("")) }
-            val navigateToCategoryPage: () -> Unit = { viewModel.sendIntent(HomeIntent.NavigateToCategory(1L)) }
-            val filterSelected: (String) -> Unit = { filter -> viewModel.sendIntent(HomeIntent.SelectCategoryFilter(filter)) }
-            val rankTypeSelected: (String) -> Unit = { rankType -> viewModel.sendIntent(HomeIntent.SelectRankType(rankType)) }
-            val bookClick: (Long) -> Unit = { bookId -> viewModel.sendIntent(HomeIntent.NavigateToBookDetail(bookId)) }
-            val refresh: () -> Unit = { viewModel.sendIntent(HomeIntent.RefreshData) }
+            val navigateToSearch: () -> Unit = navigateToSearch
+            val navigateToCategoryPage: () -> Unit = navigateToCategoryPage  
+            val filterSelected: (String) -> Unit = filterSelected
+            val rankTypeSelected: (String) -> Unit = rankTypeSelected
+            val bookClick: (Long) -> Unit = bookClick
+            val refresh: () -> Unit = refresh
         }
     }
     

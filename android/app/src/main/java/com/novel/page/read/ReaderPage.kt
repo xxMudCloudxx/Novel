@@ -69,6 +69,7 @@ fun ReaderPage(
     val viewModel: ReaderViewModel = hiltViewModel()
     val activeController = flipBookController ?: NavViewModel.currentFlipBookController()
 
+    // 性能优化：使用 StateAdapter 的稳定状态创建方法，减少重组
     val adapter = viewModel.adapter
     val state by adapter.currentState.collectAsState()
     val isInitialized by adapter.isInitialized.collectAsState(initial = false)
@@ -97,11 +98,16 @@ fun ReaderPage(
         performBack()
     }
 
+    // 性能优化：缓存初始化阅读器回调
+    val handleInitReader = remember(viewModel) { { bookId: String, chapterId: String? ->
+        TimberLogger.d("ReaderPage", "开始加载书籍和章节内容")
+        viewModel.sendIntent(ReaderIntent.InitReader(bookId, chapterId))
+    } }
+    
     LaunchedEffect(bookId, chapterId) {
         TimberLogger.d("ReaderPage", "ReaderPage参数变化: bookId=$bookId, chapterId=$chapterId")
         if (bookId.isNotBlank()) {
-            TimberLogger.d("ReaderPage", "开始加载书籍和章节内容")
-            viewModel.sendIntent(ReaderIntent.InitReader(bookId, chapterId))
+            handleInitReader(bookId, chapterId)
         } else {
             TimberLogger.w("ReaderPage", "书籍ID或章节ID为空，跳过加载")
         }
@@ -165,13 +171,19 @@ fun ReaderPage(
         perChapterPageIndex = state.currentPageIndex
     )
 
+    // 性能优化：缓存重试回调
+    val handleRetry = remember(viewModel) { {
+        viewModel.sendIntent(ReaderIntent.Retry)
+    } }
+    
     // 优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
     val loadingStateComponent = remember(
         state.hasError,
         state.isEmpty,
         state.error,
         state.isLoading,
-        bookId
+        bookId,
+        handleRetry
     ) {
         object : LoadingStateComponent {
             override val loading: Boolean get() = state.isLoading
@@ -196,7 +208,7 @@ fun ReaderPage(
             }
 
             override fun retry() {
-                 viewModel.sendIntent(ReaderIntent.Retry)
+                handleRetry()
             }
         }
     }
@@ -231,11 +243,14 @@ fun ReaderPage(
                     }
 
                     state.hasError -> {
+                        // 性能优化：缓存错误重试回调
+                        val onErrorRetry = remember(viewModel) { {
+                            viewModel.sendIntent(ReaderIntent.Retry)
+                        } }
+                        
                         ErrorContent(
                             error = state.error?:"",
-                            onRetry = {
-                                viewModel.sendIntent(ReaderIntent.Retry)
-                            }
+                            onRetry = onErrorRetry
                         )
                     }
 
@@ -290,18 +305,26 @@ fun ReaderPage(
                                     .padding(bottom = 60.wdp)
                             ) {
                                 Spacer(modifier = Modifier.weight(1f))  // 让面板从剩余区域向上滑
+                                
+                                // 性能优化：缓存章节列表回调函数  
+                                val onChapterSelected = remember(viewModel) { { chapter: com.novel.page.read.viewmodel.Chapter ->
+                                    // 保存当前进度
+                                    viewModel.sendIntent(ReaderIntent.SaveProgress())
+                                    // 切换章节
+                                    viewModel.sendIntent(ReaderIntent.SwitchToChapter(chapter.id))
+                                    viewModel.sendIntent(ReaderIntent.ShowChapterList(false))
+                                } }
+                                
+                                val onChapterListDismiss = remember(viewModel) { {
+                                    viewModel.sendIntent(ReaderIntent.ShowChapterList(false))
+                                } }
+                                
                                 ChapterListPanel(
                                     chapters = state.chapterList,
                                     currentChapterId = state.currentChapter?.id ?: "",
                                     backgroundColor = state.readerSettings.backgroundColor,
-                                    onChapterSelected = { chapter ->
-                                        // 保存当前进度
-                                        viewModel.sendIntent(ReaderIntent.SaveProgress())
-                                        // 切换章节
-                                        viewModel.sendIntent(ReaderIntent.SwitchToChapter(chapter.id))
-                                         viewModel.sendIntent(ReaderIntent.ShowChapterList(false))
-                                    },
-                                    onDismiss = {  viewModel.sendIntent(ReaderIntent.ShowChapterList(false)) },
+                                    onChapterSelected = onChapterSelected,
+                                    onDismiss = onChapterListDismiss,
                                     modifier = Modifier.clickable(enabled = false) { } // 阻止穿透
                                 )
                             }
@@ -319,13 +342,15 @@ fun ReaderPage(
                                     .padding(bottom = 60.wdp)
                             ) {
                                 Spacer(modifier = Modifier.weight(1f))
+                                
+                                // 性能优化：缓存设置变更回调
+                                val onSettingsChange = remember(viewModel) { { settings: ReaderSettings ->
+                                    viewModel.sendIntent(ReaderIntent.UpdateSettings(settings))
+                                } }
+                                
                                 ReaderSettingsPanel(
                                     settings = state.readerSettings,
-                                    onSettingsChange = { settings ->
-                                        viewModel.sendIntent(
-                                            ReaderIntent.UpdateSettings(settings)
-                                        )
-                                    },
+                                    onSettingsChange = onSettingsChange,
                                     modifier = Modifier.clickable(enabled = false) { }
                                 )
                             }
@@ -609,25 +634,35 @@ private fun BottomControls(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.wdp)
             ) {
+                // 性能优化：缓存章节导航回调  
+                val onPreviousChapter = remember(onIntent) { {
+                    onIntent(ReaderIntent.PreviousChapter)
+                } }
+                
+                val onNextChapter = remember(onIntent) { {
+                    onIntent(ReaderIntent.NextChapter)
+                } }
+                
+                val onProgressSeek = remember(onIntent, totalPages) { { rawValue: Float ->
+                    // 仿照亮度控制，添加步进量化
+                    val stepSize = 20f / (totalPages.takeIf { it > 0 } ?: 1)
+                    val stepped = (rawValue / stepSize).roundToInt() * stepSize
+                    val clamped = stepped.coerceIn(0f, 1f)
+                    onIntent(ReaderIntent.SeekToProgress(clamped))
+                } }
+
                 NovelText(
                     "上一章",
                     fontSize = 14.ssp,
                     fontWeight = FontWeight.Bold,
                     color = state.readerSettings.textColor,
-                    modifier = Modifier.debounceClickable(
-                        onClick = { onIntent(ReaderIntent.PreviousChapter) }
-                    ))
+                    modifier = Modifier.debounceClickable(onClick = onPreviousChapter)
+                )
 
                 // 进度条 - 改为SolidCircleSlider
                 SolidCircleSlider(
                     progress = state.computedReadingProgress,
-                    onValueChange = { rawValue ->
-                        // 仿照亮度控制，添加步进量化
-                        val stepSize = 20f / (totalPages.takeIf { it > 0 } ?: 1)
-                        val stepped = (rawValue / stepSize).roundToInt() * stepSize
-                        val clamped = stepped.coerceIn(0f, 1f)
-                        onIntent(ReaderIntent.SeekToProgress(clamped))
-                    },
+                    onValueChange = onProgressSeek,
                     modifier = Modifier.weight(1f),
                     trackColor = Color.Gray.copy(alpha = 0.1f),
                     progressColor = Color.Gray.copy(alpha = 0.5f),
@@ -641,9 +676,8 @@ private fun BottomControls(
                     fontSize = 14.ssp,
                     fontWeight = FontWeight.Bold,
                     color = state.readerSettings.textColor,
-                    modifier = Modifier.debounceClickable(
-                        onClick = { onIntent(ReaderIntent.NextChapter) }
-                    ))
+                    modifier = Modifier.debounceClickable(onClick = onNextChapter)
+                )
             }
         } else {
             HorizontalDivider(
@@ -663,24 +697,37 @@ private fun BottomControls(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 性能优化：缓存控制按钮回调
+            val onShowChapterList = remember(onIntent) { {
+                onIntent(ReaderIntent.ShowChapterList(true))
+            } }
+            
+            val onToggleNightMode = remember { {
+                /* 暂不实现 */
+            } }
+            
+            val onShowSettings = remember(onIntent) { {
+                onIntent(ReaderIntent.ShowSettingsPanel(true))
+            } }
+
             ControlButton(
                 icon = Icons.AutoMirrored.Filled.List,
                 text = "目录",
-                onClick = { onIntent(ReaderIntent.ShowChapterList(true)) },
+                onClick = onShowChapterList,
                 tintColor = state.readerSettings.textColor
             )
 
             ControlButton(
                 icon = Icons.Default.Star,
                 text = "夜间",
-                onClick = { /* 暂不实现 */ },
+                onClick = onToggleNightMode,
                 tintColor = state.readerSettings.textColor
             )
 
             ControlButton(
                 icon = Icons.Default.Settings,
                 text = "设置",
-                onClick = { onIntent(ReaderIntent.ShowSettingsPanel(true)) },
+                onClick = onShowSettings,
                 tintColor = state.readerSettings.textColor
             )
         }
@@ -697,9 +744,12 @@ private fun ControlButton(
     onClick: () -> Unit,
     tintColor: Color = Color(0xFF2E2E2E) // 使用安全的默认深灰色，而不是主题色
 ) {
+    // 性能优化：缓存点击回调
+    val onClickCached = remember(onClick) { onClick }
+    
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier.clickable { onClickCached() }
     ) {
         Icon(
             imageVector = icon,

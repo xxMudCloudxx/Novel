@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,25 @@ fun FontSizeControl(
     val canDecrease = currentIndex > 0
     val canIncrease = currentIndex < fontSizes.size - 1
 
+    val decreaseClick = remember(fontSize, onFontSizeChange, canDecrease) {
+        {
+            if (canDecrease) {
+                val newSize = fontSizes[currentIndex - 1]
+                TimberLogger.d(TAG, "减小字号: $fontSize -> $newSize")
+                onFontSizeChange(newSize)
+            }
+        }
+    }
+    val increaseClick = remember(fontSize, onFontSizeChange, canIncrease) {
+        {
+            if (canIncrease) {
+                val newSize = fontSizes[currentIndex + 1]
+                TimberLogger.d(TAG, "增大字号: $fontSize -> $newSize")
+                onFontSizeChange(newSize)
+            }
+        }
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.wdp),
@@ -67,13 +87,7 @@ fun FontSizeControl(
                 .debounceClickable(
                     intervalMillis = 200,
                     enabled = canDecrease,
-                    onClick = {
-                        if (canDecrease) {
-                            val newSize = fontSizes[currentIndex - 1]
-                            TimberLogger.d(TAG, "减小字号: $fontSize -> $newSize")
-                            onFontSizeChange(newSize)
-                        }
-                    }
+                    onClick = decreaseClick
                 ),
             shape = RoundedCornerShape(16.wdp),
             colors = CardDefaults.cardColors(
@@ -108,13 +122,7 @@ fun FontSizeControl(
                 .debounceClickable(
                     intervalMillis = 200,
                     enabled = canIncrease,
-                    onClick = {
-                        if (canIncrease) {
-                            val newSize = fontSizes[currentIndex + 1]
-                            TimberLogger.d(TAG, "增大字号: $fontSize -> $newSize")
-                            onFontSizeChange(newSize)
-                        }
-                    }
+                    onClick = increaseClick
                 ),
             shape = RoundedCornerShape(16.wdp),
             colors = CardDefaults.cardColors(

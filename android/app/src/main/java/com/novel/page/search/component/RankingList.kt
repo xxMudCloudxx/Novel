@@ -18,6 +18,7 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 import kotlinx.collections.immutable.ImmutableList
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.remember
 
 /**
  * 推荐榜单区域组件
@@ -43,7 +44,28 @@ fun RankingSection(
     
     // 记录榜单数据状态
     TimberLogger.d(TAG, "渲染榜单区域 - 点击榜:${novelRanking.size}项, 推荐榜:${dramaRanking.size}项, 新书榜:${newBookRanking.size}项")
-    
+
+    val viewClick = remember(onViewFullRanking) {
+        {
+            TimberLogger.d(TAG, "查看完整点击榜")
+            onViewFullRanking("点击榜")
+        }
+    }
+
+    val viewNewBook = remember(onViewFullRanking) {
+        {
+            TimberLogger.d(TAG, "查看完整新书榜")
+            onViewFullRanking("新书榜")
+        }
+    }
+
+    val viewDrama = remember(onViewFullRanking) {
+        {
+            TimberLogger.d(TAG, "查看完整推荐榜")
+            onViewFullRanking("推荐榜")
+        }
+    }
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.wdp),
     ) {
@@ -55,10 +77,7 @@ fun RankingSection(
                 title = "点击榜",
                 items = novelRanking,
                 onItemClick = onRankingItemClick,
-                onViewFullRanking = { 
-                    TimberLogger.d(TAG, "查看完整点击榜")
-                    onViewFullRanking("点击榜") 
-                }
+                onViewFullRanking = viewClick
             )
         }
         item(key = "ranking_drama") {
@@ -66,10 +85,7 @@ fun RankingSection(
                 title = "推荐榜",
                 items = dramaRanking,
                 onItemClick = onRankingItemClick,
-                onViewFullRanking = { 
-                    TimberLogger.d(TAG, "查看完整推荐榜")
-                    onViewFullRanking("推荐榜") 
-                }
+                onViewFullRanking = viewDrama
             )
         }
         item(key = "ranking_newbook") {
@@ -77,10 +93,7 @@ fun RankingSection(
                 title = "新书榜",
                 items = newBookRanking,
                 onItemClick = onRankingItemClick,
-                onViewFullRanking = { 
-                    TimberLogger.d(TAG, "查看完整新书榜")
-                    onViewFullRanking("新书榜") 
-                }
+                onViewFullRanking = viewNewBook
             )
         }
         item(key = "spacer_end") {
@@ -186,12 +199,15 @@ fun RankingList(
         verticalArrangement = Arrangement.spacedBy(4.wdp)
     ) {
         items.take(15).forEach { item ->
+            val click = remember(onItemClick, item.id) {
+                {
+                    TimberLogger.d("RankingListItem", "点击榜单项: ${item.title} (ID:${item.id}, 排名:${item.rank})")
+                    onItemClick(item.id)
+                }
+            }
             RankingListItem(
                 item = item,
-                onClick = { 
-                    TimberLogger.d(TAG, "点击榜单项: ${item.title} (ID:${item.id}, 排名:${item.rank})")
-                    onItemClick(item.id) 
-                }
+                onClick = click
             )
         }
         

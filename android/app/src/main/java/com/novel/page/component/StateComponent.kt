@@ -83,12 +83,15 @@ open class StateComponentDefaults : Defaults(), IStateComponentDefaults {
         error: @Composable (BoxScope.() -> Unit)?,
         content: @Composable BoxScope.() -> Unit
     ) {
+        // 性能优化：缓存默认错误回调，避免每次重组都创建
+        val defaultErrorCallback = remember(component) { { component.retry() } }
+        
         val errorContent = if (error !== this.error) error else {
             {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .debounceClickable(onClick = {component.retry()}),
+                        .debounceClickable(onClick = defaultErrorCallback),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "请求错误")

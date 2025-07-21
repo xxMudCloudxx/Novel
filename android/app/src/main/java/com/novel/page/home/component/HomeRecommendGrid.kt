@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,23 +142,35 @@ private fun FullHeightHomeRecommendGrid(
         // 根据数据源选择显示内容
         if (homeBooks.isNotEmpty()) {
             items(homeBooks, key = { it.bookId }) { book ->
+                // 性能优化：缓存点击回调，避免每次重组都创建 Lambda
+                val onClick = remember<() -> Unit>(book.bookId, onBookClick) { { onBookClick(book.bookId) } }
+                val onClickWithPosition = remember<((Offset, androidx.compose.ui.geometry.Size) -> Unit)?>(book.bookId, onBookClickWithPosition) {
+                    onBookClickWithPosition?.let { callback ->
+                        { offset, size -> callback(book.bookId, offset, size) }
+                    }
+                }
+                
                 HomeBookStaggeredItem(
                     book = book,
-                    onClick = { onBookClick(book.bookId) },
-                    onClickWithPosition = onBookClickWithPosition?.let { callback ->
-                        { offset, size -> callback(book.bookId, offset, size) }
-                    },
+                    onClick = onClick,
+                    onClickWithPosition = onClickWithPosition,
                     flipBookController = flipBookController
                 )
             }
         } else {
             items(books, key = { it.id }) { book ->
-                SearchBookStaggeredItem(
-                    book = book,
-                    onClick = { onBookClick(book.id) },
-                    onClickWithPosition = onBookClickWithPosition?.let { callback ->
+                // 性能优化：缓存点击回调，避免每次重组都创建 Lambda
+                val onClick = remember<() -> Unit>(book.id, onBookClick) { { onBookClick(book.id) } }
+                val onClickWithPosition = remember<((Offset, androidx.compose.ui.geometry.Size) -> Unit)?>(book.id, onBookClickWithPosition) {
+                    onBookClickWithPosition?.let { callback ->
                         { offset, size -> callback(book.id, offset, size) }
                     }
+                }
+                
+                SearchBookStaggeredItem(
+                    book = book,
+                    onClick = onClick,
+                    onClickWithPosition = onClickWithPosition
                 )
             }
         }
