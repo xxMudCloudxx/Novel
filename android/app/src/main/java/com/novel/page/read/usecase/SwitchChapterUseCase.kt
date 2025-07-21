@@ -1,9 +1,12 @@
 package com.novel.page.read.usecase
 
 import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
+
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
+import com.novel.utils.TimberLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.FlipDirection
@@ -46,7 +49,7 @@ class SwitchChapterUseCase @Inject constructor(
             val initialPageIndex: Int = 0
         ) : SwitchResult()
         @Stable
-        data class Failure(val error: Throwable) : SwitchResult()
+        data class Failure(@Stable val error: StableThrowable) : SwitchResult()
         data object NoOp : SwitchResult()
     }
 
@@ -79,8 +82,9 @@ class SwitchChapterUseCase @Inject constructor(
 
         val newChapterIndex = state.chapterList.indexOfFirst { it.id == newChapterId }
         if (newChapterIndex == -1) {
-            logger.logError("目标章节在列表中不存在: $newChapterId", null, TAG)
-            return@executeWithResult SwitchResult.Failure(IllegalArgumentException("目标章节在列表中不存在"))
+            val error = StableThrowable(IllegalArgumentException("目标章节在列表中不存在"))
+            TimberLogger.e(TAG, "目标章节在列表中不存在: $newChapterId", error)
+            return@executeWithResult SwitchResult.Failure(error)
         }
         
         val newChapter = state.chapterList[newChapterIndex]
@@ -95,8 +99,9 @@ class SwitchChapterUseCase @Inject constructor(
             logger.logDebug("加载章节内容: ${newChapter.chapterName}", TAG)
             val chapterContent = chapterService.getChapterContent(newChapterId)
             if (chapterContent == null) {
-                logger.logError("无法加载章节内容: ${newChapter.chapterName}", null, TAG)
-                return@executeWithResult SwitchResult.Failure(IllegalStateException("无法加载章节内容"))
+                val error = StableThrowable(IllegalStateException("无法加载章节内容"))
+                TimberLogger.e(TAG, "无法加载章节内容: ${newChapter.chapterName}", error)
+                return@executeWithResult SwitchResult.Failure(error)
             }
 
             // 3. 创建用于内容分割的状态
@@ -156,11 +161,14 @@ class SwitchChapterUseCase @Inject constructor(
             logOperationComplete("切换章节", "成功切换到 ${newChapter.chapterName}，初始页面: $initialPageIndex")
             result
         } catch (e: Exception) {
-            logger.logError("章节切换失败", e, TAG)
-            SwitchResult.Failure(e)
+            val stableError = StableThrowable(e)
+            TimberLogger.e(TAG, "章节切换失败", stableError)
+            SwitchResult.Failure(stableError)
         }
         }.getOrElse { throwable ->
-            SwitchResult.Failure(throwable as? Exception ?: Exception(throwable))
+            val stableError = StableThrowable(throwable)
+            TimberLogger.e(TAG, "章节切换失败", stableError)
+            SwitchResult.Failure(stableError)
         }
     }
-} 
+}

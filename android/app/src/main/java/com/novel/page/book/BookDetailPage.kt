@@ -1,5 +1,6 @@
 package com.novel.page.book
 
+import com.novel.core.StableThrowable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -104,7 +105,7 @@ fun BookDetailPage(
                 override val containsCancelable: Boolean get() = false
                 override val viewState: ViewState
                     get() = when {
-                        uiState.hasError -> ViewState.Error(Exception(uiState.error))
+                        uiState.hasError -> ViewState.Error(StableThrowable(Exception(uiState.error)))
                         uiState.isEmpty -> ViewState.Empty
                         else -> ViewState.Idle
                     }

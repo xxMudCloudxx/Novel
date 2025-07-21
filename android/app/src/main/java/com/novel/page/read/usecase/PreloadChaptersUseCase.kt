@@ -6,6 +6,7 @@ import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
 import com.novel.page.read.usecase.common.BaseUseCase
+import com.novel.utils.TimberLogger
 import com.novel.page.read.usecase.common.PreloadHelper
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.Chapter
@@ -13,6 +14,8 @@ import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -292,7 +295,7 @@ class PreloadChaptersUseCase @Inject constructor(
         val virtualPages = when (buildResult) {
             is BuildVirtualPagesUseCase.BuildResult.Success -> buildResult.virtualPages
             is BuildVirtualPagesUseCase.BuildResult.Failure -> {
-                logger.logError("虚拟页面重建失败", buildResult.error, TAG)
+                TimberLogger.e(TAG, "虚拟页面重建失败", buildResult.error)
                 emptyList()
             }
         }
@@ -333,7 +336,7 @@ class PreloadChaptersUseCase @Inject constructor(
     fun getPreloadStatus(): PreloadStatus {
         return PreloadStatus(
             isPreloading = preloadJob?.isActive == true,
-            preloadingChapters = preloadingChapters.toSet(),
+            preloadingChapters = preloadingChapters.toImmutableSet(),
             preloadRange = if (currentPreloadStartIndex >= 0 && currentPreloadEndIndex >= 0) {
                 Pair(currentPreloadStartIndex, currentPreloadEndIndex)
             } else null
@@ -346,7 +349,7 @@ class PreloadChaptersUseCase @Inject constructor(
     @Stable
     data class PreloadStatus(
         val isPreloading: Boolean,
-        val preloadingChapters: Set<String>,
+        val preloadingChapters: ImmutableSet<String>,
         val preloadRange: Pair<Int, Int>?
     )
 }

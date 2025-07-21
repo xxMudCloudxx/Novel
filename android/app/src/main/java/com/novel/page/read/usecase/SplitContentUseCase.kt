@@ -1,10 +1,13 @@
 package com.novel.page.read.usecase
 
 import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
+
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
+import com.novel.utils.TimberLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import kotlinx.collections.immutable.toImmutableList
@@ -42,7 +45,7 @@ class SplitContentUseCase @Inject constructor(
         ) : SplitResult()
 
         @Stable
-        data class Failure(val error: Throwable) : SplitResult()
+        data class Failure(@Stable val error: StableThrowable) : SplitResult()
     }
 
     /**
@@ -63,8 +66,9 @@ class SplitContentUseCase @Inject constructor(
         val density = state.density
         
         if (currentChapter == null || chapterContent.isEmpty() || density == null) {
-            logger.logWarning("内容分割失败: 缺少必要参数", TAG)
-            return@executeWithResult SplitResult.Failure(IllegalStateException("缺少必要的分割参数"))
+            val error = StableThrowable(IllegalStateException("缺少必要的分割参数"))
+            TimberLogger.e(TAG, "内容分割失败: 缺少必要参数", error)
+            return@executeWithResult SplitResult.Failure(error)
         }
 
         logOperationStart("内容分割", "章节=${currentChapter.chapterName}, 内容长度=${chapterContent.length}")
@@ -125,7 +129,9 @@ class SplitContentUseCase @Inject constructor(
             logOperationComplete("内容分割", "分割完成，页数=${pages.size}，页面索引=$safePageIndex")
             result
         }.getOrElse { throwable ->
-            SplitResult.Failure(throwable as? Exception ?: Exception(throwable))
+            val stableError = StableThrowable(throwable)
+            TimberLogger.e(TAG, "内容分割失败", stableError)
+            SplitResult.Failure(stableError)
         }
     }
 
@@ -255,4 +261,4 @@ class SplitContentUseCase @Inject constructor(
             }
         }
     }
-} 
+}

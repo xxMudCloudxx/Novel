@@ -1,6 +1,7 @@
 package com.novel.utils.network.cache
 
 import com.google.gson.reflect.TypeToken
+import com.novel.core.StableThrowable
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.api.front.HomeService
@@ -348,7 +349,7 @@ inline fun <T> CacheResult<T>.onSuccess(action: (data: T, fromCache: Boolean) ->
     return this
 }
 
-inline fun <T> CacheResult<T>.onError(action: (error: Throwable, cachedData: T?) -> Unit): CacheResult<T> {
+inline fun <T> CacheResult<T>.onError(action: (error: StableThrowable, cachedData: T?) -> Unit): CacheResult<T> {
     if (this is CacheResult.Error) {
         action(error, cachedData)
     }
@@ -357,7 +358,7 @@ inline fun <T> CacheResult<T>.onError(action: (error: Throwable, cachedData: T?)
 
 inline fun <T> CacheResult<T>.fold(
     onSuccess: (data: T, fromCache: Boolean) -> Unit,
-    onError: (error: Throwable, cachedData: T?) -> Unit
+    onError: (error: StableThrowable, cachedData: T?) -> Unit
 ) {
     when (this) {
         is CacheResult.Success -> onSuccess(data, fromCache)

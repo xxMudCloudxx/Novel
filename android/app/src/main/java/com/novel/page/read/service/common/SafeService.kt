@@ -1,12 +1,13 @@
 package com.novel.page.read.service.common
 
+import com.novel.core.StableThrowable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 
 /**
  * 安全服务抽象基类
- * 
+ *
  * 提供统一的异步调度和错误处理机制：
  * - 统一协程调度策略
  * - 标准化错误处理流程
@@ -17,10 +18,10 @@ abstract class SafeService(
     protected val dispatchers: DispatcherProvider,
     protected val logger: ServiceLogger
 ) {
-    
+
     /**
      * 安全的IO操作执行器
-     * 
+     *
      * 自动处理协程调度和异常捕获
      * @param operation 要执行的IO操作
      * @return 操作结果，失败时返回null
@@ -34,10 +35,10 @@ abstract class SafeService(
             logger.logError("IO operation failed", error)
         }.getOrNull()
     }
-    
+
     /**
      * 安全的IO操作执行器（带默认值）
-     * 
+     *
      * @param defaultValue 操作失败时的默认返回值
      * @param operation 要执行的IO操作
      * @return 操作结果或默认值
@@ -52,10 +53,10 @@ abstract class SafeService(
             logger.logError("IO operation failed, using default value", error)
         }.getOrDefault(defaultValue)
     }
-    
+
     /**
      * 安全的计算操作执行器
-     * 
+     *
      * 用于CPU密集型任务
      * @param operation 要执行的计算操作
      * @return 操作结果，失败时返回null
@@ -69,10 +70,10 @@ abstract class SafeService(
             logger.logError("Computation operation failed", error)
         }.getOrNull()
     }
-    
+
     /**
      * 带重试的安全操作执行器
-     * 
+     *
      * @param maxRetries 最大重试次数
      * @param retryDelay 重试间隔（毫秒）
      * @param operation 要执行的操作
@@ -84,27 +85,27 @@ abstract class SafeService(
         operation: suspend () -> T
     ): T? = withContext(dispatchers.io) {
         var lastError: Throwable? = null
-        
+
         repeat(maxRetries + 1) { attempt ->
             try {
                 return@withContext operation()
             } catch (e: Exception) {
                 lastError = e
                 logger.logWarning("Operation failed on attempt ${attempt + 1}: ${e.message}")
-                
+
                 if (attempt < maxRetries) {
                     kotlinx.coroutines.delay(retryDelay)
                 }
             }
         }
-        
+
         logger.logError("Operation failed after ${maxRetries + 1} attempts", lastError!!)
         null
     }
-    
+
     /**
      * 安全的IO操作执行器（带超时保护）
-     * 
+     *
      * 自动处理协程调度和异常捕获，防止ANR
      * @param operation 要执行的IO操作
      * @param timeoutMs 超时时间（毫秒）
@@ -123,16 +124,17 @@ abstract class SafeService(
                 is kotlinx.coroutines.TimeoutCancellationException -> {
                     logger.logWarning("IO operation timeout after ${timeoutMs}ms")
                 }
+
                 else -> {
                     logger.logError("IO operation failed", error)
                 }
             }
         }.getOrNull()
     }
-    
+
     /**
      * 性能监控包装器（suspend版本，优化版）
-     * 
+     *
      * 记录操作耗时，仅在必要时记录以避免性能开销
      * @param operationName 操作名称
      * @param operation 要执行的操作
@@ -145,21 +147,21 @@ abstract class SafeService(
         if (!ReaderServiceConfig.ENABLE_PERFORMANCE_LOGGING) {
             return operation()
         }
-        
+
         val startTime = System.currentTimeMillis()
         val result = operation()
         val duration = System.currentTimeMillis() - startTime
-        
+
         // 只记录耗时较长的操作，避免日志泛滥
         if (duration > 100) {
             logger.logPerformance(operationName, duration)
         }
         return result
     }
-    
+
     /**
      * 性能监控包装器（同步版本，优化版）
-     * 
+     *
      * 记录操作耗时，仅在必要时记录以避免性能开销
      * @param operationName 操作名称
      * @param operation 要执行的操作
@@ -172,26 +174,27 @@ abstract class SafeService(
         if (!ReaderServiceConfig.ENABLE_PERFORMANCE_LOGGING) {
             return operation()
         }
-        
+
         val startTime = System.currentTimeMillis()
         val result = operation()
         val duration = System.currentTimeMillis() - startTime
-        
+
         // 只记录耗时较长的操作，避免日志泛滥
         if (duration > 50) {
             logger.logPerformance(operationName, duration)
         }
         return result
     }
-    
+
     /**
      * 获取服务标签，用于日志记录
      */
     protected abstract fun getServiceTag(): String
 }
+
 /**
  * 服务日志记录器接口
- * 
+ *
  * 抽象日志记录，便于测试和切换日志框架
  */
 interface ServiceLogger {
@@ -206,7 +209,7 @@ interface ServiceLogger {
  * 默认Android日志记录器实现（使用Timber）
  */
 class AndroidServiceLogger : ServiceLogger {
-    
+
     override fun logDebug(message: String, tag: String?) {
         if (ReaderServiceConfig.ENABLE_VERBOSE_LOGGING) {
             if (tag != null) {
@@ -216,7 +219,7 @@ class AndroidServiceLogger : ServiceLogger {
             }
         }
     }
-    
+
     override fun logInfo(message: String, tag: String?) {
         if (tag != null) {
             Timber.tag(tag).i(message)
@@ -224,7 +227,7 @@ class AndroidServiceLogger : ServiceLogger {
             Timber.i(message)
         }
     }
-    
+
     override fun logWarning(message: String, tag: String?) {
         if (tag != null) {
             Timber.tag(tag).w(message)
@@ -232,7 +235,20 @@ class AndroidServiceLogger : ServiceLogger {
             Timber.w(message)
         }
     }
-    
+
+    /**
+     * 错误日志（带StableThrowable）
+     * 在所有版本中输出，专门用于Compose稳定的异常处理
+     */
+    fun e(tag: String, message: String, stableThrowable: StableThrowable) {
+        val errorMessage = buildString {
+            append(message)
+            stableThrowable.message?.let { append(" - ").append(it) }
+            stableThrowable.cause?.let { append(" (Caused by: ").append(it).append(")") }
+        }
+        Timber.tag(tag).e(errorMessage)
+    }
+
     override fun logError(message: String, error: Throwable?, tag: String?) {
         if (tag != null) {
             if (error != null) {
@@ -248,7 +264,21 @@ class AndroidServiceLogger : ServiceLogger {
             }
         }
     }
-    
+
+    /**
+     * 警告日志（带StableThrowable）
+     * 在所有版本中输出，专门用于Compose稳定的异常处理
+     */
+    fun w(tag: String, message: String, stableThrowable: StableThrowable) {
+        val warningMessage = buildString {
+            append(message)
+            stableThrowable.message?.let { append(" - ").append(it) }
+            stableThrowable.cause?.let { append(" (Caused by: ").append(it).append(")") }
+        }
+        Timber.tag(tag).w(warningMessage)
+    }
+
+
     override fun logPerformance(operationName: String, durationMs: Long, tag: String?) {
         if (ReaderServiceConfig.ENABLE_PERFORMANCE_LOGGING) {
             val performanceMessage = "Performance: $operationName took ${durationMs}ms"

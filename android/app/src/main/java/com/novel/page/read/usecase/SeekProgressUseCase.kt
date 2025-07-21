@@ -1,10 +1,13 @@
 package com.novel.page.read.usecase
 
 import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
+
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.PaginationService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
+import com.novel.utils.TimberLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
@@ -42,7 +45,7 @@ class SeekProgressUseCase @Inject constructor(
             val newPageIndex: Int
         ) : SeekResult()
         @Stable
-        data class Failure(val error: Throwable) : SeekResult()
+        data class Failure(@Stable val error: StableThrowable) : SeekResult()
         data object NoOp : SeekResult()
     }
 
@@ -77,8 +80,9 @@ class SeekProgressUseCase @Inject constructor(
         
         val targetChapterInfo = paginationService.findChapterByAbsolutePage(pageCountCache, targetGlobalPage)
         if (targetChapterInfo == null) {
-            logger.logError("无法找到目标进度对应的章节", null, TAG)
-            return@executeWithResult SeekResult.Failure(IllegalStateException("无法找到目标进度对应的章节"))
+            val error = StableThrowable(IllegalStateException("无法找到目标进度对应的章节"))
+            TimberLogger.e(TAG, "无法找到目标进度对应的章节", error)
+            return@executeWithResult SeekResult.Failure(error)
         }
 
         val (targetChapterId, targetPageIndex) = targetChapterInfo
@@ -90,8 +94,9 @@ class SeekProgressUseCase @Inject constructor(
 
         val targetChapterIndex = state.chapterList.indexOfFirst { it.id == targetChapterId }
         if (targetChapterIndex == -1) {
-            logger.logError("章节在列表中不存在: $targetChapterId", null, TAG)
-            return@executeWithResult SeekResult.Failure(IllegalArgumentException("章节在列表中不存在"))
+            val error = StableThrowable(IllegalArgumentException("章节在列表中不存在"))
+            TimberLogger.e(TAG, "章节在列表中不存在: $targetChapterId", error)
+            return@executeWithResult SeekResult.Failure(error)
         }
         
         val targetChapter = state.chapterList[targetChapterIndex]
@@ -100,8 +105,9 @@ class SeekProgressUseCase @Inject constructor(
         try {
             val chapterContent = chapterService.getChapterContent(targetChapterId)
             if (chapterContent == null) {
-                logger.logError("无法加载章节内容: ${targetChapter.chapterName}", null, TAG)
-                return@executeWithResult SeekResult.Failure(IllegalStateException("无法加载章节内容"))
+                val error = StableThrowable(IllegalStateException("无法加载章节内容"))
+                TimberLogger.e(TAG, "无法加载章节内容: ${targetChapter.chapterName}", error)
+                return@executeWithResult SeekResult.Failure(error)
             }
 
             val newPageData = paginateChapterUseCase.execute(
@@ -118,11 +124,14 @@ class SeekProgressUseCase @Inject constructor(
             logOperationComplete("跳转阅读进度", "成功跳转到 ${targetChapter.chapterName} 第${targetPageIndex + 1}页")
             result
         } catch(e: Exception) {
-            logger.logError("跳转进度失败", e, TAG)
-            SeekResult.Failure(e)
+            val stableError = StableThrowable(e)
+            TimberLogger.e(TAG, "跳转进度失败", stableError)
+            SeekResult.Failure(stableError)
         }
         }.getOrElse { throwable ->
-            SeekResult.Failure(throwable as? Exception ?: Exception(throwable))
+            val stableError = StableThrowable(throwable)
+            TimberLogger.e(TAG, "跳转进度失败", stableError)
+            SeekResult.Failure(stableError)
         }
     }
-} 
+}

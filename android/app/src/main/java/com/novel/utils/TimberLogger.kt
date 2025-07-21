@@ -2,6 +2,7 @@ package com.novel.utils
 
 import androidx.compose.runtime.Stable
 import com.novel.BuildConfig
+import com.novel.core.StableThrowable
 import timber.log.Timber
 
 /**
@@ -62,6 +63,19 @@ object TimberLogger {
     }
     
     /**
+     * 警告日志（带StableThrowable）
+     * 在所有版本中输出，专门用于Compose稳定的异常处理
+     */
+    fun w(tag: String, message: String, stableThrowable: StableThrowable) {
+        val warningMessage = buildString {
+            append(message)
+            stableThrowable.message?.let { append(" - ").append(it) }
+            stableThrowable.cause?.let { append(" (Caused by: ").append(it).append(")") }
+        }
+        Timber.tag(tag).w(warningMessage)
+    }
+    
+    /**
      * 错误日志
      * 在所有版本中输出
      */
@@ -75,6 +89,19 @@ object TimberLogger {
      */
     fun e(tag: String, message: String, throwable: Throwable) {
         Timber.tag(tag).e(throwable, message)
+    }
+    
+    /**
+     * 错误日志（带StableThrowable）
+     * 在所有版本中输出，专门用于Compose稳定的异常处理
+     */
+    fun e(tag: String, message: String, stableThrowable: StableThrowable) {
+        val errorMessage = buildString {
+            append(message)
+            stableThrowable.message?.let { append(" - ").append(it) }
+            stableThrowable.cause?.let { append(" (Caused by: ").append(it).append(")") }
+        }
+        Timber.tag(tag).e(errorMessage)
     }
     
     /**

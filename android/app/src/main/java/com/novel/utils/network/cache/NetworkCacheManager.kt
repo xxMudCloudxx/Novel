@@ -1,6 +1,8 @@
 package com.novel.utils.network.cache
 
 import android.content.Context
+import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
 import com.novel.utils.TimberLogger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -16,7 +18,6 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.compose.runtime.Stable
 
 /**
  * 缓存条目数据
@@ -55,7 +56,7 @@ sealed class CacheResult<T> {
     @Stable
     data class Success<T>(val data: T, val fromCache: Boolean) : CacheResult<T>()
     @Stable
-    data class Error<T>(val error: Throwable, val cachedData: T? = null) : CacheResult<T>()
+    data class Error<T>(val error: StableThrowable, val cachedData: T? = null) : CacheResult<T>()
 }
 
 /**
@@ -157,7 +158,7 @@ class NetworkCacheManager @Inject constructor(
                                     TimberLogger.w(TAG, "Using expired cache data as fallback for key: $key")
                                     return@withContext CacheResult.Success(cachedData, true)
                                 }
-                                return@withContext CacheResult.Error(Exception("Network data is invalid after retry"))
+                                return@withContext CacheResult.Error(StableThrowable(Exception("Network data is invalid after retry")))
                             }
                         }
                     } catch (e: Exception) {
@@ -165,9 +166,9 @@ class NetworkCacheManager @Inject constructor(
                         // 网络失败时，尝试返回缓存数据（即使可能过期）作为兜底
                         if (cachedData != null) {
                             TimberLogger.w(TAG, "Using cached data as fallback for key: $key")
-                            return@withContext CacheResult.Error(e, cachedData)
+                            return@withContext CacheResult.Error(StableThrowable(e), cachedData)
                         }
-                        return@withContext CacheResult.Error(e)
+                        return@withContext CacheResult.Error(StableThrowable(e))
                     }
                 }
             }
@@ -184,7 +185,7 @@ class NetworkCacheManager @Inject constructor(
                         if (cachedData != null) {
                             return@withContext CacheResult.Success(cachedData, true)
                         } else {
-                            return@withContext CacheResult.Error(Exception("Both network and cache data unavailable"))
+                            return@withContext CacheResult.Error(StableThrowable(Exception("Both network and cache data unavailable")))
                         }
                     }
                 } catch (e: Exception) {
@@ -193,7 +194,7 @@ class NetworkCacheManager @Inject constructor(
                     if (cachedData != null) {
                         return@withContext CacheResult.Success(cachedData, true)
                     } else {
-                        return@withContext CacheResult.Error(e)
+                        return@withContext CacheResult.Error(StableThrowable(e))
                     }
                 }
             }
@@ -203,7 +204,7 @@ class NetworkCacheManager @Inject constructor(
                 if (cachedData != null && isValidData(cachedData)) {
                     return@withContext CacheResult.Success(cachedData, true)
                 } else {
-                    return@withContext CacheResult.Error(Exception("No valid cached data found"))
+                    return@withContext CacheResult.Error(StableThrowable(Exception("No valid cached data found")))
                 }
             }
             
@@ -214,10 +215,10 @@ class NetworkCacheManager @Inject constructor(
                         saveCacheData(key, networkData, config, typeToken)
                         return@withContext CacheResult.Success(networkData, false)
                     } else {
-                        return@withContext CacheResult.Error(Exception("Network data is invalid"))
+                        return@withContext CacheResult.Error(StableThrowable(Exception("Network data is invalid")))
                     }
                 } catch (e: Exception) {
-                    return@withContext CacheResult.Error(e)
+                    return@withContext CacheResult.Error(StableThrowable(e))
                 }
             }
             
@@ -251,20 +252,20 @@ class NetworkCacheManager @Inject constructor(
                     val expiredCachedData = getCachedDataInternal(key, allowExpired = true, typeToken = typeToken)
                     if (expiredCachedData != null) {
                         TimberLogger.w(TAG, "Using expired cache data as final fallback for key: $key")
-                        return@withContext CacheResult.Error(Exception("All data sources failed"), expiredCachedData)
+                        return@withContext CacheResult.Error(StableThrowable(Exception("All data sources failed")), expiredCachedData)
                     }
                     
                     // 5. 完全失败
-                    return@withContext CacheResult.Error(Exception("All fallback strategies failed"))
+                    return@withContext CacheResult.Error(StableThrowable(Exception("All fallback strategies failed")))
                     
                 } catch (e: Exception) {
                     TimberLogger.e(TAG, "Smart fallback failed for key: $key", e)
                     // 作为最后的兜底，尝试返回过期缓存
                     val expiredCachedData = getCachedDataInternal(key, allowExpired = true, typeToken = typeToken)
                     if (expiredCachedData != null) {
-                        return@withContext CacheResult.Error(e, expiredCachedData)
+                        return@withContext CacheResult.Error(StableThrowable(e), expiredCachedData)
                     }
-                    return@withContext CacheResult.Error(e)
+                    return@withContext CacheResult.Error(StableThrowable(e))
                 }
             }
         }
@@ -536,4 +537,4 @@ class NetworkCacheManager @Inject constructor(
             false
         }
     }
-} 
+}

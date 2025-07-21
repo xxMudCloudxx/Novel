@@ -1,5 +1,6 @@
 package com.novel.page.read
 
+import com.novel.core.StableThrowable
 import com.novel.utils.TimberLogger
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -177,7 +178,7 @@ fun ReaderPage(
             override val containsCancelable: Boolean get() = false
             override val viewState: ViewState
                 get() = when {
-                    state.hasError -> ViewState.Error(Exception(state.error))
+                    state.hasError -> ViewState.Error(StableThrowable(Exception(state.error)))
                     state.isEmpty -> ViewState.Empty
                     else -> ViewState.Idle
                 }

@@ -1,14 +1,20 @@
 package com.novel.page.read.usecase
 
 import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
 import com.novel.page.read.service.ChapterService
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
+import com.novel.utils.TimberLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.PageData
 import com.novel.page.read.viewmodel.ReaderState
 import com.novel.page.read.viewmodel.VirtualPage
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.toImmutableMap
 import javax.inject.Inject
 
 /**
@@ -35,13 +41,13 @@ class BuildVirtualPagesUseCase @Inject constructor(
     sealed class BuildResult {
         @Stable
         data class Success(
-            val virtualPages: List<VirtualPage>,
+            val virtualPages: ImmutableList<VirtualPage>,
             val newVirtualPageIndex: Int,
-            val loadedChapterData: Map<String, PageData>
+            val loadedChapterData: ImmutableMap<String, PageData>
         ) : BuildResult()
 
         @Stable
-        data class Failure(val error: Throwable) : BuildResult()
+        data class Failure(@Stable val error: StableThrowable) : BuildResult()
     }
 
     /**
@@ -61,8 +67,9 @@ class BuildVirtualPagesUseCase @Inject constructor(
             val currentPageData = state.currentPageData
             
             if (currentChapter == null || currentPageData == null) {
-                logger.logWarning("虚拟页面构建失败: 缺少必要数据", TAG)
-                return BuildResult.Failure(IllegalStateException("缺少当前章节或页面数据"))
+                val error = StableThrowable(IllegalStateException("缺少当前章节或页面数据"))
+                TimberLogger.e(TAG, "虚拟页面构建失败: 缺少必要数据", error)
+                return BuildResult.Failure(error)
             }
 
             // 1. 构建虚拟页面列表
@@ -126,13 +133,18 @@ class BuildVirtualPagesUseCase @Inject constructor(
 
             logger.logDebug("虚拟页面构建成功: 总页数=${virtualPages.size}, 当前索引=$newVirtualPageIndex", TAG)
 
-            val result = BuildResult.Success(virtualPages, newVirtualPageIndex, loadedChapterData)
+            val result = BuildResult.Success(
+                virtualPages.toImmutableList(), 
+                newVirtualPageIndex, 
+                loadedChapterData.toImmutableMap()
+            )
             logOperationComplete("构建虚拟页面", "构建完成，总页数=${virtualPages.size}")
             result
             
         } catch (e: Exception) {
-            logger.logError("虚拟页面构建失败", e, TAG)
-            BuildResult.Failure(e)
+            val stableError = StableThrowable(e)
+            TimberLogger.e(TAG, "虚拟页面构建失败", stableError)
+            BuildResult.Failure(stableError)
         }
     }
 
@@ -262,4 +274,4 @@ class BuildVirtualPagesUseCase @Inject constructor(
             }
         }
     }
-} 
+}

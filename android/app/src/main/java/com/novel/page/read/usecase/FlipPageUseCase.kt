@@ -1,8 +1,11 @@
 package com.novel.page.read.usecase
 
 import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
+
 import com.novel.page.read.service.common.DispatcherProvider
 import com.novel.page.read.service.common.ServiceLogger
+import com.novel.utils.TimberLogger
 import com.novel.page.read.usecase.common.BaseUseCase
 import com.novel.page.read.utils.ReaderLogTags
 import com.novel.page.read.viewmodel.FlipDirection
@@ -54,7 +57,7 @@ class FlipPageUseCase @Inject constructor(
         
         /** 操作失败 */
         @Stable
-        data class Failure(val error: Throwable) : FlipResult()
+        data class Failure(@Stable val error: StableThrowable) : FlipResult()
         
         /** 无操作（已到边界或其他原因） */
         data object NoOp : FlipResult()
@@ -120,7 +123,9 @@ class FlipPageUseCase @Inject constructor(
             logOperationComplete("翻页操作", "结果类型=${result::class.simpleName}")
             result
         }.getOrElse { throwable ->
-            FlipResult.Failure(throwable as? Exception ?: Exception(throwable))
+            val stableError = StableThrowable(throwable)
+            TimberLogger.e(TAG, "页面翻转失败", stableError)
+            FlipResult.Failure(stableError)
         }
     }
 
@@ -243,4 +248,4 @@ class FlipPageUseCase @Inject constructor(
         logger.logDebug("触发预加载检查", TAG)
         preloadChaptersUseCase.execute(scope, chapterList, currentVirtualPage.chapterId)
     }
-} 
+}

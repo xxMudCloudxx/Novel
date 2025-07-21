@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import com.novel.core.StableThrowable
 import com.novel.utils.debounceClickable
 
 @Stable
@@ -21,7 +22,7 @@ sealed class ViewState {
 
     data object Empty : ViewState()
 
-    data class Error(@Stable val ex: Throwable) : ViewState()
+    data class Error(@Stable val ex: StableThrowable) : ViewState()
 }
 
 @Stable

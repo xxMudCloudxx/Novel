@@ -1,8 +1,9 @@
 package com.novel.utils.network.repository
 
 import androidx.compose.runtime.Stable
+import com.novel.core.StableThrowable
 import com.novel.utils.TimberLogger
-import com.novel.utils.asStable
+import com.novel.core.asStable
 import com.novel.utils.network.api.front.BookService
 import com.novel.utils.network.api.front.SearchService
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -92,7 +93,7 @@ class CachedBookRepository @Inject constructor(
         updateState: (Any?) -> Unit,
         operationName: String
     ): T? {
-        var lastError: Throwable? = null
+        var lastError: StableThrowable? = null
         
         repeat(MAX_RETRY_COUNT) { attempt ->
             try {
@@ -130,7 +131,7 @@ class CachedBookRepository @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                lastError = e
+                lastError = StableThrowable(e)
                 TimberLogger.e(TAG, "$operationName exception on attempt ${attempt + 1}", e)
                 if (attempt < MAX_RETRY_COUNT - 1) {
                     kotlinx.coroutines.delay(RETRY_DELAY_MS)

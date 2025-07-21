@@ -1,5 +1,6 @@
 package com.novel.page.search
 
+import com.novel.core.StableThrowable
 import com.novel.utils.TimberLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -98,7 +99,7 @@ fun SearchPage(
             override val containsCancelable: Boolean get() = false
             override val viewState: ViewState
                 get() = when {
-                    uiState.error != null -> ViewState.Error(Exception(uiState.error))
+                    uiState.error != null -> ViewState.Error(StableThrowable(Exception(uiState.error)))
                     else -> ViewState.Idle
                 }
 
