@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.novel.page.book.viewmodel.BookDetailUiState
@@ -29,6 +30,14 @@ fun AuthorSection(
     if (bookInfo == null) {
         TimberLogger.w(TAG, "BookInfo为空，跳过渲染")
         return
+    }
+
+    // 记忆化关注按钮点击事件
+    val followClick = remember(bookInfo.authorName, onFollowAuthor) {
+        {
+            TimberLogger.d(TAG, "点击关注作者: ${'$'}{bookInfo.authorName}")
+            onFollowAuthor?.invoke(bookInfo.authorName) ?: Unit
+        }
     }
     
     Row(
@@ -61,10 +70,7 @@ fun AuthorSection(
                     modifier = Modifier.padding(horizontal = 12.wdp)
                 )
             },
-            onClick = { 
-                TimberLogger.d(TAG, "点击关注作者: ${bookInfo.authorName}")
-                onFollowAuthor?.invoke(bookInfo.authorName)
-            },
+            onClick = followClick,
             round = 18.wdp,
             color = NovelColors.NovelTextGray.copy(alpha = 0.1f),
         )

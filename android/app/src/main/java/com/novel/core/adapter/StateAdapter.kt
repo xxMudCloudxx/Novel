@@ -1,5 +1,6 @@
 package com.novel.core.adapter
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import com.facebook.react.BuildConfig
 import kotlinx.coroutines.flow.StateFlow
@@ -78,6 +79,54 @@ abstract class StateAdapter<S : MviState>(
         .map { it.version }
         .distinctUntilChanged()
         .asStable()
+    
+    // endregion
+    
+        // region 稳定状态创建工具
+
+    /** 
+     * 创建稳定的 State<T> 对象
+     * 使用 collectAsState + derivedStateOf 避免不稳定的 StateFlow 参数
+     */
+    @Composable
+    fun <T> createStableState(
+        selector: (S) -> T
+    ): androidx.compose.runtime.State<T> = 
+        androidx.compose.runtime.remember {
+            androidx.compose.runtime.derivedStateOf { 
+                selector(getCurrentSnapshot()) 
+            }
+        }
+    
+    /** 
+     * 创建稳定的 State<T> 对象，带缓存键
+     * 当 key 变化时重新计算
+     */
+    @Composable
+    fun <T> createStableState(
+        key: Any?,
+        selector: (S) -> T
+    ): androidx.compose.runtime.State<T> = 
+        androidx.compose.runtime.remember(key) {
+            androidx.compose.runtime.derivedStateOf { 
+                selector(getCurrentSnapshot()) 
+            }
+        }
+    
+    /** 
+     * 创建简单值的 State，避免 Flow.collectAsState()
+     */
+    @Composable
+    fun createLoadingState(): androidx.compose.runtime.State<Boolean> = 
+        createStableState { it.isLoading }
+    
+    @Composable  
+    fun createErrorState(): androidx.compose.runtime.State<String?> = 
+        createStableState { it.error }
+        
+    @Composable
+    fun createSuccessState(): androidx.compose.runtime.State<Boolean> = 
+        createStableState { it.isSuccess }
     
     // endregion
     

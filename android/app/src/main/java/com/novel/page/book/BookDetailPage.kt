@@ -17,6 +17,7 @@ import com.novel.utils.wdp
 import com.novel.utils.NavViewModel
 import com.novel.utils.TimberLogger
 import android.widget.Toast
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 书籍详情页面组件
@@ -46,7 +47,9 @@ fun BookDetailPage(
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
 ) {
     val viewModel: BookDetailViewModel = hiltViewModel()
-    val uiState by viewModel.uiState.collectAsState()
+    // 性能优化：使用 StateAdapter 创建稳定状态
+    val adapter = viewModel.adapter
+    val uiState by adapter.currentState.collectAsState()
     val context = LocalContext.current
     rememberCoroutineScope()
 
@@ -56,48 +59,80 @@ fun BookDetailPage(
         viewModel.loadBookDetail(bookId)
     }
     
+    // 性能优化：缓存副作用处理回调
+    val handleNavigateToReader = remember(flipBookController, onNavigateToReader) { { bookId: String, chapterId: String? ->
+        TimberLogger.d("BookDetailPage", "导航到阅读器: bookId=$bookId, chapterId=$chapterId")
+        // 把当前的 FlipBookAnimationController 暂存到全局
+        NavViewModel.setFlipBookController(flipBookController)
+        onNavigateToReader?.invoke(bookId, chapterId)
+    } }
+    
+    val handleShowToast = remember(context) { { message: String ->
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    } }
+    
+    val handleShareBook = remember(context) { { title: String ->
+        // TODO: 实现分享功能
+        TimberLogger.d("BookDetailPage", "分享书籍: $title")
+        Toast.makeText(context, "分享功能待实现", Toast.LENGTH_SHORT).show()
+    } }
+    
+    val handleShowLoadingDialog = remember { {
+        // TODO: 显示加载对话框
+        TimberLogger.d("BookDetailPage", "显示加载对话框")
+    } }
+    
+    val handleHideLoadingDialog = remember { {
+        // TODO: 隐藏加载对话框
+        TimberLogger.d("BookDetailPage", "隐藏加载对话框")
+    } }
+    
+    val handleHapticFeedback = remember { {
+        // TODO: 触发震动反馈
+        TimberLogger.d("BookDetailPage", "触发震动反馈")
+    } }
+    
     // 处理副作用Effect
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
             TimberLogger.d("BookDetailPage", "处理Effect: ${effect::class.simpleName}")
             when (effect) {
                 is BookDetailEffect.NavigateToReader -> {
-                    TimberLogger.d("BookDetailPage", "导航到阅读器: bookId=${effect.bookId}, chapterId=${effect.chapterId}")
-                    // 把当前的 FlipBookAnimationController 暂存到全局
-                    NavViewModel.setFlipBookController(flipBookController)
-                    onNavigateToReader?.invoke(effect.bookId, effect.chapterId)
+                    handleNavigateToReader(effect.bookId, effect.chapterId)
                 }
                 is BookDetailEffect.ShowToast -> {
-                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                    handleShowToast(effect.message)
                 }
                 is BookDetailEffect.ShareBook -> {
-                    // TODO: 实现分享功能
-                    TimberLogger.d("BookDetailPage", "分享书籍: ${effect.title}")
-                    Toast.makeText(context, "分享功能待实现", Toast.LENGTH_SHORT).show()
+                    handleShareBook(effect.title)
                 }
                 is BookDetailEffect.ShowLoadingDialog -> {
-                    // TODO: 显示加载对话框
-                    TimberLogger.d("BookDetailPage", "显示加载对话框")
+                    handleShowLoadingDialog()
                 }
                 is BookDetailEffect.HideLoadingDialog -> {
-                    // TODO: 隐藏加载对话框
-                    TimberLogger.d("BookDetailPage", "隐藏加载对话框")
+                    handleHideLoadingDialog()
                 }
                 is BookDetailEffect.TriggerHapticFeedback -> {
-                    // TODO: 触发震动反馈
-                    TimberLogger.d("BookDetailPage", "触发震动反馈")
+                    handleHapticFeedback()
                 }
             }
         }
     }
 
+    // 性能优化：缓存重试回调
+    val handleRetry = remember(viewModel, bookId) { {
+        TimberLogger.d("BookDetailPage", "重试加载书籍详情: $bookId")
+        viewModel.loadBookDetail(bookId)
+    } }
+    
     // 性能优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
     val loadingStateComponent by remember(
         uiState.hasError,
         uiState.isEmpty,
         uiState.error,
         uiState.isLoading,
-        bookId
+        bookId,
+        handleRetry
     ) {
         derivedStateOf {
             object : LoadingStateComponent {
@@ -123,8 +158,7 @@ fun BookDetailPage(
                 }
 
                 override fun retry() {
-                    TimberLogger.d("BookDetailPage", "重试加载书籍详情: $bookId")
-                    viewModel.loadBookDetail(bookId)
+                    handleRetry()
                 }
             }
         }
@@ -162,33 +196,86 @@ fun BookDetailPage(
             // 性能优化：只在成功状态下渲染内容，避免不必要的组合
             if (uiState.isSuccess) {
                 TimberLogger.d("BookDetailPage", "渲染书籍详情内容")
+                
+                // 将 BookDetailState 转换为 BookDetailUiState
+                val bookDetailUiState = remember(uiState) {
+                    BookDetailUiState(
+                        bookInfo = uiState.bookInfo?.let { bookInfo ->
+                            BookDetailUiState.BookInfo(
+                                id = bookInfo.id,
+                                bookName = bookInfo.bookName,
+                                authorName = bookInfo.authorName,
+                                bookDesc = bookInfo.bookDesc,
+                                picUrl = bookInfo.picUrl,
+                                visitCount = bookInfo.visitCount,
+                                wordCount = bookInfo.wordCount,
+                                categoryName = bookInfo.categoryName
+                            )
+                        },
+                        lastChapter = uiState.lastChapter?.let { lastChapter ->
+                            BookDetailUiState.LastChapter(
+                                chapterName = lastChapter.chapterName,
+                                chapterUpdateTime = lastChapter.chapterUpdateTime
+                            )
+                        },
+                        reviews = uiState.reviews.map { review ->
+                            BookDetailUiState.BookReview(
+                                id = review.id,
+                                content = review.content,
+                                rating = review.rating,
+                                readTime = review.readTime,
+                                userName = review.userName
+                            )
+                        }.toImmutableList(),
+                        isDescriptionExpanded = uiState.isDescriptionExpanded
+                    )
+                }
+                
+                // 性能优化：缓存BookDetailContent的回调函数
+                val onFollowAuthor = remember(viewModel) { { authorName: String ->
+                    viewModel.sendIntent(
+                        com.novel.page.book.viewmodel.BookDetailIntent.FollowAuthor(authorName)
+                    )
+                } }
+                
+                val onStartReading = remember(viewModel) { { bookId: String, chapterId: String? ->
+                    viewModel.sendIntent(
+                        com.novel.page.book.viewmodel.BookDetailIntent.StartReading(bookId, chapterId)
+                    )
+                } }
+                
+                val onAddToBookshelf = remember(viewModel) { { bookId: String ->
+                    viewModel.sendIntent(
+                        com.novel.page.book.viewmodel.BookDetailIntent.AddToBookshelf(bookId)
+                    )
+                } }
+                
+                val onShareBook = remember(viewModel) { { bookId: String, bookName: String ->
+                    viewModel.sendIntent(
+                        com.novel.page.book.viewmodel.BookDetailIntent.ShareBook(bookId, bookName)
+                    )
+                } }
+                
+                val onToggleDescription = remember(viewModel) { {
+                    viewModel.sendIntent(
+                        com.novel.page.book.viewmodel.BookDetailIntent.ToggleDescriptionExpanded
+                    )
+                } }
+                
+                val onRemoveFromBookshelf = remember(viewModel) { { bookId: String ->
+                    viewModel.sendIntent(
+                        com.novel.page.book.viewmodel.BookDetailIntent.RemoveFromBookshelf(bookId)
+                    )
+                } }
+                
                 BookDetailContent(
-                    uiState = uiState.data,
-                    onFollowAuthor = { authorName ->
-                        viewModel.sendIntent(
-                            com.novel.page.book.viewmodel.BookDetailIntent.FollowAuthor(authorName)
-                        )
-                    },
-                    onStartReading = { bookId, chapterId ->
-                        viewModel.sendIntent(
-                            com.novel.page.book.viewmodel.BookDetailIntent.StartReading(bookId, chapterId)
-                        )
-                    },
-                    onAddToBookshelf = { bookId ->
-                        viewModel.sendIntent(
-                            com.novel.page.book.viewmodel.BookDetailIntent.AddToBookshelf(bookId)
-                        )
-                    },
-                    onShareBook = { bookId, bookName ->
-                        viewModel.sendIntent(
-                            com.novel.page.book.viewmodel.BookDetailIntent.ShareBook(bookId, bookName)
-                        )
-                    },
-                    onToggleDescription = {
-                        viewModel.sendIntent(
-                            com.novel.page.book.viewmodel.BookDetailIntent.ToggleDescriptionExpanded
-                        )
-                    }
+                    uiState = bookDetailUiState,
+                    onFollowAuthor = onFollowAuthor,
+                    onStartReading = onStartReading,
+                    onAddToBookshelf = onAddToBookshelf,
+                    onRemoveFromBookshelf = onRemoveFromBookshelf,
+                    onShareBook = onShareBook,
+                    onToggleDescription = onToggleDescription
                 )
             }
         }
@@ -217,6 +304,7 @@ fun BookDetailContent(
     onFollowAuthor: ((String) -> Unit)? = null,
     onStartReading: ((String, String?) -> Unit)? = null,
     onAddToBookshelf: ((String) -> Unit)? = null,
+    onRemoveFromBookshelf: ((String) -> Unit)? = null,
     onShareBook: ((String, String) -> Unit)? = null,
     onToggleDescription: (() -> Unit)? = null
 ) {
@@ -257,9 +345,7 @@ fun BookDetailContent(
             isInBookshelf = false, // TODO: 从状态中获取
             onStartReading = onStartReading,
             onAddToBookshelf = onAddToBookshelf,
-            onRemoveFromBookshelf = { bookId ->
-                // TODO: 添加移除书架Intent
-            },
+            onRemoveFromBookshelf = onRemoveFromBookshelf,
             onShareBook = onShareBook
         )
 

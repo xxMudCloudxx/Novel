@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.AnnotatedString
@@ -25,6 +26,26 @@ import com.novel.utils.ssp
 import com.novel.utils.wdp
 
 /**
+ * 布局信息数据类 - 缓存计算结果
+ * 使用 @Stable 注解提升 Compose 稳定性
+ */
+@Stable
+private data class LayoutInfo(
+    val showExpand: Boolean,
+    val firstLine: String, 
+    val restAll: String
+)
+
+/**
+ * 稳定的文本样式常量 - 避免每次重组都创建
+ */
+@Stable
+private val DescriptionTextStyle = TextStyle(
+    fontSize = 14.ssp,
+    fontFamily = PingFangFamily
+)
+
+/**
  * 书籍简介组件 - 性能优化版本
  * 
  * 功能特性：
@@ -34,6 +55,12 @@ import com.novel.utils.wdp
  * - 支持HTML标签清理和文本格式化
  * - 性能优化：缓存计算结果，减少重组
  * - MVI集成：支持外部状态管理
+ * 
+ * 性能优化改进：
+ * - 缓存 AnnotatedString 创建，避免重复对象分配
+ * - 使用 @Stable 注解提升参数稳定性
+ * - 优化文本测量逻辑，减少重复计算
+ * - 静态文本样式常量，避免每次重组都创建
  * 
  * @param description 书籍简介原始内容（可能包含HTML标签）
  * @param isExpanded 简介是否展开（来自MVI状态）
@@ -45,11 +72,16 @@ fun BookDescriptionSection(
     isExpanded: Boolean = false,
     onToggleExpanded: (() -> Unit)? = null
 ) {
-    // 性能优化：使用derivedStateOf缓存HTML清理结果
+    // 性能优化：使用 derivedStateOf 缓存 HTML 清理结果
     val cleaned by remember(description) { 
         derivedStateOf {
-        if (description.isBlank()) "" else HtmlTextUtil.cleanHtml(description)
+            if (description.isBlank()) "" else HtmlTextUtil.cleanHtml(description)
         }
+    }
+    
+    // 性能优化：缓存 AnnotatedString 创建，避免重复对象分配
+    val annotatedString by remember(cleaned) {
+        derivedStateOf { AnnotatedString(cleaned) }
     }
     
     // 弹窗状态管理 - 优先使用外部状态，否则使用内部状态
@@ -59,21 +91,18 @@ fun BookDescriptionSection(
     // 容器宽度状态
     var containerWidthPx by remember { mutableIntStateOf(0) }
 
-    // 性能优化：使用remember缓存TextMeasurer
+    // 性能优化：使用 remember 缓存 TextMeasurer，避免每次重组都创建
     val textMeasurer = rememberTextMeasurer()
     
-    // 文本样式 - 静态常量，无需 remember
-    val textStyle = TextStyle(fontSize = 14.ssp, fontFamily = PingFangFamily)
-    
-    // 性能优化：使用derivedStateOf计算布局信息
-    val layoutInfo by remember(cleaned, containerWidthPx, textStyle) {
+    // 性能优化：使用 derivedStateOf 计算布局信息，缓存计算结果
+    val layoutInfo by remember(annotatedString, containerWidthPx) {
         derivedStateOf {
             if (containerWidthPx <= 0 || cleaned.isBlank()) {
                 LayoutInfo(false, "", "")
             } else {
                 val fullLayout = textMeasurer.measure(
-                    AnnotatedString(cleaned),
-                    style = textStyle,
+                    text = annotatedString, // 使用缓存的 AnnotatedString
+                    style = DescriptionTextStyle, // 使用静态样式常量
                     constraints = Constraints(maxWidth = containerWidthPx)
                 )
                 val totalLines = fullLayout.lineCount
@@ -87,6 +116,28 @@ fun BookDescriptionSection(
                 } else {
                     LayoutInfo(false, cleaned, "")
                 }
+            }
+        }
+    }
+
+    // 性能优化：缓存 onClick 回调，避免每次重组都创建新 lambda
+    val onMoreClick = remember(onToggleExpanded) {
+        {
+            if (onToggleExpanded != null) {
+                onToggleExpanded()
+            } else {
+                showBottomSheet = true
+            }
+        }
+    }
+    
+    // 性能优化：缓存 onDismiss 回调
+    val onDismiss = remember(onToggleExpanded) {
+        { 
+            if (onToggleExpanded != null) {
+                onToggleExpanded()
+            } else {
+                showBottomSheet = false
             }
         }
     }
@@ -145,13 +196,7 @@ fun BookDescriptionSection(
                             fontSize = 14.ssp,
                             lineHeight = 14.ssp,
                             color = NovelColors.NovelMain,
-                            modifier = Modifier.debounceClickable(onClick = {
-                                if (onToggleExpanded != null) {
-                                    onToggleExpanded()
-                                } else {
-                                showBottomSheet = true
-                                }
-                            })
+                            modifier = Modifier.debounceClickable(onClick = onMoreClick)
                         )
                     }
                 }
@@ -163,22 +208,7 @@ fun BookDescriptionSection(
     if (actualIsExpanded) {
         BookDescriptionBottomSheet(
             description = description,
-            onDismiss = { 
-                if (onToggleExpanded != null) {
-                    onToggleExpanded()
-                } else {
-                    showBottomSheet = false
-                }
-            }
+            onDismiss = onDismiss
         )
     }
 }
-
-/**
- * 布局信息数据类 - 缓存计算结果
- */
-private data class LayoutInfo(
-    val showExpand: Boolean,
-    val firstLine: String,
-    val restAll: String
-)

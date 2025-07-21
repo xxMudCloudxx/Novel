@@ -6,6 +6,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.novel.page.book.viewmodel.BookDetailUiState
@@ -36,6 +37,33 @@ fun BookActionSection(
         TimberLogger.w(TAG, "BookInfo为空，跳过渲染")
         return
     }
+
+    // 记忆化按钮点击事件
+    val startReadingClick = remember(bookInfo.id, onStartReading) {
+        {
+            TimberLogger.d(TAG, "点击开始阅读: ${'$'}{bookInfo.bookName}")
+            onStartReading?.invoke(bookInfo.id, null) ?: Unit
+        }
+    }
+
+    val shelfClick = remember(isInBookshelf, bookInfo.id, bookInfo.bookName, onAddToBookshelf, onRemoveFromBookshelf) {
+        {
+            if (isInBookshelf) {
+                TimberLogger.d(TAG, "点击移出书架: ${'$'}{bookInfo.bookName}")
+                onRemoveFromBookshelf?.invoke(bookInfo.id) ?: Unit
+            } else {
+                TimberLogger.d(TAG, "点击加入书架: ${'$'}{bookInfo.bookName}")
+                onAddToBookshelf?.invoke(bookInfo.id) ?: Unit
+            }
+        }
+    }
+
+    val shareClick = remember(bookInfo.id, bookInfo.bookName, onShareBook) {
+        {
+            TimberLogger.d(TAG, "点击分享书籍: ${'$'}{bookInfo.bookName}")
+            onShareBook?.invoke(bookInfo.id, bookInfo.bookName) ?: Unit
+        }
+    }
     
     Column(
         modifier = Modifier
@@ -45,10 +73,7 @@ fun BookActionSection(
     ) {
         // 开始阅读按钮
         Button(
-            onClick = {
-                TimberLogger.d(TAG, "点击开始阅读: ${bookInfo.bookName}")
-                onStartReading?.invoke(bookInfo.id, null)
-            },
+            onClick = startReadingClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.wdp),
@@ -72,15 +97,7 @@ fun BookActionSection(
         ) {
             // 书架操作按钮
             OutlinedButton(
-                onClick = {
-                    if (isInBookshelf) {
-                        TimberLogger.d(TAG, "点击移出书架: ${bookInfo.bookName}")
-                        onRemoveFromBookshelf?.invoke(bookInfo.id)
-                    } else {
-                        TimberLogger.d(TAG, "点击加入书架: ${bookInfo.bookName}")
-                        onAddToBookshelf?.invoke(bookInfo.id)
-                    }
-                },
+                onClick = shelfClick,
                 modifier = Modifier
                     .weight(1f)
                     .height(40.wdp),
@@ -98,10 +115,7 @@ fun BookActionSection(
             
             // 分享按钮
             OutlinedButton(
-                onClick = {
-                    TimberLogger.d(TAG, "点击分享书籍: ${bookInfo.bookName}")
-                    onShareBook?.invoke(bookInfo.id, bookInfo.bookName)
-                },
+                onClick = shareClick,
                 modifier = Modifier
                     .weight(1f)
                     .height(40.wdp),
