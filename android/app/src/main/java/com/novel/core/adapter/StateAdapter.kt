@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
 import com.novel.utils.TimberLogger
 import com.novel.core.mvi.MviState
-import com.novel.utils.asStable
+import com.novel.core.asStable
 
 /**
  * MVI状态适配器基类

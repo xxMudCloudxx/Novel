@@ -1,6 +1,7 @@
 package com.novel.rn.bridge
 
 import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.PersistentSet
 import com.novel.core.adapter.StateAdapter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -145,7 +146,7 @@ class BridgeStateListener(private val adapter: BridgeStateAdapter) {
     }
     
     /** 监听缓存组件变化 */
-    fun onCachedComponentsChanged(action: (Set<String>) -> Unit): Flow<Set<String>> {
+    fun onCachedComponentsChanged(action: (PersistentSet<String>) -> Unit): Flow<PersistentSet<String>> {
         return adapter.cachedComponents.map { components ->
             action(components)
             components
@@ -175,4 +176,4 @@ fun BridgeStateAdapter.toScreenState(): BridgeScreenState {
  */
 fun BridgeStateAdapter.createBridgeListener(): BridgeStateListener {
     return BridgeStateListener(this)
-} 
+}

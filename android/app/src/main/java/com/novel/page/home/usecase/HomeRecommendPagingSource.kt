@@ -7,6 +7,8 @@ import com.novel.utils.TimberLogger
 import com.novel.utils.network.cache.CacheStrategy
 import javax.inject.Inject
 import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * 首页推荐书籍的PagingSource
@@ -27,7 +29,7 @@ class HomeRecommendPagingSource @Inject constructor(
     // 缓存全部数据，避免重复网络请求 - 使用@Stable标记
     @Stable
     @Volatile // 添加 @Volatile 确保线程安全
-    private var cachedBooks: List<HomeService.HomeBook>? = null
+    private var cachedBooks: ImmutableList<HomeService.HomeBook>? = null
     
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, HomeService.HomeBook> {
         return try {
@@ -44,11 +46,11 @@ class HomeRecommendPagingSource @Inject constructor(
                 
                 cachedBooks = getHomeRecommendBooksUseCase(
                     GetHomeRecommendBooksUseCase.Params(strategy = strategy)
-                )
+                ).toImmutableList()
                 TimberLogger.d(TAG, "Loaded ${cachedBooks?.size} total books from network")
             }
             
-            val allBooks = cachedBooks ?: emptyList()
+            val allBooks = cachedBooks ?: emptyList<HomeService.HomeBook>().toImmutableList()
             
             // 计算当前页的数据
             val startIndex = (page - 1) * PAGE_SIZE
@@ -92,4 +94,4 @@ class HomeRecommendPagingSource @Inject constructor(
         cachedBooks = null
         TimberLogger.d(TAG, "Cache cleared")
     }
-} 
+}

@@ -1,5 +1,6 @@
 package com.novel.rn.bridge
 
+import kotlinx.collections.immutable.persistentSetOf
 import com.novel.core.mvi.MviReducerWithEffect
 import com.novel.core.mvi.ReduceResult
 import com.novel.utils.TimberLogger
@@ -74,7 +75,7 @@ class BridgeReducer : MviReducerWithEffect<BridgeIntent, BridgeState, BridgeEffe
                     newState = currentState.copy(
                         version = currentState.version + 1,
                         isCacheOperationInProgress = true,
-                        cachedComponents = currentState.cachedComponents - intent.componentName
+                        cachedComponents = currentState.cachedComponents.remove(intent.componentName)
                     ),
                     effect = BridgeEffect.ComponentCacheCleared(intent.componentName)
                 )
@@ -85,7 +86,7 @@ class BridgeReducer : MviReducerWithEffect<BridgeIntent, BridgeState, BridgeEffe
                     newState = currentState.copy(
                         version = currentState.version + 1,
                         isCacheOperationInProgress = true,
-                        cachedComponents = emptySet()
+                        cachedComponents = persistentSetOf()
                     ),
                     effect = BridgeEffect.AllComponentCacheCleared
                 )
@@ -127,7 +128,7 @@ class BridgeReducer : MviReducerWithEffect<BridgeIntent, BridgeState, BridgeEffe
                 ReduceResult(
                     newState = currentState.copy(
                         version = currentState.version + 1,
-                        cachedComponents = currentState.cachedComponents + result.componentName
+                        cachedComponents = currentState.cachedComponents.add(result.componentName)
                     )
                 )
             }
@@ -166,4 +167,4 @@ sealed class BridgeAsyncResult {
     data class ComponentRegistered(val componentName: String) : BridgeAsyncResult()
     data class RouteChanged(val route: String) : BridgeAsyncResult()
     data class Error(val message: String) : BridgeAsyncResult()
-} 
+}

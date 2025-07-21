@@ -1,5 +1,8 @@
 package com.novel.rn.bridge
 
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentSetOf
 import com.novel.core.mvi.MviIntent
 import com.novel.core.mvi.MviState
 import com.novel.core.mvi.MviEffect
@@ -30,6 +33,7 @@ sealed class BridgeIntent : MviIntent {
 }
 
 // ==================== State ====================
+@Stable
 data class BridgeState(
     override val version: Long = 0L,
     override val isLoading: Boolean = false,
@@ -40,7 +44,7 @@ data class BridgeState(
     val currentRoute: String? = null,
     
     // 缓存状态
-    val cachedComponents: Set<String> = emptySet(),
+    @Stable val cachedComponents: PersistentSet<String> = persistentSetOf(),
     val isCacheOperationInProgress: Boolean = false
 ) : MviState
 

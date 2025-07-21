@@ -12,8 +12,10 @@ import java.lang.Exception
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Stable
 @Singleton
 class HomeService @Inject constructor(
+    @Stable
     private val gson: Gson
 ) {
     

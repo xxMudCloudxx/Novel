@@ -7,7 +7,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.core.adapter.StateAdapter
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 
 /**
  * Search状态适配器
@@ -205,8 +208,8 @@ data class SearchScreenState(
     val isLoading: Boolean,
     val error: String?,
     val searchQuery: String,
-    val displayedHistory: List<String>,
-    val rankingSections: List<RankingSection>,
+    val displayedHistory: PersistentList<String>,
+    val rankingSections: PersistentList<RankingSection>,
     val canPerformSearch: Boolean,
     val searchHint: String,
     val shouldShowHistoryToggle: Boolean,
@@ -226,9 +229,9 @@ fun SearchStateAdapter.toScreenState(): SearchScreenState {
         error = snapshot.error,
         searchQuery = snapshot.searchQuery,
         displayedHistory = if (snapshot.isHistoryExpanded) {
-            snapshot.searchHistory
+            snapshot.searchHistory.toPersistentList()
         } else {
-            snapshot.searchHistory.take(3)
+            snapshot.searchHistory.take(3).toPersistentList()
         },
         rankingSections = buildList {
             if (snapshot.novelRanking.isNotEmpty()) {
@@ -240,7 +243,7 @@ fun SearchStateAdapter.toScreenState(): SearchScreenState {
             if (snapshot.newBookRanking.isNotEmpty()) {
                 add(RankingSection("新书榜", snapshot.newBookRanking))
             }
-        },
+        }.toPersistentList(),
         canPerformSearch = canPerformSearch(),
         searchHint = getSearchHint(),
         shouldShowHistoryToggle = shouldShowMoreHistoryButton() || shouldShowLessHistoryButton(),

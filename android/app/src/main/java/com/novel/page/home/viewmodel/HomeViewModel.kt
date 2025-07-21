@@ -6,7 +6,7 @@ import com.novel.core.mvi.MviReducer
 import com.novel.page.home.dao.IHomeRepository
 import com.novel.page.home.usecase.*
 import com.novel.utils.TimberLogger
-import com.novel.utils.asStable
+import com.novel.core.asStable
 import com.novel.utils.network.cache.CacheStrategy
 import com.novel.utils.network.repository.CachedBookRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import javax.inject.Inject
@@ -28,6 +29,7 @@ import com.novel.utils.network.api.front.HomeService
 import com.novel.utils.network.api.front.SearchService
 import kotlinx.coroutines.flow.Flow
 import androidx.compose.runtime.Stable
+import kotlinx.coroutines.flow.SharingStarted
 
 /**
  * 稳定的分页配置包装器
@@ -115,7 +117,7 @@ class HomeViewModel @Inject constructor(
     // 缓存全量首页推荐数据 - 使用@Stable标记
     @Stable
     @Volatile
-    private var cachedHomeBooks: List<HomeService.HomeBook> = emptyList()
+    private var cachedHomeBooks: ImmutableList<HomeService.HomeBook> = persistentListOf()
 
     /** 新的StateAdapter实例 */
     @Stable
@@ -127,7 +129,7 @@ class HomeViewModel @Inject constructor(
         adapter.toScreenState()
     }.stateIn(
         scope = viewModelScope,
-        started = kotlinx.coroutines.flow.SharingStarted.Eagerly,
+        started = SharingStarted.Eagerly,
         initialValue = HomeScreenState(
             isLoading = false,
             error = null,
@@ -178,7 +180,7 @@ class HomeViewModel @Inject constructor(
         adapter.toHomeUiState()
     }.stateIn(
         scope = viewModelScope,
-        started = kotlinx.coroutines.flow.SharingStarted.Lazily,
+        started = SharingStarted.Lazily,
         initialValue = HomeUiState()
     ).asStable()
 
@@ -305,7 +307,7 @@ class HomeViewModel @Inject constructor(
                     )
 
                     // 缓存首页推荐数据
-                    cachedHomeBooks = result.homeRecommendBooks
+                    cachedHomeBooks = result.homeRecommendBooks.toImmutableList()
 
                     TimberLogger.d(TAG, "初始数据加载完成")
                 } else {
@@ -332,7 +334,7 @@ class HomeViewModel @Inject constructor(
 
                 if (result.isSuccess) {
                     // 更新缓存并发送成功Intent
-                    cachedHomeBooks = result.homeRecommendBooks
+                    cachedHomeBooks = result.homeRecommendBooks.toImmutableList()
 
                     sendIntent(HomeIntent.CategoryFiltersLoadSuccess(result.categoryFilters.toImmutableList()))
                     sendIntent(HomeIntent.CategoriesLoadSuccess(result.categories.toImmutableList()))
@@ -535,7 +537,7 @@ class HomeViewModel @Inject constructor(
                 if (cachedHomeBooks.isEmpty()) {
                     val homeBooks =
                         getHomeRecommendBooksUseCase(GetHomeRecommendBooksUseCase.Params())
-                    cachedHomeBooks = homeBooks
+                    cachedHomeBooks = homeBooks.toImmutableList()
                 }
 
                 // 基于缓存数据进行分页 - 计算下一页数据
@@ -631,7 +633,7 @@ class HomeViewModel @Inject constructor(
                         if (isRefresh) CacheStrategy.NETWORK_ONLY else CacheStrategy.CACHE_FIRST
                     val homeBooks =
                         getHomeRecommendBooksUseCase(GetHomeRecommendBooksUseCase.Params(strategy))
-                    cachedHomeBooks = homeBooks
+                    cachedHomeBooks = homeBooks.toImmutableList()
                 }
 
                 // 基于缓存数据进行分页
@@ -904,4 +906,4 @@ class HomeViewModel @Inject constructor(
     fun refreshHomeRecommendPaging() {
         homeRecommendPagingSource.clearCache()
     }
-} 
+}

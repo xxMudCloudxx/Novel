@@ -3,8 +3,8 @@ package com.novel.core.mvi
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.novel.core.asStable
 import com.novel.utils.TimberLogger
-import com.novel.utils.asStable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -38,15 +38,15 @@ abstract class BaseMviViewModel<I : MviIntent, S : MviState, E : MviEffect> : Vi
 
     /** Intent处理的互斥锁，确保状态变更的原子性 */
     @Stable
-    private val stateMutex = Mutex()
+    val stateMutex = Mutex()
     
     /** Intent处理队列 */
     @Stable
-    private val intentChannel = Channel<I>(Channel.UNLIMITED)
+    val intentChannel = Channel<I>(Channel.UNLIMITED)
     
     /** 内部状态流 */
     @Stable
-    private val _state = MutableStateFlow(createInitialState())
+    val _state = MutableStateFlow(createInitialState())
     
     /** 对外暴露的状态流，只读 */
     @Stable
@@ -54,7 +54,7 @@ abstract class BaseMviViewModel<I : MviIntent, S : MviState, E : MviEffect> : Vi
     
     /** 内部副作用流 */
     @Stable
-    private val _effect = MutableSharedFlow<E>()
+    val _effect = MutableSharedFlow<E>()
     
     /** 对外暴露的副作用流，只读 */
     @Stable
@@ -62,7 +62,7 @@ abstract class BaseMviViewModel<I : MviIntent, S : MviState, E : MviEffect> : Vi
     
     /** Intent防抖处理 */
     @Stable
-    private val debouncedIntents = MutableSharedFlow<I>()
+    val debouncedIntents = MutableSharedFlow<I>()
     
     init {
         TimberLogger.d(TAG, "初始化MVI ViewModel: ${this::class.simpleName}")
@@ -226,4 +226,4 @@ abstract class BaseMviViewModel<I : MviIntent, S : MviState, E : MviEffect> : Vi
         TimberLogger.d(TAG, "MVI ViewModel清理: ${this::class.simpleName}")
         intentChannel.close()
     }
-} 
+}

@@ -16,17 +16,22 @@ import javax.inject.Singleton
  * - 性能优化时切换调度器策略
  * - 统一管理协程调度
  */
+@Stable
 interface DispatcherProvider {
     /** IO操作调度器 */
+    @Stable
     val io: CoroutineDispatcher
     
     /** 默认调度器（CPU密集型任务） */
+    @Stable
     val default: CoroutineDispatcher
     
     /** 主线程调度器 */
+    @Stable
     val main: CoroutineDispatcher
     
     /** 不受限制的调度器 */
+    @Stable
     val unconfined: CoroutineDispatcher
 }
 
@@ -38,9 +43,13 @@ interface DispatcherProvider {
 @Singleton
 @Stable
 class DefaultDispatcherProvider @Inject constructor() : DispatcherProvider {
+    @Stable
     override val io: CoroutineDispatcher = Dispatchers.IO
+    @Stable
     override val default: CoroutineDispatcher = Dispatchers.Default
+    @Stable
     override val main: CoroutineDispatcher = Dispatchers.Main
+    @Stable
     override val unconfined: CoroutineDispatcher = Dispatchers.Unconfined
 }
 
@@ -54,11 +63,15 @@ class DefaultDispatcherProvider @Inject constructor() : DispatcherProvider {
 class OptimizedDispatcherProvider @Inject constructor() : DispatcherProvider {
     
     // 限制IO线程池大小，避免过度并发
+    @Stable
     override val io: CoroutineDispatcher = Executors.newFixedThreadPool(
         ReaderServiceConfig.MAX_IO_CONCURRENCY
     ).asCoroutineDispatcher()
     
+    @Stable
     override val default: CoroutineDispatcher = Dispatchers.Default
+    @Stable
     override val main: CoroutineDispatcher = Dispatchers.Main
+    @Stable
     override val unconfined: CoroutineDispatcher = Dispatchers.Unconfined
 }

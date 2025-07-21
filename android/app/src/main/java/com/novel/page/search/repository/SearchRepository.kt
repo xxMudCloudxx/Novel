@@ -11,6 +11,7 @@ import com.novel.page.search.viewmodel.FilterState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.novel.utils.network.cache.NetworkCacheManager
@@ -104,15 +105,19 @@ data class CachedSearchResult(
 @Stable
 class SearchRepository @Inject constructor(
     /** 搜索服务，提供网络搜索功能 */
+    @Stable
     private val searchService: SearchService,
     /** 用户配置存储，管理本地设置 */
+    @Stable
     private val userDefaults: NovelUserDefaults,
     /** JSON序列化工具 */
     @Stable
     private val gson: Gson,
     /** 网络缓存管理器 */
+    @Stable
     private val cacheManager: NetworkCacheManager,
     /** 缓存书籍仓库，提供带缓存的数据访问 */
+    @Stable
     private val cachedBookRepository: CachedBookRepository
 ) {
     
@@ -134,7 +139,7 @@ class SearchRepository @Inject constructor(
     
     /** 搜索结果缓存 */
     @Stable
-    private val searchResultCache: MutableMap<String, CachedSearchResult> = mutableMapOf<String, CachedSearchResult>()
+    private val searchResultCache: ConcurrentHashMap<String, CachedSearchResult> = ConcurrentHashMap<String, CachedSearchResult>()
     
     // region 搜索结果缓存管理
     

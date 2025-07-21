@@ -16,6 +16,7 @@ import com.novel.page.read.viewmodel.ReaderState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.ImmutableList
 import javax.inject.Inject
 
 /**
@@ -25,7 +26,7 @@ import javax.inject.Inject
 @Stable
 data class InitReaderResult(
     val settings: ReaderSettings,
-    val chapterList: List<Chapter>,
+    val chapterList: ImmutableList<Chapter>,
     val initialChapter: Chapter,
     val initialChapterIndex: Int,
     val initialPageData: PageData,
@@ -189,7 +190,7 @@ class InitReaderUseCase @Inject constructor(
 
             val result = InitReaderResult(
                 settings = settings,
-                chapterList = chapterList,
+                chapterList = chapterList.toImmutableList(),
                 initialChapter = initialChapter,
                 initialChapterIndex = initialChapterIndex,
                 initialPageData = initialPageData,
@@ -201,4 +202,4 @@ class InitReaderUseCase @Inject constructor(
             result
         }
     }
-} 
+}

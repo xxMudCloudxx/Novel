@@ -1,5 +1,6 @@
 package com.novel.page.search.usecase
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.page.search.viewmodel.CategoryFilter
 import com.novel.utils.network.api.front.BookService
@@ -23,8 +24,9 @@ import javax.inject.Inject
  * - 优雅降级机制
  * - 数据一致性保证
  */
+@Stable
 class GetCategoryFiltersUseCase @Inject constructor(
-    private val bookService: BookService
+    @Stable private val bookService: BookService
 ) {
     
     companion object {
@@ -98,4 +100,4 @@ class GetCategoryFiltersUseCase @Inject constructor(
             CategoryFilter(id = 7, name = "其他")
         )
     }
-} 
+}

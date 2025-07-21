@@ -1,5 +1,6 @@
 package com.novel.utils.network
 
+import androidx.compose.runtime.Stable
 import com.google.gson.*
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
@@ -35,7 +36,9 @@ class ImmutableListTypeAdapterFactory : TypeAdapterFactory {
     }
 }
 
+@Stable
 class ImmutableListTypeAdapter<T>(
+    @Stable
     private val elementAdapter: TypeAdapter<T>
 ) : TypeAdapter<ImmutableList<T>>() {
     
@@ -67,4 +70,4 @@ class ImmutableListTypeAdapter<T>(
         
         return list.toImmutableList()
     }
-} 
+}

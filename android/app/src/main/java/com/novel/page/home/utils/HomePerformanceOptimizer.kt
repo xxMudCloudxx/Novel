@@ -39,7 +39,7 @@ object HomePerformanceOptimizer {
      */
     @Stable
     @Volatile
-    private var imageHeightCache: MutableMap<String, Int> = ConcurrentHashMap()
+    var imageHeightCache: MutableMap<String, Int> = ConcurrentHashMap()
 
     /**
      * 获取优化后的图片高度
@@ -88,4 +88,4 @@ object HomePerformanceOptimizer {
             TimberLogger.d(TAG, "当前缓存大小: $it")
         }
     }
-} 
+}

@@ -39,13 +39,13 @@ import javax.inject.Singleton
 @Stable
 class AuthService @Inject constructor(
     /** 用户网络服务 */
-    private val userService: UserService,
+    @Stable private val userService: UserService,
     /** Token提供器 */
-    private val tokenProvider: TokenProvider,
+    @Stable val tokenProvider: TokenProvider,
     /** 用户配置存储 */
-    private val userDefaults: NovelUserDefaults,
+    @Stable val userDefaults: NovelUserDefaults,
     /** 用户本地仓库 */
-    private val userRepository: UserRepository
+    @Stable val userRepository: UserRepository
 ) {
 
     companion object {
@@ -271,4 +271,4 @@ data class RegisterRequest(
 sealed class AuthResult {
     data class Success(val message: String) : AuthResult()
     data class Error(val message: String) : AuthResult()
-} 
+}

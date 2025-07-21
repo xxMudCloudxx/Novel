@@ -27,7 +27,9 @@ import javax.inject.Singleton
  * - 完整的数据模型定义
  */
 @Singleton
+@Stable
 class BookService @Inject constructor(
+    @Stable
     private val gson: Gson
 ) {
     

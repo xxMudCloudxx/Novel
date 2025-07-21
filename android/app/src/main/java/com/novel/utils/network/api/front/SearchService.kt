@@ -13,7 +13,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@Stable
 class SearchService @Inject constructor(
+    @Stable
     private val gson: Gson
 ) {
     

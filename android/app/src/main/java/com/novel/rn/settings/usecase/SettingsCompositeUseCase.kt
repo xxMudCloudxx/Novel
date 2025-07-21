@@ -15,7 +15,9 @@ import javax.inject.Inject
  */
 @Stable
 class SettingsCompositeUseCase @Inject constructor(
+    @Stable
     private val settingsUtils: SettingsUtils,
+    @Stable
     private val themeManager: ThemeManager
 ) : BaseUseCase<SettingsCompositeUseCase.Params, SettingsCompositeUseCase.Result>() {
     
@@ -42,16 +44,20 @@ class SettingsCompositeUseCase @Inject constructor(
     )
     
     // 创建内部UseCase实例
+    @Stable
     private val getUserSettingsUseCase: GetUserSettingsUseCase by lazy {
         GetUserSettingsUseCase(settingsUtils, themeManager)
     }
+    @Stable
     private val updateSettingsUseCase: UpdateSettingsUseCase by lazy {
         UpdateSettingsUseCase(settingsUtils, themeManager)
     }
+    @Stable
     private val clearCacheUseCase: ClearCacheUseCase by lazy {
         ClearCacheUseCase(settingsUtils)
     }
-    private val exportUserDataUseCase: ExportUserDataUseCase by lazy {
+    @Stable
+    private val exportUserDataUseCase: Nothing by lazy {
         // 注意：这里需要Context，实际使用时应该通过依赖注入获取
         throw NotImplementedError("需要Context依赖，请使用Hilt注入的实例")
     }
@@ -193,4 +199,4 @@ class SettingsCompositeUseCase @Inject constructor(
             Result(isSuccess = false, errorMessage = e.message)
         }
     }
-} 
+}

@@ -26,9 +26,9 @@ import javax.inject.Singleton
 @Singleton
 @Stable
 class CaptchaService @Inject constructor(
-    private val resourceService: ResourceService,
-    private val securityConfig: SecurityConfig,
-    @ApplicationContext private val context: Context
+    @Stable private val resourceService: ResourceService,
+    @Stable private val securityConfig: SecurityConfig,
+    @ApplicationContext @Stable val context: Context
 ) {
     
     companion object {
@@ -36,7 +36,9 @@ class CaptchaService @Inject constructor(
     }
     
     // 验证码状态管理
-    private val _captchaState = MutableStateFlow(CaptchaState())
+    @Stable
+    val _captchaState = MutableStateFlow(CaptchaState())
+    @Stable
     val captchaState: StateFlow<CaptchaState> = _captchaState.asStateFlow()
     
     /**
@@ -293,4 +295,4 @@ data class CaptchaState(
 data class CaptchaInfo(
     val sessionId: String,
     val imagePath: String
-) 
+)

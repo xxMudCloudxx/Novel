@@ -26,7 +26,9 @@ import javax.inject.Singleton
  * - 统一错误处理机制
  */
 @Singleton
+@Stable
 class NewsService @Inject constructor(
+    @Stable
     private val gson: Gson
 ) {
     

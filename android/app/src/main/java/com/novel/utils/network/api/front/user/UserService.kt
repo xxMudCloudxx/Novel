@@ -41,8 +41,10 @@ import javax.inject.Singleton
  * - 分页响应和评论相关DTO
  * - 统一的基础响应格式
  */
+@Stable
 @Singleton
 class UserService @Inject constructor(
+    @Stable
     private val gson: Gson
 ) {
     

@@ -1,4 +1,4 @@
-package com.novel.utils
+package com.novel.core
 
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.flow.Flow
