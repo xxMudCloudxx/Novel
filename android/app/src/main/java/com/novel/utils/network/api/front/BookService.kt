@@ -42,6 +42,7 @@ class BookService @Inject constructor(
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookInfo(
         @SerializedName("id") val id: Long,
         @SerializedName("categoryId") val categoryId: Long,
@@ -99,6 +100,7 @@ class BookService @Inject constructor(
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookChapter(
         @SerializedName("id") val id: Long,
         @SerializedName("bookId") val bookId: Long,
@@ -109,6 +111,7 @@ class BookService @Inject constructor(
         @SerializedName("isVip") val isVip: Int
     )
 
+    @Stable
     data class BookContentResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -116,6 +119,7 @@ class BookService @Inject constructor(
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookContentAbout(
         @SerializedName("bookInfo") val bookInfo: BookInfo,
         @SerializedName("chapterInfo") val chapterInfo: BookChapter,
@@ -136,6 +140,7 @@ class BookService @Inject constructor(
         @SerializedName("comments") val comments: ImmutableList<CommentInfo>
     )
 
+    @Stable
     data class CommentInfo(
         @SerializedName("id") val id: Long,
         @SerializedName("commentContent") val commentContent: String,
@@ -153,11 +158,13 @@ class BookService @Inject constructor(
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookCategory(
         @SerializedName("id") val id: Long,
         @SerializedName("name") val name: String
     )
 
+    @Stable
     data class ChapterIdResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -165,6 +172,7 @@ class BookService @Inject constructor(
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookChapterAboutResponse(
         @SerializedName("code") val code: String?,
         @SerializedName("message") val message: String?,
@@ -172,6 +180,7 @@ class BookService @Inject constructor(
         @SerializedName("ok") val ok: Boolean?
     )
 
+    @Stable
     data class BookChapterAbout(
         @SerializedName("chapterInfo") val chapterInfo: BookChapter,
         @SerializedName("chapterTotal") val chapterTotal: Long,

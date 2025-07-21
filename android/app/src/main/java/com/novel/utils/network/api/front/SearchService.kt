@@ -57,6 +57,7 @@ class SearchService @Inject constructor(
         @SerializedName("updateTime") val updateTime: String
     )
 
+    @Stable
     data class SearchRequest(
         val keyword: String? = null,
         val workDirection: Int? = null,

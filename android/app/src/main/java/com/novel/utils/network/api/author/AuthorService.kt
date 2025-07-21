@@ -103,6 +103,7 @@ class AuthorService @Inject constructor() {
         @SerializedName("pages") val pages: Long
     )
 
+    @Stable
     data class BookInfo(
         @SerializedName("id") val id: Long,
         @SerializedName("categoryId") val categoryId: Long,
@@ -122,6 +123,7 @@ class AuthorService @Inject constructor() {
         @SerializedName("updateTime") val updateTime: String
     )
 
+    @Stable
     data class ChapterInfo(
         @SerializedName("id") val id: Long,
         @SerializedName("bookId") val bookId: Long,
@@ -132,6 +134,7 @@ class AuthorService @Inject constructor() {
         @SerializedName("isVip") val isVip: Int
     )
 
+    @Stable
     data class ChapterContent(
         @SerializedName("chapterName") val chapterName: String,
         @SerializedName("chapterContent") val chapterContent: String,

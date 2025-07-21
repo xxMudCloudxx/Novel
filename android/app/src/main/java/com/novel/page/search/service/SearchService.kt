@@ -1,5 +1,6 @@
 package com.novel.page.search.service
 
+import androidx.compose.runtime.Stable
 import com.novel.utils.TimberLogger
 import com.novel.page.search.component.SearchRankingItem
 import com.novel.utils.network.cache.CacheStrategy
@@ -22,6 +23,7 @@ import javax.inject.Singleton
  * - 统一的异常处理和日志记录
  * - 支持不同类型榜单的数据获取
  */
+@Stable
 @Singleton
 class SearchService @Inject constructor(
     /** 缓存书籍仓库，提供带缓存的数据访问 */
