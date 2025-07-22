@@ -1,6 +1,10 @@
 package com.novel.page.home.viewmodel
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import com.novel.page.home.dao.HomeBookEntity
@@ -27,6 +31,7 @@ import kotlinx.coroutines.flow.stateIn
  * - 类型安全的强类型状态访问
  * - UI友好的便利方法
  * - 向后兼容HomeUiState格式
+ * - 优化的@Composable状态访问方法，提升skippable比例
  */
 @Stable
 class HomeStateAdapter(
@@ -35,21 +40,234 @@ class HomeStateAdapter(
     private val scope: kotlinx.coroutines.CoroutineScope
 ) : StateAdapter<HomeState>(stateFlow) {
     
-    // region StateFlow 映射扩展函数
+    // region Composable 状态访问方法 (用于提升 skippable 比例)
+    
+    /**
+     * 书籍分类列表 - 优化版本
+     * 替代 categories.collectAsState() 以提升性能
+     */
+    @Composable
+    fun categoriesState(): State<ImmutableList<HomeCategoryEntity>> = remember {
+        derivedStateOf { getCurrentSnapshot().categories }
+    }
+
+    /**
+     * 分类筛选器列表 - 优化版本
+     * 替代 categoryFilters.collectAsState() 以提升性能
+     */
+    @Composable
+    fun categoryFiltersState(): State<ImmutableList<CategoryInfo>> = remember {
+        derivedStateOf { getCurrentSnapshot().categoryFilters }
+    }
+
+    /**
+     * 当前选中的分类筛选器 - 优化版本
+     */
+    @Composable
+    fun selectedCategoryFilterState(): State<String> = remember {
+        derivedStateOf { getCurrentSnapshot().selectedCategoryFilter }
+    }
+
+    /**
+     * 搜索关键词 - 优化版本
+     */
+    @Composable
+    fun searchQueryState(): State<String> = remember {
+        derivedStateOf { getCurrentSnapshot().searchQuery }
+    }
+
+    /**
+     * 轮播图书籍列表 - 优化版本
+     */
+    @Composable
+    fun carouselBooksState(): State<ImmutableList<HomeBookEntity>> = remember {
+        derivedStateOf { getCurrentSnapshot().carouselBooks }
+    }
+
+    /**
+     * 热门书籍列表 - 优化版本
+     */
+    @Composable
+    fun hotBooksState(): State<ImmutableList<HomeBookEntity>> = remember {
+        derivedStateOf { getCurrentSnapshot().hotBooks }
+    }
+
+    /**
+     * 最新书籍列表 - 优化版本
+     */
+    @Composable
+    fun newBooksState(): State<ImmutableList<HomeBookEntity>> = remember {
+        derivedStateOf { getCurrentSnapshot().newBooks }
+    }
+
+    /**
+     * VIP书籍列表 - 优化版本
+     */
+    @Composable
+    fun vipBooksState(): State<ImmutableList<HomeBookEntity>> = remember {
+        derivedStateOf { getCurrentSnapshot().vipBooks }
+    }
+
+    /**
+     * 当前选中的榜单类型 - 优化版本
+     */
+    @Composable
+    fun selectedRankTypeState(): State<String> = remember {
+        derivedStateOf { getCurrentSnapshot().selectedRankType }
+    }
+
+    /**
+     * 榜单书籍列表 - 优化版本
+     */
+    @Composable
+    fun rankBooksState(): State<ImmutableList<BookService.BookRank>> = remember {
+        derivedStateOf { getCurrentSnapshot().rankBooks }
+    }
+
+    /**
+     * 分类推荐书籍列表 - 优化版本
+     */
+    @Composable
+    fun recommendBooksState(): State<ImmutableList<SearchService.BookInfo>> = remember {
+        derivedStateOf { getCurrentSnapshot().recommendBooks }
+    }
+
+    /**
+     * 首页推荐书籍列表 - 优化版本
+     */
+    @Composable
+    fun homeRecommendBooksState(): State<ImmutableList<HomeService.HomeBook>> = remember {
+        derivedStateOf { getCurrentSnapshot().homeRecommendBooks }
+    }
+
+    /**
+     * 是否处于刷新状态 - 优化版本
+     */
+    @Composable
+    fun isRefreshingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().isRefreshing }
+    }
+
+    /**
+     * 是否处于推荐模式 - 优化版本
+     */
+    @Composable
+    fun isRecommendModeState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().isRecommendMode }
+    }
+
+    /**
+     * 分类数据加载状态 - 优化版本
+     */
+    @Composable
+    fun categoryLoadingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().categoryLoading }
+    }
+
+    /**
+     * 书籍数据加载状态 - 优化版本
+     */
+    @Composable
+    fun booksLoadingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().booksLoading }
+    }
+
+    /**
+     * 榜单数据加载状态 - 优化版本
+     */
+    @Composable
+    fun rankLoadingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().rankLoading }
+    }
+
+    /**
+     * 推荐书籍加载状态 - 优化版本
+     */
+    @Composable
+    fun recommendLoadingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().recommendLoading }
+    }
+
+    /**
+     * 首页推荐书籍加载状态 - 优化版本
+     */
+    @Composable
+    fun homeRecommendLoadingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().homeRecommendLoading }
+    }
+
+    /**
+     * 是否有更多推荐数据 - 优化版本
+     */
+    @Composable
+    fun hasMoreRecommendState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().hasMoreRecommend }
+    }
+
+    /**
+     * 是否有更多首页推荐数据 - 优化版本
+     */
+    @Composable
+    fun hasMoreHomeRecommendState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().hasMoreHomeRecommend }
+    }
+
+    /**
+     * 当前推荐页码 - 优化版本
+     */
+    @Composable
+    fun recommendPageState(): State<Int> = remember {
+        derivedStateOf { getCurrentSnapshot().recommendPage }
+    }
+
+    /**
+     * 首页推荐页码 - 优化版本
+     */
+    @Composable
+    fun homeRecommendPageState(): State<Int> = remember {
+        derivedStateOf { getCurrentSnapshot().homeRecommendPage }
+    }
+
+    /**
+     * 当前推荐书籍列表（根据模式） - 优化版本
+     */
+    @Composable
+    fun currentRecommendBooksState(): State<ImmutableList<RecommendItem>> = remember {
+        derivedStateOf {
+            val snapshot = getCurrentSnapshot()
+            if (snapshot.isRecommendMode) {
+                snapshot.homeRecommendBooks.map { HomeRecommendItem(it) }.toImmutableList()
+            } else {
+                snapshot.recommendBooks.map { CategoryRecommendItem(it) }.toImmutableList()
+            }
+        }
+    }
+
+    // endregion
+
+    // region 过时的StateFlow映射方法 (标记为废弃)
     
     /**
      * 将状态映射为 StateFlow，确保 Compose 稳定性
+     * @deprecated 使用对应的@Composable状态访问方法以获得更好的性能
      */
+    @Deprecated(
+        message = "使用对应的@Composable状态访问方法以获得更好的性能",
+        level = DeprecationLevel.WARNING
+    )
     private fun <T> mapStateAsStateFlow(
         transform: (HomeState) -> T
     ): StateFlow<T> = mapState(transform)
         .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, transform(getCurrentSnapshot()))
     
-    // endregion
-    
-    // region 分类相关状态适配
-    
-    /** 书籍分类列表 */
+    /** 
+     * 书籍分类列表
+     * @deprecated 使用 categoriesState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 categoriesState() 替代以提升性能",
+        replaceWith = ReplaceWith("categoriesState()")
+    )
     @Stable
     val categories: StateFlow<ImmutableList<HomeCategoryEntity>> = stateFlow.map { it.categories }.stateIn(
         scope = scope,
@@ -57,15 +275,20 @@ class HomeStateAdapter(
         initialValue = persistentListOf()
     )
 
-    
-    /** 分类筛选器列表 */
+    /** 
+     * 分类筛选器列表
+     * @deprecated 使用 categoryFiltersState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 categoryFiltersState() 替代以提升性能",
+        replaceWith = ReplaceWith("categoryFiltersState()")
+    )
     @Stable
     val categoryFilters: StateFlow<ImmutableList<CategoryInfo>> = stateFlow.map { it.categoryFilters }.stateIn(
         scope = scope,
         started = kotlinx.coroutines.flow.SharingStarted.Lazily,
         initialValue = persistentListOf()
     )
-
 
     // endregion
     

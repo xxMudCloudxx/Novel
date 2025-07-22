@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
@@ -41,6 +40,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * - 监听HomeEffect处理一次性副作用
  * - 订阅HomeState流获取UI状态
  * - 无业务逻辑，纯UI展示和事件转发
+ * 
+ * 性能优化特性：
+ * - 使用优化的@Composable状态访问方法提升skippable比例
+ * - 细粒度状态订阅，避免不必要的重组
+ * - 稳定的回调函数缓存
  */
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -50,7 +54,30 @@ fun HomePage(
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val context = LocalContext.current
-    val uiState by viewModel.screenState.collectAsStateWithLifecycle()
+    
+    // 使用优化的@Composable状态访问方法替代unstable的screenState.collectAsStateWithLifecycle()
+    val adapter = viewModel.adapter
+    val isLoading by adapter.createLoadingState()
+    val error by adapter.createErrorState()
+    val isSuccess by adapter.createSuccessState()
+    val isRefreshing by adapter.isRefreshingState()
+    val searchQuery by adapter.searchQueryState()
+    val categories by adapter.categoriesState()
+    val selectedCategoryFilter by adapter.selectedCategoryFilterState()
+    val categoryFilters by adapter.categoryFiltersState()
+    val carouselBooks by adapter.carouselBooksState()
+    val hotBooks by adapter.hotBooksState()
+    val newBooks by adapter.newBooksState()
+    val vipBooks by adapter.vipBooksState()
+    val rankBooks by adapter.rankBooksState()
+    val selectedRankType by adapter.selectedRankTypeState()
+    val currentRecommendBooks by adapter.currentRecommendBooksState()
+    val isRecommendMode by adapter.isRecommendModeState()
+    val homeRecommendLoading by adapter.homeRecommendLoadingState()
+    val recommendLoading by adapter.recommendLoadingState()
+    val hasMoreRecommend by adapter.hasMoreRecommendState()
+    val hasMoreHomeRecommend by adapter.hasMoreHomeRecommendState()
+    
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
@@ -73,7 +100,7 @@ fun HomePage(
     
     // 下拉刷新状态
     val swipeRefreshState = rememberSwipeRefreshState(
-        isRefreshing = uiState.isRefreshing
+        isRefreshing = isRefreshing
     )
     
     // 优化：使用derivedStateOf进行屏幕尺寸计算，避免每次重组都重新计算
@@ -86,11 +113,15 @@ fun HomePage(
         }
     }
     
-    // 性能优化：使用 StateAdapter 的稳定状态创建方法，避免多个 collectAsState
-    val adapter = viewModel.adapter
-    val isLoading by adapter.createLoadingState()
-    val error by adapter.createErrorState()
-    val isSuccess by adapter.createSuccessState()
+    // 优化：使用细粒度状态访问，计算复合状态
+    val canLoadMoreRecommend by remember {
+        derivedStateOf {
+            when {
+                isRecommendMode -> hasMoreHomeRecommend && !homeRecommendLoading
+                else -> hasMoreRecommend && !recommendLoading
+            }
+        }
+    }
     
     // 性能优化：使用稳定回调，避免每次重组都创建新Lambda对象
     val navigateToSearch = StableCallbacks.rememberUnitCallback("navigateToSearch") {
@@ -177,9 +208,9 @@ fun HomePage(
         snapshotFlow { isAtBottom }
             .distinctUntilChanged()
             .collectLatest { atBottom ->
-                if (atBottom && uiState.canLoadMoreRecommend) {
+                if (atBottom && canLoadMoreRecommend) {
                     // 触发加载更多
-                    if (uiState.isRecommendMode) {
+                    if (isRecommendMode) {
                         viewModel.sendIntent(HomeIntent.LoadMoreHomeRecommend)
                     } else {
                         viewModel.sendIntent(HomeIntent.LoadMoreRecommend)
@@ -189,7 +220,7 @@ fun HomePage(
     }
     
     // 显示骨架屏或正常内容
-    if (uiState.isLoading && uiState.currentRecommendBooks.isEmpty()) {
+    if (isLoading && currentRecommendBooks.isEmpty()) {
         HomePageSkeleton()
     } else {
         SwipeRefresh(
@@ -218,15 +249,15 @@ fun HomePage(
             // 2. 分类筛选器
             item(key = "filter_bar") {
                 HomeFilterBar(
-                    filters = uiState.categoryFilters,
-                    selectedFilter = uiState.selectedCategoryFilter,
+                    filters = categoryFilters,
+                    selectedFilter = selectedCategoryFilter,
                     onFilterSelected = callbacks.filterSelected
                 )
             }
             
             // 3. 榜单面板 - 只在推荐模式下显示，支持3D翻书动画
-            if (uiState.isRecommendMode) {
-                item(key = "rank_panel_${uiState.selectedRankType}") {
+            if (isRecommendMode) {
+                item(key = "rank_panel_${selectedRankType}") {
                     // 单个榜单面板，支持内部切换和翻书动画
                     Box(
                         modifier = Modifier
@@ -235,14 +266,14 @@ fun HomePage(
                         contentAlignment = Alignment.Center
                     ) {
                         HomeRankPanel(
-                            rankBooks = uiState.rankBooks,
-                            selectedRankType = uiState.selectedRankType,
+                            rankBooks = rankBooks,
+                            selectedRankType = selectedRankType,
                             onRankTypeSelected = callbacks.rankTypeSelected,
                             onBookClick = { bookId, offset, size ->
                                 // 榜单点击触发翻书动画
                                 coroutineScope.launch {
                                     // 查找对应的书籍信息
-                                    val book = uiState.rankBooks.find { it.id == bookId }
+                                    val book = rankBooks.find { it.id == bookId }
                                     
                                     flipBookController.startFlipAnimation(
                                         bookId = bookId.toString(),
@@ -262,15 +293,15 @@ fun HomePage(
             }
             
             // 4. 推荐书籍瀑布流 - 使用统一的 RecommendItem 类型
-            item(key = "recommend_grid_${uiState.selectedCategoryFilter}_${uiState.isRecommendMode}") {
+            item(key = "recommend_grid_${selectedCategoryFilter}_${isRecommendMode}") {
                 HomeRecommendGrid(
-                    recommendItems = uiState.currentRecommendBooks,
+                    recommendItems = currentRecommendBooks,
                     onBookClick = callbacks.bookClick,
                     onBookClickWithPosition = { bookId, offset, size ->
                         // 推荐流点击触发放大透明动画
                         coroutineScope.launch {
                             // 查找对应书籍的图片URL
-                            val item = uiState.currentRecommendBooks.find { it.id == bookId }
+                            val item = currentRecommendBooks.find { it.id == bookId }
                             
                             flipBookController.startScaleFadeAnimation(
                                 bookId = bookId.toString(),
@@ -290,16 +321,16 @@ fun HomePage(
             }
             
             // 5. 加载更多指示器 - 使用统一的状态
-            item(key = "load_more_indicator_${uiState.canLoadMoreRecommend}") {
+            item(key = "load_more_indicator_${canLoadMoreRecommend}") {
                 HomeRecommendLoadMoreIndicator(
-                    isLoading = !uiState.canLoadMoreRecommend && uiState.currentRecommendBooks.isNotEmpty(),
-                    hasMoreData = uiState.canLoadMoreRecommend,
-                    totalDataCount = uiState.currentRecommendBooks.size
+                    isLoading = !canLoadMoreRecommend && currentRecommendBooks.isNotEmpty(),
+                    hasMoreData = canLoadMoreRecommend,
+                    totalDataCount = currentRecommendBooks.size
                 )
             }
             
             // 6. 全局加载状态
-            if (uiState.isLoading) {
+            if (isLoading) {
                 item(key = "global_loading") {
                     Box(
                         modifier = Modifier
@@ -315,7 +346,7 @@ fun HomePage(
             }
             
             // 7. 错误提示
-            uiState.error?.let { error ->
+            error?.let { errorMsg ->
                 item(key = "error_card") {
                     Card(
                         modifier = Modifier
@@ -338,7 +369,7 @@ fun HomePage(
                                     color = MaterialTheme.colorScheme.onError
                                 )
                                 Text(
-                                    text = error,
+                                    text = errorMsg,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onError
                                 )
