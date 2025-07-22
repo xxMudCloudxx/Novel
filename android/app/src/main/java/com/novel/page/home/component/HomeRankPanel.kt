@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.novel.page.component.NovelText
 import com.novel.page.component.NovelImageView
+import com.novel.page.component.ImageLoadingStrategy
 import com.novel.page.component.FlipBookAnimationController
 import com.novel.page.home.dao.HomeRepository
 import com.novel.page.home.viewmodel.CategoryInfo
@@ -382,9 +383,11 @@ private fun BookCoverImage(
             .background(if (isCurrentBookAnimating) Color.Transparent else NovelColors.NovelMain)
     ) {
         if (!isCurrentBookAnimating) {
-            // 正常状态：显示图片
+            // 正常状态：显示图片 - 榜单高性能模式
             NovelImageView(
                 imageUrl = book.picUrl,
+                loadingStrategy = ImageLoadingStrategy.HIGH_PERFORMANCE,
+                useAdvancedCache = true,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 placeholderContent = {

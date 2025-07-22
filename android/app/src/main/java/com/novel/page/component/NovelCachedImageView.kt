@@ -1,6 +1,7 @@
 package com.novel.page.component
 
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -57,18 +58,139 @@ interface MemoryCache {
 }
 
 /**
- * 基于LruCache的内存缓存实现
- * 使用最近最少使用算法管理内存，防止内存溢出
+ * 增强的LRU内存缓存实现
+ * 
+ * 新增特性：
+ * - 集成Bitmap复用池减少内存分配
+ * - 内存压力自适应清理
+ * - 详细的统计信息和监控
+ * - 支持配置化的缓存大小
  */
 @Singleton
 @Stable
-class LruMemoryCache @Inject constructor(): MemoryCache {
-    @Stable
-    private val cache: LruCache<String, Bitmap> = LruCache<String, Bitmap>(20 * 1024 * 1024) // 20MB缓存
-    override fun get(key: String) = cache[key]
-    override fun put(key: String, bitmap: Bitmap) {
-        cache.put(key, bitmap)
+class LruMemoryCache @Inject constructor(
+    private val config: ImageOptimizationConfig,
+    private val bitmapPool: BitmapPool?,
+    private val memoryPressureManager: MemoryPressureManager?
+): MemoryCache, MemoryPressureCallback {
+    
+    companion object {
+        private const val TAG = "LruMemoryCache"
     }
+    
+    @Stable
+    private val cache: LruCache<String, Bitmap> = object : LruCache<String, Bitmap>(
+        config.memoryCacheSizeMB * 1024 * 1024
+    ) {
+        override fun sizeOf(key: String, value: Bitmap): Int {
+            return value.allocationByteCount
+        }
+        
+        override fun entryRemoved(evicted: Boolean, key: String, oldValue: Bitmap, newValue: Bitmap?) {
+            // 将被移除的Bitmap放入复用池
+            if (evicted && config.enableBitmapPool && !oldValue.isRecycled) {
+                bitmapPool?.put(oldValue)
+                TimberLogger.v(TAG, "缓存淘汰的Bitmap已放入复用池: ${oldValue.width}x${oldValue.height}")
+            }
+        }
+    }
+    
+    // 统计信息
+    @Stable
+    private val hitCount = java.util.concurrent.atomic.AtomicInteger(0)
+    @Stable
+    private val missCount = java.util.concurrent.atomic.AtomicInteger(0)
+    
+    init {
+        // 注册内存压力回调
+        if (config.enableMemoryPressureHandling) {
+            memoryPressureManager?.registerCallback(this)
+        }
+        TimberLogger.d(TAG, "增强LRU内存缓存初始化完成，大小: ${config.memoryCacheSizeMB}MB")
+    }
+    
+    override fun get(key: String): Bitmap? {
+        val bitmap = cache[key]
+        if (bitmap != null) {
+            hitCount.incrementAndGet()
+            TimberLogger.v(TAG, "缓存命中: $key")
+        } else {
+            missCount.incrementAndGet()
+            TimberLogger.v(TAG, "缓存未命中: $key")
+        }
+        return bitmap
+    }
+    
+    override fun put(key: String, bitmap: Bitmap) {
+        if (bitmap.isRecycled) {
+            TimberLogger.w(TAG, "尝试缓存已回收的Bitmap: $key")
+            return
+        }
+        
+        cache.put(key, bitmap)
+        TimberLogger.v(TAG, "Bitmap已缓存: $key, 大小: ${bitmap.allocationByteCount}字节")
+    }
+    
+    /**
+     * 获取缓存统计信息
+     */
+    fun getStats(): MemoryCacheStats {
+        return MemoryCacheStats(
+            size = cache.size(),
+            maxSize = cache.maxSize(),
+            hitCount = hitCount.get(),
+            missCount = missCount.get(),
+            hitRate = if (hitCount.get() + missCount.get() > 0) {
+                hitCount.get().toFloat() / (hitCount.get() + missCount.get())
+            } else 0f,
+            evictionCount = cache.evictionCount()
+        )
+    }
+    
+    /**
+     * 手动清理缓存
+     */
+    fun trimToSize(maxSize: Int) {
+        cache.trimToSize(maxSize)
+        TimberLogger.d(TAG, "缓存已清理到指定大小: ${maxSize}字节")
+    }
+    
+    /**
+     * 清空所有缓存
+     */
+    fun clear() {
+        cache.evictAll()
+        TimberLogger.d(TAG, "缓存已清空")
+    }
+    
+    // ========== MemoryPressureCallback 实现 ==========
+    
+    override fun onMemoryPressure(level: Int) {
+        val trimRatio = when (level) {
+            ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> 0.8f // 清理80%
+            ComponentCallbacks2.TRIM_MEMORY_MODERATE -> 0.5f // 清理50%
+            ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> 0.3f // 清理30%
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> 0.7f
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> 0.4f
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> 0.2f
+            else -> 0f
+        }
+        
+        if (trimRatio > 0f) {
+            val targetSize = (cache.maxSize() * (1f - trimRatio)).toInt()
+            trimToSize(targetSize)
+            TimberLogger.i(TAG, "内存压力清理完成，清理比例: ${(trimRatio * 100).toInt()}%")
+        }
+    }
+    
+    override fun onLowMemory() {
+        // 低内存时清理大部分缓存
+        val targetSize = cache.maxSize() / 4 // 保留25%
+        trimToSize(targetSize)
+        TimberLogger.w(TAG, "低内存警告，缓存已大幅清理")
+    }
+    
+    override fun getPriority(): Int = 20 // 较高优先级，早点清理图片缓存
 }
 
 /**
@@ -151,34 +273,93 @@ class HttpImageLoaderService @Inject constructor(
 }
 
 /**
- * Hilt网络依赖提供模块
- * 配置图片加载所需的网络组件
+ * 内存缓存统计信息
+ */
+@Stable
+data class MemoryCacheStats(
+    val size: Int,
+    val maxSize: Int,
+    val hitCount: Int,
+    val missCount: Int,
+    val hitRate: Float,
+    val evictionCount: Int
+) {
+    override fun toString(): String {
+        return "MemoryCacheStats(size: $size/${maxSize/1024/1024}MB, " +
+               "hit: $hitCount, miss: $missCount, hitRate: ${(hitRate * 100).toInt()}%, " +
+               "evicted: $evictionCount)"
+    }
+}
+
+/**
+ * Hilt图片优化依赖提供模块
+ * 配置图片加载所需的网络和优化组件
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkingModule {
     @Provides @Singleton
-    fun provideOkHttpCache(@ApplicationContext ctx: Context): Cache =
-        Cache(ctx.cacheDir.resolve("http_cache"), 10L * 1024 * 1024)
+    fun provideOkHttpCache(@ApplicationContext ctx: Context, config: ImageOptimizationConfig): Cache =
+        Cache(ctx.cacheDir.resolve("http_cache"), config.diskCacheSizeMB * 1024 * 1024)
 
     @Provides @Singleton
     fun provideOkHttpClient(cache: Cache): OkHttpClient =
         OkHttpClient.Builder()
             .cache(cache)
             .build()
+            
+    @Provides @Singleton 
+    fun provideImageOptimizationConfig(@ApplicationContext ctx: Context): ImageOptimizationConfig {
+        val activityManager = ctx.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memInfo)
+        val totalMemoryMB = memInfo.totalMem / (1024 * 1024)
+        return ImageOptimizationConfig.forMemoryCapacity(totalMemoryMB)
+    }
+    
+    @Provides @Singleton
+    fun provideBitmapPool(config: ImageOptimizationConfig): BitmapPool? {
+        return if (config.enableBitmapPool) {
+            LruBitmapPool() // 使用默认配置
+        } else null
+    }
 
     @Provides @Singleton
-    fun provideMemoryCache(): MemoryCache = LruMemoryCache()
+    fun provideMemoryCache(
+        config: ImageOptimizationConfig,
+        bitmapPool: BitmapPool?,
+        memoryPressureManager: MemoryPressureManager?
+    ): MemoryCache = LruMemoryCache(config, bitmapPool, memoryPressureManager)
 
     @Provides @Singleton
     fun provideTokenProvider(keyChainTokenProvider: KeyChainTokenProvider): TokenProvider = keyChainTokenProvider
 
+    @Provides @Singleton
+    fun provideImageCompressor(
+        bitmapPool: BitmapPool?,
+        config: ImageOptimizationConfig
+    ): ImageCompressor = ImageCompressor(bitmapPool, config)
+    
     @Provides @Singleton
     fun provideImageLoaderService(
         client: OkHttpClient,
         memCache: MemoryCache,
         tokenProv: TokenProvider
     ): ImageLoaderService = HttpImageLoaderService(client, memCache, tokenProv)
+    
+    @Provides @Singleton
+    fun provideProgressiveImageLoader(
+        imageLoader: ImageLoaderService,
+        imageCompressor: ImageCompressor,
+        config: ImageOptimizationConfig
+    ): ProgressiveImageLoader = ProgressiveImageLoader(imageLoader, imageCompressor, config)
+    
+    @Provides @Singleton
+    fun provideImagePreloadManager(
+        imageLoader: ImageLoaderService,
+        memoryPressureManager: MemoryPressureManager,
+        config: ImageOptimizationConfig
+    ): ImagePreloadManager = ImagePreloadManager(imageLoader, memoryPressureManager, config)
 }
 
 /**

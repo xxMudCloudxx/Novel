@@ -16,6 +16,7 @@ import androidx.compose.ui.layout.ContentScale
 import com.novel.BuildConfig
 import com.novel.page.book.viewmodel.BookDetailUiState
 import com.novel.page.component.NovelImageView
+import com.novel.page.component.ImageLoadingStrategy
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.wdp
 
@@ -40,6 +41,8 @@ fun BookCoverSection(bookInfo: BookDetailUiState.BookInfo?) {
     ) {
         NovelImageView(
             imageUrl = bookInfo.picUrl,
+            loadingStrategy = ImageLoadingStrategy.HIGH_QUALITY,
+            useAdvancedCache = true,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .width(125.wdp)

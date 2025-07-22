@@ -635,9 +635,11 @@ fun GlobalFlipBookOverlay(
                                 transformOrigin = TransformOrigin(0.5f, 0.5f)
                             }
                     ) {
-                        // 书籍封面图片
+                        // 书籍封面图片 - 动画模式
                         NovelImageView(
                             imageUrl = imageUrl,
+                            loadingStrategy = ImageLoadingStrategy.ANIMATION,
+                            useAdvancedCache = true,
                             modifier = Modifier
                                 .size(
                                     animationState.originalSize.width.wdp / density.density,
@@ -704,9 +706,11 @@ fun GlobalFlipBookOverlay(
                                 alpha = 1f
                             }
                     ) {
-                        // 书籍封面图片
+                        // 书籍封面图片 - 3D动画模式
                         NovelImageView(
                             imageUrl = imageUrl,
+                            loadingStrategy = ImageLoadingStrategy.ANIMATION,
+                            useAdvancedCache = true,
                             modifier = Modifier
                                 .size(
                                     animationState.originalSize.width.wdp / density.density,

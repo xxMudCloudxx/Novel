@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import com.novel.page.component.ImageLoadingStrategy
 import com.novel.page.component.NovelImageView
 import com.novel.page.component.NovelTextField
 import com.novel.page.login.viewmodel.CaptchaState
@@ -195,6 +196,8 @@ fun InputSection(
                         Spacer(modifier = Modifier.width(8.wdp))
                         NovelImageView(
                             imageUrl = captchaState.imagePath,
+                            loadingStrategy = ImageLoadingStrategy.TEMPORARY,
+                            useAdvancedCache = false,
                             isLoading = captchaState.isLoading,
                             error = captchaState.error,
                             widthDp = 100,

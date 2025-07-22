@@ -17,6 +17,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.novel.page.component.ImageLoadingStrategy
 import com.novel.page.component.NovelImageView
 import com.novel.page.component.NovelText
 import com.novel.page.search.utils.SearchUtils
@@ -57,9 +58,11 @@ fun SearchResultItem(
         Row(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // 左：封面图
+            // 左：封面图 - 搜索结果高性能模式
             NovelImageView(
                 imageUrl = book.picUrl ?: "",
+                loadingStrategy = ImageLoadingStrategy.HIGH_PERFORMANCE,
+                useAdvancedCache = true,
                 modifier = Modifier
                     .size(80.wdp, 100.wdp)
                     .clip(RoundedCornerShape(6.wdp))

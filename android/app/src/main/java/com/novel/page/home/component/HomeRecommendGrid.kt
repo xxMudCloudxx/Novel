@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import com.novel.page.component.NovelDivider
 import com.novel.page.component.NovelText
 import com.novel.page.component.NovelImageView
+import com.novel.page.component.ImageLoadingStrategy
 import com.novel.page.home.utils.HomePerformanceOptimizer
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.network.api.front.HomeService
@@ -367,9 +368,11 @@ private fun HomeBookStaggeredItem(
                 }
         ) {
             if (!isCurrentBookAnimating) {
-                // 正常状态：显示图片
+                // 正常状态：显示图片 - 瀑布流高性能模式
                 NovelImageView(
                     imageUrl = book.picUrl,
+                    loadingStrategy = ImageLoadingStrategy.HIGH_PERFORMANCE,
+                    useAdvancedCache = true,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     placeholderContent = {
@@ -472,9 +475,11 @@ private fun SearchBookStaggeredItem(
             })
             .clip(RoundedCornerShape(8.wdp)),
     ) {
-        // 书籍封面 - 自适应高度
+        // 书籍封面 - 自适应高度，搜索结果高性能模式
         NovelImageView(
             imageUrl = book.picUrl,
+            loadingStrategy = ImageLoadingStrategy.HIGH_PERFORMANCE,
+            useAdvancedCache = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(imageHeight)
@@ -819,9 +824,11 @@ private fun RecommendItemStaggeredCard(
                 }
         ) {
             if (!isCurrentBookAnimating) {
-                // 正常状态：显示图片
+                // 正常状态：显示图片 - 推荐项高性能模式
                 NovelImageView(
                     imageUrl = item.coverUrl,
+                    loadingStrategy = ImageLoadingStrategy.HIGH_PERFORMANCE,
+                    useAdvancedCache = true,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     placeholderContent = {
