@@ -6,18 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
-import com.facebook.react.BuildConfig
-import com.novel.utils.TimberLogger
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.distinctUntilChanged
 import com.novel.page.component.StateHolderImpl
 import com.novel.core.adapter.StateAdapter
 
@@ -190,148 +182,6 @@ class BookDetailStateAdapter(
         derivedStateOf {
             getCurrentSnapshot().reviews.take(3).toImmutableList()
         }
-    }
-    
-    // endregion
-    
-    // region 基础状态适配 (向后兼容，但标记为过时)
-    
-    /** 书籍基本信息 */
-    @Deprecated("使用 bookInfoState() 替代以提升性能", ReplaceWith("bookInfoState()"))
-    @Stable
-    val bookInfo = mapState { it.bookInfo }
-    
-    /** 最新章节信息 */
-    @Deprecated("使用 lastChapterState() 替代以提升性能", ReplaceWith("lastChapterState()"))
-    @Stable
-    val lastChapter = mapState { it.lastChapter }
-    
-    /** 用户评价列表 */
-    @Deprecated("使用 reviewsState() 替代以提升性能", ReplaceWith("reviewsState()"))
-    @Stable
-    val reviews = mapState { it.reviews }
-    
-    /** 简介是否展开 */
-    @Deprecated("使用 isDescriptionExpandedState() 替代以提升性能", ReplaceWith("isDescriptionExpandedState()"))
-    @Stable
-    val isDescriptionExpanded = mapState { it.isDescriptionExpanded }
-    
-    /** 是否在书架中 */
-    @Deprecated("使用 isInBookshelfState() 替代以提升性能", ReplaceWith("isInBookshelfState()"))
-    @Stable
-    val isInBookshelf = mapState { it.isInBookshelf }
-    
-    /** 是否关注作者 */
-    @Deprecated("使用 isAuthorFollowedState() 替代以提升性能", ReplaceWith("isAuthorFollowedState()"))
-    @Stable
-    val isAuthorFollowed = mapState { it.isAuthorFollowed }
-    
-    /** 当前书籍ID */
-    @Deprecated("使用 currentBookIdState() 替代以提升性能", ReplaceWith("currentBookIdState()"))
-    @Stable
-    val currentBookId = mapState { it.currentBookId }
-    
-    // endregion
-    
-    // region 书籍信息相关状态适配 (向后兼容，但标记为过时)
-    
-    /** 书籍名称 */
-    @Deprecated("使用 bookNameState() 替代以提升性能", ReplaceWith("bookNameState()"))
-    @Stable
-    val bookName = mapState { it.bookInfo?.bookName }
-    
-    /** 作者名称 */
-    @Deprecated("使用 authorNameState() 替代以提升性能", ReplaceWith("authorNameState()"))
-    @Stable
-    val authorName = mapState { it.bookInfo?.authorName }
-    
-    /** 书籍描述 */
-    @Deprecated("使用 bookDescState() 替代以提升性能", ReplaceWith("bookDescState()"))
-    @Stable
-    val bookDesc = mapState { it.bookInfo?.bookDesc }
-    
-    /** 书籍封面URL */
-    @Deprecated("使用 picUrlState() 替代以提升性能", ReplaceWith("picUrlState()"))
-    @Stable
-    val picUrl = mapState { it.bookInfo?.picUrl }
-    
-    /** 访问次数 */
-    @Deprecated("使用 visitCountState() 替代以提升性能", ReplaceWith("visitCountState()"))
-    @Stable
-    val visitCount = mapState { it.bookInfo?.visitCount ?: 0L }
-    
-    /** 字数统计 */
-    @Deprecated("使用 wordCountState() 替代以提升性能", ReplaceWith("wordCountState()"))
-    @Stable
-    val wordCount = mapState { it.bookInfo?.wordCount ?: 0 }
-    
-    /** 分类名称 */
-    @Deprecated("使用 categoryNameState() 替代以提升性能", ReplaceWith("categoryNameState()"))
-    @Stable
-    val categoryName = mapState { it.bookInfo?.categoryName }
-    
-    /** 是否有书籍信息 */
-    @Deprecated("使用 hasBookInfoState() 替代以提升性能", ReplaceWith("hasBookInfoState()"))
-    @Stable
-    val hasBookInfo = createConditionFlow { it.bookInfo != null }
-    
-    // endregion
-    
-    // region 章节相关状态适配 (向后兼容，但标记为过时)
-    
-    /** 最新章节名称 */
-    @Deprecated("使用 lastChapterNameState() 替代以提升性能", ReplaceWith("lastChapterNameState()"))
-    @Stable
-    val lastChapterName = mapState { it.lastChapter?.chapterName }
-    
-    /** 最新章节更新时间 */
-    @Deprecated("使用 lastChapterUpdateTimeState() 替代以提升性能", ReplaceWith("lastChapterUpdateTimeState()"))
-    @Stable
-    val lastChapterUpdateTime = mapState { it.lastChapter?.chapterUpdateTime }
-    
-    /** 是否有最新章节信息 */
-    @Deprecated("使用 hasLastChapterState() 替代以提升性能", ReplaceWith("hasLastChapterState()"))
-    @Stable
-    val hasLastChapter = createConditionFlow { it.lastChapter != null }
-    
-    // endregion
-    
-    // region 评价相关状态适配 (向后兼容，但标记为过时)
-    
-    /** 评价数量 */
-    @Deprecated("使用 reviewCountState() 替代以提升性能", ReplaceWith("reviewCountState()"))
-    @Stable
-    val reviewCount = mapState { it.reviews.size }
-    
-    /** 是否有评价 */
-    @Deprecated("使用 hasReviewsState() 替代以提升性能", ReplaceWith("hasReviewsState()"))
-    @Stable
-    val hasReviews = createConditionFlow { it.reviews.isNotEmpty() }
-    
-    /** 平均评分 */
-    @Deprecated("使用 averageRatingState() 替代以提升性能", ReplaceWith("averageRatingState()"))
-    @Stable
-    val averageRating = mapState { state ->
-        val reviews = state.reviews
-        if (reviews.isEmpty()) {
-            0f
-        } else {
-            reviews.map { it.rating }.average().toFloat()
-        }
-    }
-    
-    /** 高评分评价（4星及以上） */
-    @Deprecated("使用 highRatingReviewsState() 替代以提升性能", ReplaceWith("highRatingReviewsState()"))
-    @Stable
-    val highRatingReviews = mapState { state ->
-        state.reviews.filter { it.rating >= 4 }.toImmutableList()
-    }
-    
-    /** 最新评价（前3条） */
-    @Deprecated("使用 latestReviewsState() 替代以提升性能", ReplaceWith("latestReviewsState()"))
-    @Stable
-    val latestReviews = mapState { state ->
-        state.reviews.take(3).toImmutableList()
     }
     
     // endregion
@@ -622,51 +472,7 @@ fun BookDetailStateAdapter.toScreenState(): BookDetailScreenState {
     )
 }
 
-/**
- * BookDetail模块状态监听器
- * 提供BookDetail模块特定的状态变更监听
- */
-class BookDetailStateListener(
-    private val adapter: BookDetailStateAdapter
-) {
-    
-    /** 监听书籍信息变更 */
-    fun onBookInfoChanged(action: (BookDetailState.BookInfo?) -> Unit) = adapter.bookInfo.map { bookInfo ->
-        action(bookInfo)
-        bookInfo
-    }
-    
-    /** 监听书架状态变更 */
-    fun onBookshelfStatusChanged(action: (Boolean) -> Unit) = adapter.isInBookshelf.map { inBookshelf ->
-        action(inBookshelf)
-        inBookshelf
-    }
-    
-    /** 监听关注状态变更 */
-    fun onFollowStatusChanged(action: (Boolean) -> Unit) = adapter.isAuthorFollowed.map { followed ->
-        action(followed)
-        followed
-    }
-    
-    /** 监听简介展开状态变更 */
-    fun onDescriptionExpandedChanged(action: (Boolean) -> Unit) = adapter.isDescriptionExpanded.map { expanded ->
-        action(expanded)
-        expanded
-    }
-    
-    /** 监听评价数量变更 */
-    fun onReviewCountChanged(action: (Int) -> Unit) = adapter.reviewCount.map { count ->
-        action(count)
-        count
-    }
-}
 
-/**
- * 为BookDetailStateAdapter创建专用监听器
- */
-fun BookDetailStateAdapter.createBookDetailListener(): BookDetailStateListener {
-    return BookDetailStateListener(this)
-}
 
 /**
  * 书籍详情页UI状态数据类（兼容性保留）

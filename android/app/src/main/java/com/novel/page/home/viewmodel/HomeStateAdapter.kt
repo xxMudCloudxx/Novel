@@ -6,7 +6,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import com.novel.page.home.dao.HomeBookEntity
 import com.novel.page.home.dao.HomeCategoryEntity
 import com.novel.utils.network.api.front.BookService
@@ -16,7 +15,6 @@ import com.novel.core.adapter.StateAdapter
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.stateIn
 
 /**
  * Home状态适配器
@@ -242,53 +240,6 @@ class HomeStateAdapter(
             }
         }
     }
-
-    // endregion
-
-    // region 过时的StateFlow映射方法 (标记为废弃)
-    
-    /**
-     * 将状态映射为 StateFlow，确保 Compose 稳定性
-     * @deprecated 使用对应的@Composable状态访问方法以获得更好的性能
-     */
-    @Deprecated(
-        message = "使用对应的@Composable状态访问方法以获得更好的性能",
-        level = DeprecationLevel.WARNING
-    )
-    private fun <T> mapStateAsStateFlow(
-        transform: (HomeState) -> T
-    ): StateFlow<T> = mapState(transform)
-        .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, transform(getCurrentSnapshot()))
-    
-    /** 
-     * 书籍分类列表
-     * @deprecated 使用 categoriesState() 替代以提升性能
-     */
-    @Deprecated(
-        message = "使用 categoriesState() 替代以提升性能",
-        replaceWith = ReplaceWith("categoriesState()")
-    )
-    @Stable
-    val categories: StateFlow<ImmutableList<HomeCategoryEntity>> = stateFlow.map { it.categories }.stateIn(
-        scope = scope,
-        started = kotlinx.coroutines.flow.SharingStarted.Lazily,
-        initialValue = persistentListOf()
-    )
-
-    /** 
-     * 分类筛选器列表
-     * @deprecated 使用 categoryFiltersState() 替代以提升性能
-     */
-    @Deprecated(
-        message = "使用 categoryFiltersState() 替代以提升性能",
-        replaceWith = ReplaceWith("categoryFiltersState()")
-    )
-    @Stable
-    val categoryFilters: StateFlow<ImmutableList<CategoryInfo>> = stateFlow.map { it.categoryFilters }.stateIn(
-        scope = scope,
-        started = kotlinx.coroutines.flow.SharingStarted.Lazily,
-        initialValue = persistentListOf()
-    )
 
     // endregion
     
