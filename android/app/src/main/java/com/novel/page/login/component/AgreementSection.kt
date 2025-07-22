@@ -28,10 +28,10 @@ import com.novel.utils.ssp
 
 /**
  * 登录页面协议同意组件
- * 
+ *
  * 包含用户协议、注册协议和运营商认证服务协议的勾选框和链接
  * 支持协议文本点击和同意状态切换
- * 
+ *
  * @param operator 运营商名称
  * @param isChecked 是否已勾选同意
  * @param onCheckedChange 勾选状态变化回调
@@ -71,19 +71,19 @@ fun AgreementSection(
         }
     }
     val telClick = remember(onTelServiceClick, operator) {
-        {
+        { annotation: LinkAnnotation ->
             TimberLogger.d(TAG, "点击运营商认证服务协议: $operator")
             onTelServiceClick()
         }
     }
     val userClick = remember(onUserAgreementClick) {
-        {
+        { annotation: LinkAnnotation ->
             TimberLogger.d(TAG, "点击用户协议")
             onUserAgreementClick()
         }
     }
     val registerClick = remember(onRegisterAgreementClick) {
-        {
+        { annotation: LinkAnnotation ->
             TimberLogger.d(TAG, "点击注册协议")
             onRegisterAgreementClick()
         }
