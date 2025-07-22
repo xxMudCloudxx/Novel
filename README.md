@@ -1,3 +1,5 @@
+[简体中文](./README.md) | [English](./README.en.md)
+
 # Novel - 混合架构小说阅读应用
 
 <p align="center">

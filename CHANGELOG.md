@@ -1,3 +1,5 @@
+[简体中文](./CHANGELOG.md) | [English](./CHANGELOG.en.md)
+
 # 更新日志
 
 所有本项目的变更日志都将记录在此文件中。
