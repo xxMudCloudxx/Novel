@@ -27,6 +27,7 @@
 - **🔄 实时状态同步** - 阅读进度、书签、批注通过 **Shared Flow ↔ JSI** 秒级同步到云端
 - **🎯 统一架构模式** - Android 侧 `MVI + Repository`，RN 侧 `Zustand + middleware`，单向数据流
 - **📚 极致阅读体验** - Compose **Text Layout + Baseline Profiles** 预编译，RN **Fabric Text & TurboModule**
+- **🖼️ 智能图片优化** - 场景化多级缓存 + Bitmap复用池 + 内存压力自适应，减少30-50%内存占用
 - **🔒 企业级安全** - `OkHttp 5 + CertificatePinner`，Room FTS5 + DataStore AES 端到端加密
 
 ### 🎨 用户体验
@@ -41,6 +42,7 @@
 
 - **跨端导航一致** - `NavHost` ↔ `React Navigation 7`，统一深链 `reader/{bookId}/{chapterId}`
 - **网络 & 缓存** - `OkHttp 5 + Retrofit`，本地 `Room FTS5 + DataStore` 双写，CDN 图像缓存
+- **图片加载优化** - 5种场景策略 (HIGH_PERFORMANCE/STANDARD/TEMPORARY/HIGH_QUALITY/ANIMATION)，多级缓存 + Bitmap复用
 - **性能 & 调试** - **Hermes 0.74 + Flipper**，**Macrobenchmark + Baseline Profiles**，CI **Detox/E2E**
 
 ## 📱 功能展示
@@ -267,33 +269,7 @@ yarn detox test
 
 ## 📈 版本历史
 
-### v1.8.1 - Service 层架构重构 (2025.06)
-- 🏗️ **统一异步处理** - `SafeService` 基类和 `DispatcherProvider`
-- 💾 **健壮缓存管理** - `SessionCache` 接口和 `LruSessionCache`
-- ⚙️ **配置中心化** - `ReaderServiceConfig` 集中管理配置
-- 📊 **标准化日志** - `ServiceLogger` 接口统一日志格式
-- 🔧 **服务职责分离** - `SettingsService` 拆分为 `Parser + Saver`
-
-### v1.8.0 - 设置页面完整实现 (2025.06)
-- 🛠️ **混合架构设置页** - Android Compose 导航 + RN 内容区域
-- 💾 **智能缓存管理** - 缓存大小计算、格式化显示、一键清空
-- 🎨 **完整主题切换** - 浅色/深色/跟随系统 + 定时切换
-- ⚙️ **全面应用设置** - 通知管理、字体调节、网络优化
-
-### v1.7.0 - 搜索模块重大优化 (2025.06)
-- 🔍 **搜索功能完善** - 历史记录、热门榜单、高级筛选
-- 📋 **FullRankingPage** - 完整榜单页面，滚动行为优化
-- 🎯 **布局稳定性** - 筛选按钮布局重构，防止界面闪烁
-
-### v1.6.0 - 智能缓存系统 (2025.06)
-- 💾 **NetworkCacheManager** - 通用网络缓存管理器
-- 🔄 **Cache-First策略** - 先缓存后网络的离线优先策略
-- 📊 **Repository模式** - 封装缓存逻辑和状态管理
-
-### v1.5.0 - 全书架构重构 (2025.06)
-- 📚 **全书内容管理** - 从单章节改为全书一次性获取
-- 📊 **智能页数统计** - 基于全书内容的页数计算和缓存
-- 🔄 **增量更新机制** - 新章节发布时只获取新增部分
+详细的变更历史请参见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 🔗 相关链接
 
