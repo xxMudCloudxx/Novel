@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,13 +37,9 @@ import com.novel.page.login.component.OperatorSection
 import com.novel.page.login.component.PhoneSection
 import com.novel.page.login.component.TitleSection
 import com.novel.page.login.skeleton.LoginPageSkeleton
-import com.novel.page.login.viewmodel.CaptchaState
 import com.novel.page.login.viewmodel.LoginEffect
-import com.novel.page.login.viewmodel.LoginForm
 import com.novel.page.login.viewmodel.LoginIntent
 import com.novel.page.login.viewmodel.LoginViewModel
-import com.novel.page.login.viewmodel.RegisterForm
-import com.novel.page.login.viewmodel.ValidationResults
 import com.novel.ui.theme.NovelColors
 import com.novel.utils.NavViewModel.navController
 import com.novel.utils.wdp
@@ -64,6 +59,11 @@ private object AnimationConfig {
 
 /**
  * 登录页面 - MVI架构版本
+ * 
+ * 性能优化特性：
+ * - 使用优化的@Composable状态访问方法提升skippable比例
+ * - 细粒度状态订阅，避免不必要的重组
+ * - 稳定的回调函数缓存
  */
 @SuppressLint("UnrememberedMutableState", "UseOfNonLambdaOffsetOverload")
 @Composable
@@ -71,16 +71,19 @@ fun LoginPage() {
     val vm: LoginViewModel = hiltViewModel()
     val adapter = vm.adapter
 
-    // 性能优化：使用 StateAdapter 的稳定状态创建方法，减少重组
+    // 性能优化：使用优化的@Composable状态访问方法替代unstable的createStableState
     val isLoading by adapter.createLoadingState()
-    val isLoginMode by adapter.createStableState { it.isLoginMode }
-    val isAgreementAccepted by adapter.createStableState { it.isAgreementAccepted }
-    val operatorName by adapter.createStableState { it.phoneInfo.operatorName }
-    val maskedPhoneNumber by adapter.createStableState { it.phoneInfo.maskedPhoneNumber }
-    val loginForm by adapter.createStableState { it.loginForm }
-    val registerForm by adapter.createStableState { it.registerForm }
-    val validationResults by adapter.createStableState { it.validationResults }
-    val captchaState by adapter.createStableState { it.captchaState }
+    val isLoginMode by adapter.isLoginModeState()
+    val isAgreementAccepted by adapter.isAgreementAcceptedState()
+    val operatorName by adapter.operatorNameState()
+    val maskedPhoneNumber by adapter.maskedPhoneNumberState()
+    val loginForm by adapter.loginFormState()
+    val registerForm by adapter.registerFormState()
+    val validationResults by adapter.validationResultsState()
+    val captchaState by adapter.captchaStateState()
+    val isSubmitEnabled by adapter.isSubmitEnabledState()
+    val submitButtonText by adapter.submitButtonTextState()
+    val switchModeButtonText by adapter.switchModeButtonTextState()
 
     // 收集副作用
     LaunchedEffect(Unit) {
@@ -216,10 +219,10 @@ fun LoginPage() {
                 } }
 
                 ActionButtons(
-                    firstText = if (!isLoginMode) "注册" else "登录",
-                    secondText = if (!isLoginMode) "返回登录" else "暂无账号，去注册",
+                    firstText = submitButtonText,
+                    secondText = switchModeButtonText,
                     onFirstClick = onFirstClick,
-                    isFirstEnabled = adapter.canSubmit(),
+                    isFirstEnabled = isSubmitEnabled,
                     onSecondClick = onSecondClick,
                     modifier = Modifier
                         .offset(y = buttonOffset)
