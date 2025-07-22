@@ -1,5 +1,9 @@
 package com.novel.page.search.viewmodel
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -17,6 +21,7 @@ import kotlinx.collections.immutable.toPersistentList
  * 
  * 为Search模块提供状态适配功能，方便UI层访问MVI状态的特定部分
  * 继承基础StateAdapter，提供Search模块专用的状态适配功能
+ * 优化的@Composable状态访问方法，提升skippable比例
  * 
  * 特性：
  * - 继承基础StateAdapter的所有功能
@@ -30,25 +35,178 @@ class SearchStateAdapter(
     stateFlow: StateFlow<SearchState>
 ) : StateAdapter<SearchState>(stateFlow) {
     
-    // region 搜索相关状态适配
+    // region Composable 状态访问方法 (用于提升 skippable 比例)
+
+    /**
+     * 当前搜索查询内容 - 优化版本
+     * 替代 searchQuery.collectAsState() 以提升性能
+     */
+    @Composable
+    fun searchQueryState(): State<String> = remember {
+        derivedStateOf { getCurrentSnapshot().searchQuery }
+    }
+
+    /**
+     * 搜索历史记录列表 - 优化版本
+     */
+    @Composable
+    fun searchHistoryState(): State<ImmutableList<String>> = remember {
+        derivedStateOf { getCurrentSnapshot().searchHistory }
+    }
+
+    /**
+     * 历史记录是否展开显示 - 优化版本
+     */
+    @Composable
+    fun isHistoryExpandedState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().isHistoryExpanded }
+    }
+
+    /**
+     * 是否有搜索历史 - 优化版本
+     */
+    @Composable
+    fun hasSearchHistoryState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().searchHistory.isNotEmpty() }
+    }
+
+    /**
+     * 显示的搜索历史（根据展开状态限制数量） - 优化版本
+     */
+    @Composable
+    fun displayedSearchHistoryState(): State<ImmutableList<String>> = remember {
+        derivedStateOf { 
+            val state = getCurrentSnapshot()
+            if (state.isHistoryExpanded) {
+                state.searchHistory
+            } else {
+                state.searchHistory.take(3).toImmutableList() // 收起时只显示前3条
+            }
+        }
+    }
+
+    /**
+     * 小说榜单数据 - 优化版本
+     */
+    @Composable
+    fun novelRankingState(): State<ImmutableList<SearchRankingItem>> = remember {
+        derivedStateOf { getCurrentSnapshot().novelRanking }
+    }
+
+    /**
+     * 剧本榜单数据 - 优化版本
+     */
+    @Composable
+    fun dramaRankingState(): State<ImmutableList<SearchRankingItem>> = remember {
+        derivedStateOf { getCurrentSnapshot().dramaRanking }
+    }
+
+    /**
+     * 新书榜单数据 - 优化版本
+     */
+    @Composable
+    fun newBookRankingState(): State<ImmutableList<SearchRankingItem>> = remember {
+        derivedStateOf { getCurrentSnapshot().newBookRanking }
+    }
+
+    /**
+     * 榜单数据加载状态 - 优化版本
+     */
+    @Composable
+    fun rankingLoadingState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().rankingLoading }
+    }
+
+    /**
+     * 是否有榜单数据 - 优化版本
+     */
+    @Composable
+    fun hasRankingDataState(): State<Boolean> = remember {
+        derivedStateOf { 
+            val state = getCurrentSnapshot()
+            state.novelRanking.isNotEmpty() || 
+            state.dramaRanking.isNotEmpty() || 
+            state.newBookRanking.isNotEmpty()
+        }
+    }
+
+    /**
+     * 所有榜单数据（合并） - 优化版本
+     */
+    @Composable
+    fun allRankingDataState(): State<PersistentList<RankingSection>> = remember {
+        derivedStateOf { 
+            val state = getCurrentSnapshot()
+            persistentListOf<RankingSection>().builder().apply {
+                if (state.novelRanking.isNotEmpty()) {
+                    add(RankingSection("小说榜", state.novelRanking))
+                }
+                if (state.dramaRanking.isNotEmpty()) {
+                    add(RankingSection("剧本榜", state.dramaRanking))
+                }
+                if (state.newBookRanking.isNotEmpty()) {
+                    add(RankingSection("新书榜", state.newBookRanking))
+                }
+            }.build()
+        }
+    }
+
+    // endregion
+
+    // region 过时的Flow映射方法 (标记为废弃)
     
-    /** 当前搜索查询内容 */
+    /** 
+     * 当前搜索查询内容
+     * @deprecated 使用 searchQueryState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 searchQueryState() 替代以提升性能",
+        replaceWith = ReplaceWith("searchQueryState()")
+    )
     @Stable
     val searchQuery = mapState { it.searchQuery }
     
-    /** 搜索历史记录列表 */
+    /** 
+     * 搜索历史记录列表
+     * @deprecated 使用 searchHistoryState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 searchHistoryState() 替代以提升性能",
+        replaceWith = ReplaceWith("searchHistoryState()")
+    )
     @Stable
     val searchHistory = mapState { it.searchHistory }
     
-    /** 历史记录是否展开显示 */
+    /** 
+     * 历史记录是否展开显示
+     * @deprecated 使用 isHistoryExpandedState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 isHistoryExpandedState() 替代以提升性能",
+        replaceWith = ReplaceWith("isHistoryExpandedState()")
+    )
     @Stable
     val isHistoryExpanded = mapState { it.isHistoryExpanded }
     
-    /** 是否有搜索历史 */
+    /** 
+     * 是否有搜索历史
+     * @deprecated 使用 hasSearchHistoryState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 hasSearchHistoryState() 替代以提升性能",
+        replaceWith = ReplaceWith("hasSearchHistoryState()")
+    )
     @Stable
     val hasSearchHistory = createConditionFlow { it.searchHistory.isNotEmpty() }
     
-    /** 显示的搜索历史（根据展开状态限制数量） */
+    /** 
+     * 显示的搜索历史（根据展开状态限制数量）
+     * @deprecated 使用 displayedSearchHistoryState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 displayedSearchHistoryState() 替代以提升性能",
+        replaceWith = ReplaceWith("displayedSearchHistoryState()")
+    )
     @Stable
     val displayedSearchHistory = mapState { state ->
         if (state.isHistoryExpanded) {
@@ -62,23 +220,58 @@ class SearchStateAdapter(
     
     // region 榜单相关状态适配
     
-    /** 小说榜单数据 */
+    /** 
+     * 小说榜单数据
+     * @deprecated 使用 novelRankingState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 novelRankingState() 替代以提升性能",
+        replaceWith = ReplaceWith("novelRankingState()")
+    )
     @Stable
     val novelRanking = mapState { it.novelRanking }
     
-    /** 剧本榜单数据 */
+    /** 
+     * 剧本榜单数据
+     * @deprecated 使用 dramaRankingState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 dramaRankingState() 替代以提升性能",
+        replaceWith = ReplaceWith("dramaRankingState()")
+    )
     @Stable
     val dramaRanking = mapState { it.dramaRanking }
     
-    /** 新书榜单数据 */
+    /** 
+     * 新书榜单数据
+     * @deprecated 使用 newBookRankingState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 newBookRankingState() 替代以提升性能",
+        replaceWith = ReplaceWith("newBookRankingState()")
+    )
     @Stable
     val newBookRanking = mapState { it.newBookRanking }
     
-    /** 榜单数据加载状态 */
+    /** 
+     * 榜单数据加载状态
+     * @deprecated 使用 rankingLoadingState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 rankingLoadingState() 替代以提升性能",
+        replaceWith = ReplaceWith("rankingLoadingState()")
+    )
     @Stable
     val rankingLoading = mapState { it.rankingLoading }
     
-    /** 是否有榜单数据 */
+    /** 
+     * 是否有榜单数据
+     * @deprecated 使用 hasRankingDataState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 hasRankingDataState() 替代以提升性能",
+        replaceWith = ReplaceWith("hasRankingDataState()")
+    )
     @Stable
     val hasRankingData = createConditionFlow { state ->
         state.novelRanking.isNotEmpty() || 
@@ -86,7 +279,14 @@ class SearchStateAdapter(
         state.newBookRanking.isNotEmpty()
     }
     
-    /** 所有榜单数据（合并） */
+    /** 
+     * 所有榜单数据（合并）
+     * @deprecated 使用 allRankingDataState() 替代以提升性能
+     */
+    @Deprecated(
+        message = "使用 allRankingDataState() 替代以提升性能",
+        replaceWith = ReplaceWith("allRankingDataState()")
+    )
     @Stable
     val allRankingData = mapState { state ->
         persistentListOf<RankingSection>().builder().apply {

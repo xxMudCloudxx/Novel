@@ -54,9 +54,19 @@ fun SearchPage(
 ) {
     val viewModel: SearchViewModel = hiltViewModel()
     val TAG = "SearchPage"
-    // 性能优化：使用 StateAdapter 创建稳定状态
+    
+    // 性能优化：使用新的@Composable状态访问方法替代collectAsState()
     val adapter = viewModel.adapter
-    val uiState by adapter.currentState.collectAsState()
+    
+    // 使用优化的@Composable状态访问方法
+    val isLoading by adapter.mapState { it.isLoading }.collectAsState(initial = false)
+    val error by adapter.mapState { it.error }.collectAsState(initial = null)
+    val searchQuery by adapter.searchQueryState()
+    val searchHistory by adapter.searchHistoryState()
+    val isHistoryExpanded by adapter.isHistoryExpandedState()
+    val novelRanking by adapter.novelRankingState()
+    val dramaRanking by adapter.dramaRankingState()
+    val newBookRanking by adapter.newBookRankingState()
 
     // 性能优化：缓存副作用处理回调
     val handleNavigateToBookDetail = remember(onNavigateToBookDetail) { { bookId: Long ->
@@ -116,16 +126,16 @@ fun SearchPage(
     
     // LoadingStateComponent适配器，统一管理加载和错误状态
     val loadingStateComponent = remember(
-        uiState.isLoading,
-        uiState.error,
+        isLoading,
+        error,
         handleLoadingRetry
     ) {
         object : LoadingStateComponent {
-            override val loading: Boolean get() = uiState.isLoading
+            override val loading: Boolean get() = isLoading
             override val containsCancelable: Boolean get() = false
             override val viewState: ViewState
                 get() = when {
-                    uiState.error != null -> ViewState.Error(StableThrowable(Exception(uiState.error)))
+                    error != null -> ViewState.Error(StableThrowable(Exception(error)))
                     else -> ViewState.Idle
                 }
 
@@ -144,11 +154,16 @@ fun SearchPage(
         backgroundColor = NovelColors.NovelBookBackground.copy(alpha = 0.7f)
     ) {
         // 根据加载状态显示骨架屏或正常内容
-        if (uiState.isLoading) {
+        if (isLoading) {
             SearchPageSkeleton()
         } else {
             SearchPageContent(
-                uiState = uiState,
+                searchQuery = searchQuery,
+                searchHistory = searchHistory,
+                isHistoryExpanded = isHistoryExpanded,
+                novelRanking = novelRanking,
+                dramaRanking = dramaRanking,
+                newBookRanking = newBookRanking,
                 onIntent = viewModel::sendIntent
             )
         }
@@ -163,12 +178,22 @@ fun SearchPage(
  * - 历史记录区域
  * - 榜单推荐区域
  * 
- * @param uiState 搜索页面UI状态
+ * @param searchQuery 当前搜索查询
+ * @param searchHistory 搜索历史记录
+ * @param isHistoryExpanded 历史记录是否展开
+ * @param novelRanking 小说榜单数据
+ * @param dramaRanking 剧本榜单数据
+ * @param newBookRanking 新书榜单数据
  * @param onIntent 用户操作回调
  */
 @Composable
 fun SearchPageContent(
-    uiState: com.novel.page.search.viewmodel.SearchState,
+    searchQuery: String,
+    searchHistory: kotlinx.collections.immutable.ImmutableList<String>,
+    isHistoryExpanded: Boolean,
+    novelRanking: kotlinx.collections.immutable.ImmutableList<com.novel.page.search.component.SearchRankingItem>,
+    dramaRanking: kotlinx.collections.immutable.ImmutableList<com.novel.page.search.component.SearchRankingItem>,
+    newBookRanking: kotlinx.collections.immutable.ImmutableList<com.novel.page.search.component.SearchRankingItem>,
     onIntent: (SearchIntent) -> Unit
 ) {
     val TAG = "SearchPage"
@@ -186,16 +211,16 @@ fun SearchPageContent(
             onIntent(SearchIntent.NavigateBack)
         } }
         
-        val onSearchClick = remember(onIntent, uiState.searchQuery) { {
-            if (uiState.searchQuery.isNotBlank()) {
-                TimberLogger.d(TAG, "执行搜索: ${uiState.searchQuery}")
-                onIntent(SearchIntent.PerformSearch(uiState.searchQuery))
+        val onSearchClick = remember(onIntent, searchQuery) { {
+            if (searchQuery.isNotBlank()) {
+                TimberLogger.d(TAG, "执行搜索: $searchQuery")
+                onIntent(SearchIntent.PerformSearch(searchQuery))
             }
         } }
         
         // 顶部搜索栏
         SearchTopBar(
-            query = uiState.searchQuery,
+            query = searchQuery,
             onQueryChange = onQueryChange,
             onBackClick = onBackClick,
             onSearchClick = onSearchClick
@@ -208,7 +233,7 @@ fun SearchPageContent(
                 .verticalScroll(rememberScrollState())
         ) {
             // 搜索历史记录区域
-            if (uiState.searchHistory.isNotEmpty()) {
+            if (searchHistory.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.wdp))
                 
                 // 性能优化：缓存历史记录回调函数
@@ -223,8 +248,8 @@ fun SearchPageContent(
                 } }
                 
                 SearchHistorySection(
-                    history = uiState.searchHistory,
-                    isExpanded = uiState.isHistoryExpanded,
+                    history = searchHistory,
+                    isExpanded = isHistoryExpanded,
                     onHistoryClick = onHistoryClick,
                     onToggleExpansion = onToggleExpansion
                 )
@@ -237,12 +262,12 @@ fun SearchPageContent(
                 onIntent(SearchIntent.NavigateToBookDetail(bookId))
             } }
             
-            val onViewFullRanking = remember(onIntent, uiState.novelRanking, uiState.dramaRanking, uiState.newBookRanking) { { rankingType: String ->
+            val onViewFullRanking = remember(onIntent, novelRanking, dramaRanking, newBookRanking) { { rankingType: String ->
                 // 根据榜单类型获取对应数据
                 val rankingItems = when (rankingType) {
-                    "点击榜" -> uiState.novelRanking
-                    "推荐榜" -> uiState.dramaRanking
-                    "新书榜" -> uiState.newBookRanking
+                    "点击榜" -> novelRanking
+                    "推荐榜" -> dramaRanking
+                    "新书榜" -> newBookRanking
                     else -> emptyList()
                 }
                 TimberLogger.d(TAG, "查看完整榜单: $rankingType, 项目数: ${rankingItems.size}")
@@ -251,9 +276,9 @@ fun SearchPageContent(
             
             // 推荐榜单区域
             RankingSection(
-                novelRanking = uiState.novelRanking,
-                dramaRanking = uiState.dramaRanking,
-                newBookRanking = uiState.newBookRanking,
+                novelRanking = novelRanking,
+                dramaRanking = dramaRanking,
+                newBookRanking = newBookRanking,
                 onRankingItemClick = onRankingItemClick,
                 onViewFullRanking = onViewFullRanking
             )

@@ -46,9 +46,23 @@ fun SearchResultPage(
     globalFlipBookController: com.novel.page.component.FlipBookAnimationController = com.novel.page.component.rememberFlipBookAnimationController()
 ) {
     val viewModel: SearchResultViewModel = hiltViewModel()
-    // 性能优化：使用 StateAdapter 创建稳定状态
+    
+    // 性能优化：使用新的@Composable状态访问方法替代collectAsState()
     val adapter = viewModel.adapter
-    val uiState by adapter.currentState.collectAsState()
+    
+    // 使用优化的@Composable状态访问方法
+    val isLoading by adapter.mapState { it.isLoading }.collectAsState(initial = false)
+    val isLoadingMore by adapter.isLoadingMoreState()
+    val hasMore by adapter.hasMoreState()
+    val isEmpty by adapter.mapState { it.isEmpty }.collectAsState(initial = true)
+    val hasError by adapter.mapState { it.hasError }.collectAsState(initial = false)
+    val query by adapter.queryState()
+    val books by adapter.booksState()
+    val categoryFilters by adapter.categoryFiltersState()
+    val selectedCategoryId by adapter.selectedCategoryIdState()
+    val filters by adapter.filtersState()
+    val isFilterSheetOpen by adapter.isFilterSheetOpenState()
+    
     val listState = rememberLazyListState()
 
     // 准备翻书动画控制器与覆盖层
@@ -94,14 +108,14 @@ fun SearchResultPage(
     }
 
     // 性能优化：缓存初始化查询回调
-    val handleInitializeQuery = remember(viewModel) { { query: String ->
-        viewModel.sendIntent(SearchResultIntent.UpdateQuery(query))
-        viewModel.sendIntent(SearchResultIntent.PerformSearch(query))
+    val handleInitializeQuery = remember(viewModel) { { queryValue: String ->
+        viewModel.sendIntent(SearchResultIntent.UpdateQuery(queryValue))
+        viewModel.sendIntent(SearchResultIntent.PerformSearch(queryValue))
     } }
     
     // 初始化查询
     LaunchedEffect(initialQuery) {
-        if (initialQuery.isNotEmpty() && uiState.query.isEmpty()) {
+        if (initialQuery.isNotEmpty() && query.isEmpty()) {
             handleInitializeQuery(initialQuery)
         }
     }
@@ -119,9 +133,9 @@ fun SearchResultPage(
                 if (layoutInfo.totalItemsCount > 0) {
                     val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                     if (lastVisibleItemIndex >= layoutInfo.totalItemsCount - 3 && // 提前3项触发
-                        uiState.hasMore &&
-                        !uiState.isLoadingMore &&
-                        !uiState.isLoading
+                        hasMore &&
+                        !isLoadingMore &&
+                        !isLoading
                     ) {
                         TimberLogger.d("SearchResultPage", "当前项: $lastVisibleItemIndex，总项: ${layoutInfo.totalItemsCount}")
                         handleLoadNextPage()
@@ -131,12 +145,12 @@ fun SearchResultPage(
     }
 
     // 性能优化：缓存搜索栏回调函数
-    val onQueryChange = remember(viewModel) { { query: String ->
-        viewModel.sendIntent(SearchResultIntent.UpdateQuery(query))
+    val onQueryChange = remember(viewModel) { { queryValue: String ->
+        viewModel.sendIntent(SearchResultIntent.UpdateQuery(queryValue))
     } }
     
-    val onSearchClick = remember(viewModel, uiState.query) { {
-        viewModel.sendIntent(SearchResultIntent.PerformSearch(uiState.query))
+    val onSearchClick = remember(viewModel, query) { {
+        viewModel.sendIntent(SearchResultIntent.PerformSearch(query))
     } }
     
     val onBackClick = remember(viewModel) { {
@@ -146,7 +160,7 @@ fun SearchResultPage(
     Column(modifier = Modifier.fillMaxSize()) {
         // 顶部搜索栏
         SearchTopBar(
-            query = uiState.query,
+            query = query,
             onQueryChange = onQueryChange,
             onSearchClick = onSearchClick,
             onBackClick = onBackClick
@@ -165,24 +179,24 @@ fun SearchResultPage(
         
         // 分类筛选
         CategoryFilterRow(
-            categories = uiState.categoryFilters,
-            selectedCategoryId = uiState.selectedCategoryId,
+            categories = categoryFilters,
+            selectedCategoryId = selectedCategoryId,
             onCategorySelected = onCategorySelected,
             onFilterClick = onFilterClick
         )
 
         // 结果列表
         Box(modifier = Modifier.weight(1f)) {
-            if (uiState.isLoading && uiState.books.isEmpty()) {
+            if (isLoading && books.isEmpty()) {
                 SearchResultPageSkeleton()
             } else {
-                if (uiState.books.isNotEmpty()) {
+                if (books.isNotEmpty()) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 16.wdp)
                     ) {
-                        items(items = uiState.books, key = { it.id }) { book ->
+                        items(items = books, key = { it.id }) { book ->
                             SearchResultItem(
                                 book = book,
                                 onClick = {},
@@ -204,7 +218,7 @@ fun SearchResultPage(
                         }
 
                         // 加载更多指示器
-                        if (uiState.hasMore) {
+                        if (hasMore) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -212,7 +226,7 @@ fun SearchResultPage(
                                         .padding(16.wdp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (uiState.isLoadingMore) {
+                                    if (isLoadingMore) {
                                         CircularProgressIndicator(
                                             color = NovelColors.NovelMain,
                                             modifier = Modifier.size(24.wdp)
@@ -234,7 +248,7 @@ fun SearchResultPage(
                             }
                         }
                     }
-                } else if (!uiState.isLoading && uiState.isEmpty) {
+                } else if (!isLoading && isEmpty) {
                     // 空状态
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -268,8 +282,8 @@ fun SearchResultPage(
     }
 
     // 性能优化：缓存筛选弹窗回调函数
-    val onFiltersChange = remember(viewModel) { { filters: com.novel.page.search.viewmodel.FilterState ->
-        viewModel.sendIntent(SearchResultIntent.UpdateFilters(filters))
+    val onFiltersChange = remember(viewModel) { { filtersValue: com.novel.page.search.viewmodel.FilterState ->
+        viewModel.sendIntent(SearchResultIntent.UpdateFilters(filtersValue))
     } }
     
     val onFilterDismiss = remember(viewModel) { {
@@ -285,9 +299,9 @@ fun SearchResultPage(
     } }
     
     // 筛选弹窗
-    if (uiState.isFilterSheetOpen) {
+    if (isFilterSheetOpen) {
         SearchFilterBottomSheet(
-            filters = uiState.filters,
+            filters = filters,
             onFiltersChange = onFiltersChange,
             onDismiss = onFilterDismiss,
             onClear = onFilterClear,
