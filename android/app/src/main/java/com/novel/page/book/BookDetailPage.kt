@@ -34,6 +34,7 @@ import kotlinx.collections.immutable.toImmutableList
  * - LoadingStateComponent统一状态管理
  * - 内容分离减少不必要重组
  * - remember缓存避免重复计算
+ * - 使用优化的@Composable状态访问方法提升skippable比例
  * 
  * @param bookId 书籍唯一标识符
  * @param viewModel 书籍详情视图模型，管理数据和状态
@@ -47,9 +48,20 @@ fun BookDetailPage(
     onNavigateToReader: ((bookId: String, chapterId: String?) -> Unit)? = null
 ) {
     val viewModel: BookDetailViewModel = hiltViewModel()
-    // 性能优化：使用 StateAdapter 创建稳定状态
+    // 性能优化：使用 StateAdapter 创建稳定状态，使用新的@Composable状态访问方法
     val adapter = viewModel.adapter
-    val uiState by adapter.currentState.collectAsState()
+    
+    // 使用优化的@Composable状态访问方法替代unstable的Flow.collectAsState()
+    val isLoading by adapter.createLoadingState()
+    val error by adapter.createErrorState()
+    val isSuccess by adapter.createSuccessState()
+    val bookInfo by adapter.bookInfoState()
+    val lastChapter by adapter.lastChapterState()
+    val reviews by adapter.reviewsState()
+    val isDescriptionExpanded by adapter.isDescriptionExpandedState()
+    val isInBookshelf by adapter.isInBookshelfState()
+    val isAuthorFollowed by adapter.isAuthorFollowedState()
+    
     val context = LocalContext.current
     rememberCoroutineScope()
 
@@ -125,23 +137,27 @@ fun BookDetailPage(
         viewModel.loadBookDetail(bookId)
     } }
     
+    // 性能优化：使用细粒度状态访问，避免不必要的重组
+    val hasError = remember(error) { error != null }
+    val isEmpty = remember(bookInfo, isLoading, error) { bookInfo == null && !isLoading && error == null }
+    
     // 性能优化：使用 remember 避免重复创建适配器对象，并稳定依赖项
     val loadingStateComponent by remember(
-        uiState.hasError,
-        uiState.isEmpty,
-        uiState.error,
-        uiState.isLoading,
+        hasError,
+        isEmpty,
+        error,
+        isLoading,
         bookId,
         handleRetry
     ) {
         derivedStateOf {
             object : LoadingStateComponent {
-                override val loading: Boolean get() = uiState.isLoading
+                override val loading: Boolean get() = isLoading
                 override val containsCancelable: Boolean get() = false
                 override val viewState: ViewState
                     get() = when {
-                        uiState.hasError -> ViewState.Error(StableThrowable(Exception(uiState.error)))
-                        uiState.isEmpty -> ViewState.Empty
+                        hasError -> ViewState.Error(StableThrowable(Exception(error)))
+                        isEmpty -> ViewState.Empty
                         else -> ViewState.Idle
                     }
 
@@ -194,42 +210,8 @@ fun BookDetailPage(
                 .background(NovelColors.NovelBookBackground)
         ) {
             // 性能优化：只在成功状态下渲染内容，避免不必要的组合
-            if (uiState.isSuccess) {
+            if (isSuccess) {
                 TimberLogger.d("BookDetailPage", "渲染书籍详情内容")
-                
-                // 将 BookDetailState 转换为 BookDetailUiState
-                val bookDetailUiState = remember(uiState) {
-                    BookDetailUiState(
-                        bookInfo = uiState.bookInfo?.let { bookInfo ->
-                            BookDetailUiState.BookInfo(
-                                id = bookInfo.id,
-                                bookName = bookInfo.bookName,
-                                authorName = bookInfo.authorName,
-                                bookDesc = bookInfo.bookDesc,
-                                picUrl = bookInfo.picUrl,
-                                visitCount = bookInfo.visitCount,
-                                wordCount = bookInfo.wordCount,
-                                categoryName = bookInfo.categoryName
-                            )
-                        },
-                        lastChapter = uiState.lastChapter?.let { lastChapter ->
-                            BookDetailUiState.LastChapter(
-                                chapterName = lastChapter.chapterName,
-                                chapterUpdateTime = lastChapter.chapterUpdateTime
-                            )
-                        },
-                        reviews = uiState.reviews.map { review ->
-                            BookDetailUiState.BookReview(
-                                id = review.id,
-                                content = review.content,
-                                rating = review.rating,
-                                readTime = review.readTime,
-                                userName = review.userName
-                            )
-                        }.toImmutableList(),
-                        isDescriptionExpanded = uiState.isDescriptionExpanded
-                    )
-                }
                 
                 // 性能优化：缓存BookDetailContent的回调函数
                 val onFollowAuthor = remember(viewModel) { { authorName: String ->
@@ -268,8 +250,14 @@ fun BookDetailPage(
                     )
                 } }
                 
+                // 使用优化的BookDetailContent，直接传递细粒度状态
                 BookDetailContent(
-                    uiState = bookDetailUiState,
+                    bookInfo = bookInfo,
+                    lastChapter = lastChapter,
+                    reviews = reviews,
+                    isDescriptionExpanded = isDescriptionExpanded,
+                    isInBookshelf = isInBookshelf,
+                    isAuthorFollowed = isAuthorFollowed,
                     onFollowAuthor = onFollowAuthor,
                     onStartReading = onStartReading,
                     onAddToBookshelf = onAddToBookshelf,
@@ -283,7 +271,7 @@ fun BookDetailPage(
 }
 
 /**
- * 书籍详情内容组件
+ * 书籍详情内容组件（优化版本）
  * 
  * 分离的内容渲染组件，提升性能和可维护性：
  * - 封面展示区域
@@ -291,7 +279,17 @@ fun BookDetailPage(
  * - 统计数据展示
  * - 简介和评价内容
  * 
- * @param uiState 书籍详情UI状态数据
+ * 性能优化特性：
+ * - 接受细粒度的状态参数而不是大的复合状态对象
+ * - 减少不必要的状态转换和重组
+ * - 使用stable的参数类型
+ * 
+ * @param bookInfo 书籍基本信息
+ * @param lastChapter 最新章节信息
+ * @param reviews 用户评价列表
+ * @param isDescriptionExpanded 简介是否展开
+ * @param isInBookshelf 是否在书架中
+ * @param isAuthorFollowed 是否关注作者
  * @param onFollowAuthor 关注作者回调
  * @param onStartReading 开始阅读回调
  * @param onAddToBookshelf 添加到书架回调
@@ -300,7 +298,12 @@ fun BookDetailPage(
  */
 @Composable
 fun BookDetailContent(
-    uiState: BookDetailUiState,
+    bookInfo: com.novel.page.book.viewmodel.BookDetailState.BookInfo?,
+    lastChapter: com.novel.page.book.viewmodel.BookDetailState.LastChapter?,
+    reviews: kotlinx.collections.immutable.ImmutableList<com.novel.page.book.viewmodel.BookDetailState.BookReview>,
+    isDescriptionExpanded: Boolean,
+    isInBookshelf: Boolean,
+    isAuthorFollowed: Boolean,
     onFollowAuthor: ((String) -> Unit)? = null,
     onStartReading: ((String, String?) -> Unit)? = null,
     onAddToBookshelf: ((String) -> Unit)? = null,
@@ -308,6 +311,40 @@ fun BookDetailContent(
     onShareBook: ((String, String) -> Unit)? = null,
     onToggleDescription: (() -> Unit)? = null
 ) {
+    // 转换为旧的UI状态格式以保持兼容性
+    val uiState = remember(bookInfo, lastChapter, reviews, isDescriptionExpanded) {
+        BookDetailUiState(
+            bookInfo = bookInfo?.let { info ->
+                BookDetailUiState.BookInfo(
+                    id = info.id,
+                    bookName = info.bookName,
+                    authorName = info.authorName,
+                    bookDesc = info.bookDesc,
+                    picUrl = info.picUrl,
+                    visitCount = info.visitCount,
+                    wordCount = info.wordCount,
+                    categoryName = info.categoryName
+                )
+            },
+            lastChapter = lastChapter?.let { chapter ->
+                BookDetailUiState.LastChapter(
+                    chapterName = chapter.chapterName,
+                    chapterUpdateTime = chapter.chapterUpdateTime
+                )
+            },
+            reviews = reviews.map { review ->
+                BookDetailUiState.BookReview(
+                    id = review.id,
+                    content = review.content,
+                    rating = review.rating,
+                    readTime = review.readTime,
+                    userName = review.userName
+                )
+            }.toImmutableList(),
+            isDescriptionExpanded = isDescriptionExpanded
+        )
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -323,6 +360,7 @@ fun BookDetailContent(
         // 作者信息区域
         AuthorSection(
             bookInfo = uiState.bookInfo,
+            isAuthorFollowed = isAuthorFollowed,
             onFollowAuthor = onFollowAuthor
         )
 
@@ -342,7 +380,7 @@ fun BookDetailContent(
         // 书籍操作区域
         BookActionSection(
             bookInfo = uiState.bookInfo,
-            isInBookshelf = false, // TODO: 从状态中获取
+            isInBookshelf = isInBookshelf,
             onStartReading = onStartReading,
             onAddToBookshelf = onAddToBookshelf,
             onRemoveFromBookshelf = onRemoveFromBookshelf,

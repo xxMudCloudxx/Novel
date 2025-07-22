@@ -2,6 +2,16 @@ package com.novel.page.book.viewmodel
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import com.facebook.react.BuildConfig
+import com.novel.utils.TimberLogger
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -24,107 +34,282 @@ import com.novel.core.adapter.StateAdapter
  * - 类型安全的强类型状态访问
  * - UI友好的便利方法
  * - 向后兼容原有UI层格式
+ * - 优化的@Composable函数提升skippable比例
  */
 @Stable
 class BookDetailStateAdapter(
     stateFlow: StateFlow<BookDetailState>
 ) : StateAdapter<BookDetailState>(stateFlow) {
     
-    // region 基础状态适配
+    // region Composable 状态访问方法 (用于提升 skippable 比例)
+    
+    /** 书籍基本信息 - 优化版本 */
+    @Composable
+    fun bookInfoState(): State<BookDetailState.BookInfo?> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo }
+    }
+    
+    /** 最新章节信息 - 优化版本 */
+    @Composable
+    fun lastChapterState(): State<BookDetailState.LastChapter?> = remember {
+        derivedStateOf { getCurrentSnapshot().lastChapter }
+    }
+    
+    /** 用户评价列表 - 优化版本 */
+    @Composable
+    fun reviewsState(): State<ImmutableList<BookDetailState.BookReview>> = remember {
+        derivedStateOf { getCurrentSnapshot().reviews }
+    }
+    
+    /** 简介是否展开 - 优化版本 */
+    @Composable
+    fun isDescriptionExpandedState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().isDescriptionExpanded }
+    }
+    
+    /** 是否在书架中 - 优化版本 */
+    @Composable
+    fun isInBookshelfState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().isInBookshelf }
+    }
+    
+    /** 是否关注作者 - 优化版本 */
+    @Composable
+    fun isAuthorFollowedState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().isAuthorFollowed }
+    }
+    
+    /** 当前书籍ID - 优化版本 */
+    @Composable
+    fun currentBookIdState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().currentBookId }
+    }
+    
+    /** 书籍名称 - 优化版本 */
+    @Composable
+    fun bookNameState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.bookName }
+    }
+    
+    /** 作者名称 - 优化版本 */
+    @Composable
+    fun authorNameState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.authorName }
+    }
+    
+    /** 书籍描述 - 优化版本 */
+    @Composable
+    fun bookDescState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.bookDesc }
+    }
+    
+    /** 书籍封面URL - 优化版本 */
+    @Composable
+    fun picUrlState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.picUrl }
+    }
+    
+    /** 访问次数 - 优化版本 */
+    @Composable
+    fun visitCountState(): State<Long> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.visitCount ?: 0L }
+    }
+    
+    /** 字数统计 - 优化版本 */
+    @Composable
+    fun wordCountState(): State<Int> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.wordCount ?: 0 }
+    }
+    
+    /** 分类名称 - 优化版本 */
+    @Composable
+    fun categoryNameState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo?.categoryName }
+    }
+    
+    /** 是否有书籍信息 - 优化版本 */
+    @Composable
+    fun hasBookInfoState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().bookInfo != null }
+    }
+    
+    /** 最新章节名称 - 优化版本 */
+    @Composable
+    fun lastChapterNameState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().lastChapter?.chapterName }
+    }
+    
+    /** 最新章节更新时间 - 优化版本 */
+    @Composable
+    fun lastChapterUpdateTimeState(): State<String?> = remember {
+        derivedStateOf { getCurrentSnapshot().lastChapter?.chapterUpdateTime }
+    }
+    
+    /** 是否有最新章节信息 - 优化版本 */
+    @Composable
+    fun hasLastChapterState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().lastChapter != null }
+    }
+    
+    /** 评价数量 - 优化版本 */
+    @Composable
+    fun reviewCountState(): State<Int> = remember {
+        derivedStateOf { getCurrentSnapshot().reviews.size }
+    }
+    
+    /** 是否有评价 - 优化版本 */
+    @Composable
+    fun hasReviewsState(): State<Boolean> = remember {
+        derivedStateOf { getCurrentSnapshot().reviews.isNotEmpty() }
+    }
+    
+    /** 平均评分 - 优化版本 */
+    @Composable
+    fun averageRatingState(): State<Float> = remember {
+        derivedStateOf {
+            val reviews = getCurrentSnapshot().reviews
+            if (reviews.isEmpty()) {
+                0f
+            } else {
+                reviews.map { it.rating }.average().toFloat()
+            }
+        }
+    }
+    
+    /** 高评分评价（4星及以上）- 优化版本 */
+    @Composable
+    fun highRatingReviewsState(): State<ImmutableList<BookDetailState.BookReview>> = remember {
+        derivedStateOf {
+            getCurrentSnapshot().reviews.filter { it.rating >= 4 }.toImmutableList()
+        }
+    }
+    
+    /** 最新评价（前3条）- 优化版本 */
+    @Composable
+    fun latestReviewsState(): State<ImmutableList<BookDetailState.BookReview>> = remember {
+        derivedStateOf {
+            getCurrentSnapshot().reviews.take(3).toImmutableList()
+        }
+    }
+    
+    // endregion
+    
+    // region 基础状态适配 (向后兼容，但标记为过时)
     
     /** 书籍基本信息 */
+    @Deprecated("使用 bookInfoState() 替代以提升性能", ReplaceWith("bookInfoState()"))
     @Stable
     val bookInfo = mapState { it.bookInfo }
     
     /** 最新章节信息 */
+    @Deprecated("使用 lastChapterState() 替代以提升性能", ReplaceWith("lastChapterState()"))
     @Stable
     val lastChapter = mapState { it.lastChapter }
     
     /** 用户评价列表 */
+    @Deprecated("使用 reviewsState() 替代以提升性能", ReplaceWith("reviewsState()"))
     @Stable
     val reviews = mapState { it.reviews }
     
     /** 简介是否展开 */
+    @Deprecated("使用 isDescriptionExpandedState() 替代以提升性能", ReplaceWith("isDescriptionExpandedState()"))
     @Stable
     val isDescriptionExpanded = mapState { it.isDescriptionExpanded }
     
     /** 是否在书架中 */
+    @Deprecated("使用 isInBookshelfState() 替代以提升性能", ReplaceWith("isInBookshelfState()"))
     @Stable
     val isInBookshelf = mapState { it.isInBookshelf }
     
     /** 是否关注作者 */
+    @Deprecated("使用 isAuthorFollowedState() 替代以提升性能", ReplaceWith("isAuthorFollowedState()"))
     @Stable
     val isAuthorFollowed = mapState { it.isAuthorFollowed }
     
     /** 当前书籍ID */
+    @Deprecated("使用 currentBookIdState() 替代以提升性能", ReplaceWith("currentBookIdState()"))
     @Stable
     val currentBookId = mapState { it.currentBookId }
     
     // endregion
     
-    // region 书籍信息相关状态适配
+    // region 书籍信息相关状态适配 (向后兼容，但标记为过时)
     
     /** 书籍名称 */
+    @Deprecated("使用 bookNameState() 替代以提升性能", ReplaceWith("bookNameState()"))
     @Stable
     val bookName = mapState { it.bookInfo?.bookName }
     
     /** 作者名称 */
+    @Deprecated("使用 authorNameState() 替代以提升性能", ReplaceWith("authorNameState()"))
     @Stable
     val authorName = mapState { it.bookInfo?.authorName }
     
     /** 书籍描述 */
+    @Deprecated("使用 bookDescState() 替代以提升性能", ReplaceWith("bookDescState()"))
     @Stable
     val bookDesc = mapState { it.bookInfo?.bookDesc }
     
     /** 书籍封面URL */
+    @Deprecated("使用 picUrlState() 替代以提升性能", ReplaceWith("picUrlState()"))
     @Stable
     val picUrl = mapState { it.bookInfo?.picUrl }
     
     /** 访问次数 */
+    @Deprecated("使用 visitCountState() 替代以提升性能", ReplaceWith("visitCountState()"))
     @Stable
     val visitCount = mapState { it.bookInfo?.visitCount ?: 0L }
     
     /** 字数统计 */
+    @Deprecated("使用 wordCountState() 替代以提升性能", ReplaceWith("wordCountState()"))
     @Stable
     val wordCount = mapState { it.bookInfo?.wordCount ?: 0 }
     
     /** 分类名称 */
+    @Deprecated("使用 categoryNameState() 替代以提升性能", ReplaceWith("categoryNameState()"))
     @Stable
     val categoryName = mapState { it.bookInfo?.categoryName }
     
     /** 是否有书籍信息 */
+    @Deprecated("使用 hasBookInfoState() 替代以提升性能", ReplaceWith("hasBookInfoState()"))
     @Stable
     val hasBookInfo = createConditionFlow { it.bookInfo != null }
     
     // endregion
     
-    // region 章节相关状态适配
+    // region 章节相关状态适配 (向后兼容，但标记为过时)
     
     /** 最新章节名称 */
+    @Deprecated("使用 lastChapterNameState() 替代以提升性能", ReplaceWith("lastChapterNameState()"))
     @Stable
     val lastChapterName = mapState { it.lastChapter?.chapterName }
     
     /** 最新章节更新时间 */
+    @Deprecated("使用 lastChapterUpdateTimeState() 替代以提升性能", ReplaceWith("lastChapterUpdateTimeState()"))
     @Stable
     val lastChapterUpdateTime = mapState { it.lastChapter?.chapterUpdateTime }
     
     /** 是否有最新章节信息 */
+    @Deprecated("使用 hasLastChapterState() 替代以提升性能", ReplaceWith("hasLastChapterState()"))
     @Stable
     val hasLastChapter = createConditionFlow { it.lastChapter != null }
     
     // endregion
     
-    // region 评价相关状态适配
+    // region 评价相关状态适配 (向后兼容，但标记为过时)
     
     /** 评价数量 */
+    @Deprecated("使用 reviewCountState() 替代以提升性能", ReplaceWith("reviewCountState()"))
     @Stable
     val reviewCount = mapState { it.reviews.size }
     
     /** 是否有评价 */
+    @Deprecated("使用 hasReviewsState() 替代以提升性能", ReplaceWith("hasReviewsState()"))
     @Stable
     val hasReviews = createConditionFlow { it.reviews.isNotEmpty() }
     
     /** 平均评分 */
+    @Deprecated("使用 averageRatingState() 替代以提升性能", ReplaceWith("averageRatingState()"))
     @Stable
     val averageRating = mapState { state ->
         val reviews = state.reviews
@@ -136,12 +321,14 @@ class BookDetailStateAdapter(
     }
     
     /** 高评分评价（4星及以上） */
+    @Deprecated("使用 highRatingReviewsState() 替代以提升性能", ReplaceWith("highRatingReviewsState()"))
     @Stable
     val highRatingReviews = mapState { state ->
         state.reviews.filter { it.rating >= 4 }.toImmutableList()
     }
     
     /** 最新评价（前3条） */
+    @Deprecated("使用 latestReviewsState() 替代以提升性能", ReplaceWith("latestReviewsState()"))
     @Stable
     val latestReviews = mapState { state ->
         state.reviews.take(3).toImmutableList()
