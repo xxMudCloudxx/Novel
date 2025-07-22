@@ -69,11 +69,13 @@ fun ReaderPage(
     val viewModel: ReaderViewModel = hiltViewModel()
     val activeController = flipBookController ?: NavViewModel.currentFlipBookController()
 
-    // 性能优化：使用 StateAdapter 的稳定状态创建方法，减少重组
+    // 性能优化：使用 StateAdapter 的稳定状态访问方法，减少重组
     val adapter = viewModel.adapter
+    
+    // 迁移到新的优化状态访问方法
     val state by adapter.currentState.collectAsState()
-    val isInitialized by adapter.isInitialized.collectAsState(initial = false)
-    val showProgressRestoredHint by adapter.mapState { it.showProgressRestoredHint }.collectAsState(initial = false)
+    val isInitialized by adapter.isInitializedState()
+    val showProgressRestoredHint by adapter.showProgressRestoredHintState()
     
     val density = LocalDensity.current
 
