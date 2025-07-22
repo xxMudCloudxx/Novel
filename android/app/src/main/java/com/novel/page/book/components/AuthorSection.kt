@@ -55,14 +55,17 @@ fun AuthorSection(
         NovelColors.NovelText.copy(alpha = 0.8f)
     }
 
-    // 关注按钮点击事件
-    val followClick: () -> Unit = {
-        if (!isAuthorFollowed) {
-            TimberLogger.d(TAG, "点击关注作者: ${bookInfo.authorName}")
-            onFollowAuthor?.invoke(bookInfo.authorName) ?: Unit
-        } else {
-            TimberLogger.d(TAG, "作者已关注: ${bookInfo.authorName}")
-            // 已关注状态下可以考虑不响应点击或者显示取消关注选项
+    // 记忆化关注按钮点击事件
+    val followClick = remember(bookInfo.authorName, isAuthorFollowed, onFollowAuthor) {
+        {
+            if (!isAuthorFollowed) {
+                TimberLogger.d(TAG, "点击关注作者: ${bookInfo.authorName}")
+                onFollowAuthor?.invoke(bookInfo.authorName)
+            } else {
+                TimberLogger.d(TAG, "作者已关注: ${bookInfo.authorName}")
+                // 已关注状态下可以考虑不响应点击或者显示取消关注选项
+            }
+            Unit // 确保返回非nullable Unit
         }
     }
     
